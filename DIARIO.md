@@ -66,4 +66,16 @@ y dormirse, puede llegar una justo en medio, y entonces el sistema se queda
 dormido con una tecla esperando. Se evita cerrando las interrupciones antes
 de mirar y abriéndolas en la misma instrucción que duerme.
 
-**Lo que falta.** Todavía no está AltGr, así que no hay @ ni #.
+**Y AltGr.** Con AltGr salen @, #, |, \, [, ], { y } (y ~ y ¬).
+
+![AltGr en FalOS](capturas/dia-1-altgr.png)
+
+Lo curioso es que AltGr no es una tecla nueva: es el Alt de la derecha, y el
+teclado lo distingue del de la izquierda mandando antes un byte de aviso,
+`0xE0`, que dice "lo siguiente es de las teclas que se añadieron después".
+Las flechas y media teclado numérico llegan igual, y antes FalOS no conocía
+ese aviso: leía solo el segundo byte. La / del teclado numérico salía como un
+guion, porque comparte número con la tecla del guion. Ahora sale la /, y el
+Intro del teclado numérico ejecuta la orden como el otro.
+
+El € no sale: la página de códigos 437 es de antes del euro.

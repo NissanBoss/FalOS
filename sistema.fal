@@ -193,6 +193,8 @@ TECLAS_MAYUS es "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
 mayus es falso
 bloq_mayus es falso
 tilde es 0
+altgr es falso
+prefijo es falso
 
 LARGO_ORDEN es 70
 orden es region con 2097152 y LARGO_ORDEN
@@ -265,8 +267,14 @@ funcion prepara_interrupciones
 fin
 
 funcion atiende con codigo
-    comparte mayus y bloq_mayus
-    si codigo es 42 o codigo es 54
+    comparte mayus y bloq_mayus y prefijo
+    extendida es prefijo
+    prefijo es falso
+    si codigo es 224
+        prefijo es verdadero
+    si no si extendida
+        atiende_extendida con codigo
+    si no si codigo es 42 o codigo es 54
         mayus es verdadero
     si no si codigo es 170 o codigo es 182
         mayus es falso
@@ -276,11 +284,53 @@ funcion atiende con codigo
         ejecuta
     si no si codigo es 14
         borra
+    si no si altgr
+        si codigo es menor que 128
+            teclea con (con_altgr con codigo)
+        fin
     si no si codigo es 40
         pon_tilde
     si no si codigo es menor que 128
         teclea con (letra_de con codigo)
     fin
+fin
+
+funcion atiende_extendida con codigo
+    comparte altgr
+    si codigo es 56
+        altgr es verdadero
+    si no si codigo es 184
+        altgr es falso
+    si no si codigo es 28
+        ejecuta
+    si no si codigo es 53
+        teclea con 47
+    fin
+fin
+
+funcion con_altgr con codigo
+    si codigo es 2
+        devuelve 124
+    si no si codigo es 3
+        devuelve 64
+    si no si codigo es 4
+        devuelve 35
+    si no si codigo es 5
+        devuelve 126
+    si no si codigo es 7
+        devuelve 170
+    si no si codigo es 26
+        devuelve 91
+    si no si codigo es 27
+        devuelve 93
+    si no si codigo es 40
+        devuelve 123
+    si no si codigo es 41
+        devuelve 92
+    si no si codigo es 43
+        devuelve 125
+    fin
+    devuelve 0
 fin
 
 funcion pon_tilde
