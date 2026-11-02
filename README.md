@@ -40,7 +40,9 @@ cada día está en el [diario](DIARIO.md).
 
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español y entiende unas pocas órdenes:
-`ayuda`, `limpia`, `hora`, `colores` y `reinicia`. Cada vez que se sube algo,
+`ayuda`, `limpia`, `hora`, `colores`, `encendido` y `reinicia`. El teclado y
+el reloj avisan por interrupciones, así que mientras espera, el procesador
+duerme. Cada vez que se sube algo,
 GitHub lo arranca en QEMU y comprueba que llega a esperar órdenes sin
 reventar.
 
@@ -53,9 +55,7 @@ ha dado expresamente.
 
 - **Casi todo, de momento.** No hay memoria que pedir, ni programas, ni
   disco, ni red. Es el día 1.
-- **El teclado se lee preguntando sin parar**, y eso gasta un procesador
-  entero mientras espera. Falta que el teclado avise con una interrupción.
-  Tampoco hay AltGr, así que no se pueden escribir @ ni #.
+- **Sin AltGr**, así que no se pueden escribir @ ni #.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
   puede, y eso aquí aún no ha pasado. No lo uses para nada que importe.

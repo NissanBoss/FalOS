@@ -198,14 +198,70 @@ LARGO_ORDEN es 70
 orden es region con 2097152 y LARGO_ORDEN
 escritas es 0
 
-funcion hay_tecla
-    devuelve ((lee_puerto de 100) resto 2) es 1
+CONTROLADOR es 32
+CONTROLADOR_DATOS es 33
+ESCLAVO es 160
+ESCLAVO_DATOS es 161
+YA_ESTA es 32
+RELOJ es 64
+RELOJ_ORDEN es 67
+TECLADO es 96
+TICS_POR_SEGUNDO es 100
+CAPACIDAD es 64
+
+llegadas es region con 2097152 mas 128 y CAPACIDAD
+entra es 0
+sale es 0
+tics es 0
+
+funcion al_pulsar
+    comparte entra
+    codigo es lee_puerto de TECLADO
+    siguiente es (entra mas 1) resto CAPACIDAD
+    si siguiente no es igual a sale
+        elemento entra mas 1 de llegadas es codigo
+        entra es siguiente
+    fin
+    pon_en_puerto con CONTROLADOR y YA_ESTA
 fin
 
-funcion espera_tecla
-    mientras no hay_tecla
+funcion al_tic
+    comparte tics
+    tics es tics mas 1
+    pon_en_puerto con CONTROLADOR y YA_ESTA
+fin
+
+funcion siguiente_tecla
+    comparte sale
+    desactiva_interrupciones
+    mientras sale es entra
+        espera_interrupcion
+        desactiva_interrupciones
     fin
-    devuelve lee_puerto de 96
+    codigo es elemento sale mas 1 de llegadas
+    sale es (sale mas 1) resto CAPACIDAD
+    activa_interrupciones
+    devuelve codigo
+fin
+
+funcion prepara_interrupciones
+    pon_en_puerto con CONTROLADOR y 17
+    pon_en_puerto con ESCLAVO y 17
+    pon_en_puerto con CONTROLADOR_DATOS y 32
+    pon_en_puerto con ESCLAVO_DATOS y 40
+    pon_en_puerto con CONTROLADOR_DATOS y 4
+    pon_en_puerto con ESCLAVO_DATOS y 2
+    pon_en_puerto con CONTROLADOR_DATOS y 1
+    pon_en_puerto con ESCLAVO_DATOS y 1
+    pon_en_puerto con CONTROLADOR_DATOS y 252
+    pon_en_puerto con ESCLAVO_DATOS y 255
+    divisor es cociente con 1193182 y TICS_POR_SEGUNDO
+    pon_en_puerto con RELOJ_ORDEN y 54
+    pon_en_puerto con RELOJ y (divisor resto 256)
+    pon_en_puerto con RELOJ y (cociente con divisor y 256)
+    atiende_interrupcion con 32 y al_tic
+    atiende_interrupcion con 33 y al_pulsar
+    activa_interrupciones
 fin
 
 funcion atiende con codigo
@@ -381,6 +437,8 @@ funcion ejecuta
         hora
     si no si es_orden con "colores"
         colores
+    si no si es_orden con "encendido"
+        encendido
     si no si es_orden con "reinicia"
         reinicia
     si no
@@ -395,6 +453,7 @@ funcion ayuda
     pinta_linea con "  limpia     deja la pantalla en blanco"
     pinta_linea con "  hora       la hora del reloj del ordenador, en UTC"
     pinta_linea con "  colores    los 16 colores que tiene la pantalla"
+    pinta_linea con "  encendido  cuánto llevo encendido"
     pinta_linea con "  reinicia   vuelve a arrancar"
     pinta_linea con ""
 fin
@@ -494,6 +553,22 @@ funcion colores
     pinta_linea con ""
 fin
 
+funcion encendido
+    segundos es cociente con tics y TICS_POR_SEGUNDO
+    minutos es cociente con segundos y 60
+    pinta con "  Llevo encendido "
+    pon_color con BLANCO y NEGRO
+    si minutos es mayor que 0
+        pinta_numero con minutos
+        pinta con " min "
+    fin
+    pinta_numero con segundos resto 60
+    pinta con " s"
+    pon_color con GRIS y NEGRO
+    pinta_linea con ", y casi todo ese tiempo, dormido."
+    pinta_linea con ""
+fin
+
 funcion reinicia
     pon_en_puerto con 100 y 254
     congela
@@ -524,7 +599,8 @@ funcion portada
     pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
     pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
     pinta_linea con ""
-    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes."
+    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes. Y mientras"
+    pinta_linea con "  espero, duermo: el teclado me despierta cuando pulsas una tecla."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -533,9 +609,10 @@ fin
 
 escribe "FalOS arrancado"
 portada
+prepara_interrupciones
 indicador
 escribe "pantalla lista"
 
 mientras verdadero
-    atiende con espera_tecla
+    atiende con siguiente_tecla
 fin

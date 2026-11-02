@@ -2,7 +2,7 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
-## Día 1: arrancar, escribir en la pantalla y leer el teclado
+## Día 1: arrancar, escribir en la pantalla, leer el teclado y dormir
 
 ![FalOS al arrancar](capturas/dia-1.png)
 
@@ -19,6 +19,7 @@ la ç y la tecla de la tilde: ´ y después a da á. Y lo que escribes hace algo
 - `limpia`: deja la pantalla en blanco.
 - `hora`: la hora del reloj del ordenador.
 - `colores`: los 16 colores de la pantalla.
+- `encendido`: cuánto lleva encendido.
 - `reinicia`: vuelve a arrancar.
 
 **Lo que se aprende.** En modo texto la pantalla no es un aparato al que se
@@ -42,7 +43,27 @@ de IBM, de 1981, donde ocupa uno. Hay que traducir letra a letra, y la 437
 no tiene mayúsculas con tilde salvo la É. Y en el teclado la tilde no es una
 letra: es una tecla que no escribe nada y cambia la siguiente.
 
-**Lo que falta.** FalOS espera las teclas preguntando sin parar si ha llegado
-alguna, y eso gasta un procesador entero en esperar. Lo bueno es que el
-teclado avise él: una interrupción. Tampoco está AltGr, así que todavía no
-hay @ ni #.
+**Y luego, a dormir.** La primera versión esperaba las teclas preguntando sin
+parar si había llegado alguna, y eso tenía un núcleo del procesador al 99 %
+sin hacer nada. Ahora el teclado avisa él: una interrupción. FalOS duerme, y
+cuando pulsas una tecla el procesador lo despierta, apunta la tecla y vuelve
+a dormir. Lo mismo el reloj, cien veces por segundo, que es de donde sale
+`encendido`.
+
+Medido con QEMU parado 8 segundos sin tocar nada: **del 99 % al 2 %** de un
+núcleo.
+
+Para esto Fal ha tenido que aprender a atender interrupciones: una función
+normal de Fal se pone a atender una, y el compilador le añade lo que guarda y
+devuelve los registros para que el programa interrumpido no note nada.
+
+**Lo que costó.** Al encender, el controlador de interrupciones manda las de
+los aparatos a los números 8 a 15, que son los mismos que usa el procesador
+para sus propias excepciones. Si activas las interrupciones sin moverlas, el
+primer tic del reloj parece un "fallo doble" del procesador. Hay que
+remapearlo antes, a partir del 32. Y otra trampa: entre mirar si hay teclas
+y dormirse, puede llegar una justo en medio, y entonces el sistema se queda
+dormido con una tecla esperando. Se evita cerrando las interrupciones antes
+de mirar y abriéndolas en la misma instrucción que duerme.
+
+**Lo que falta.** Todavía no está AltGr, así que no hay @ ni #.
