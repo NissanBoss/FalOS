@@ -136,6 +136,10 @@ funcion en_437 con primero y segundo
             devuelve 167
         si no si segundo es 170
             devuelve 166
+        si no si segundo es 171
+            devuelve 174
+        si no si segundo es 187
+            devuelve 175
         fin
     fin
     devuelve 63
@@ -170,38 +174,368 @@ funcion cifras con n
     pon_letra con 48 menos (n resto 10)
 fin
 
-escribe "FalOS arrancado"
-
-pon_color con GRIS y NEGRO
-limpia
-
-pon_color con BLANCO y AZUL
-para cada c desde 1 hasta ANCHO
-    pinta con " "
+funcion pinta_dos con n
+    si n es menor que 10
+        pinta con "0"
+    fin
+    pinta_numero con n
 fin
-ve_a con 1 y 3
-pinta con "FalOS"
-ve_a con 1 y 74
-pinta con "día 1"
 
-pon_color con GRIS y NEGRO
-ve_a con 3 y 3
-pon_color con BLANCO y NEGRO
-pinta_linea con "Hola. Soy FalOS, un sistema operativo escrito en Fal."
-pon_color con GRIS y NEGRO
-pinta_linea con ""
-pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
-pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
-pinta_linea con ""
-pinta con "  La pantalla tiene "
-pinta_numero con ANCHO
-pinta con " por "
-pinta_numero con ALTO
-pinta_linea con " casillas, y ya sé escribir ñ, ¿ y ¡."
-pinta_linea con ""
-pon_color con AMARILLO y NEGRO
-pinta_linea con "  Todavía no sé leer el teclado. Mañana, más."
-pon_color con GRIS y NEGRO
+funcion hasta_columna con n
+    mientras columna es menor que n
+        pon_letra con 32
+    fin
+fin
 
+TECLAS es "~~1234567890'~~~qwertyuiop~+~~asdfghjkl~~~~~zxcvbnm,.-~*~ "
+TECLAS_MAYUS es "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
+
+mayus es falso
+bloq_mayus es falso
+tilde es 0
+
+LARGO_ORDEN es 70
+orden es region con 2097152 y LARGO_ORDEN
+escritas es 0
+
+funcion hay_tecla
+    devuelve ((lee_puerto de 100) resto 2) es 1
+fin
+
+funcion espera_tecla
+    mientras no hay_tecla
+    fin
+    devuelve lee_puerto de 96
+fin
+
+funcion atiende con codigo
+    comparte mayus y bloq_mayus
+    si codigo es 42 o codigo es 54
+        mayus es verdadero
+    si no si codigo es 170 o codigo es 182
+        mayus es falso
+    si no si codigo es 58
+        bloq_mayus es no bloq_mayus
+    si no si codigo es 28
+        ejecuta
+    si no si codigo es 14
+        borra
+    si no si codigo es 40
+        pon_tilde
+    si no si codigo es menor que 128
+        teclea con (letra_de con codigo)
+    fin
+fin
+
+funcion pon_tilde
+    comparte tilde
+    si mayus
+        tilde es 2
+    si no
+        tilde es 1
+    fin
+fin
+
+funcion es_letra con c
+    devuelve c es mayor o igual que 97 y c es menor o igual que 122
+fin
+
+funcion minuscula con c
+    si c es mayor o igual que 65 y c es menor o igual que 90
+        devuelve c mas 32
+    fin
+    devuelve c
+fin
+
+funcion letra_de con codigo
+    grande es mayus no es igual a bloq_mayus
+    si codigo es 13
+        si mayus
+            devuelve 168
+        fin
+        devuelve 173
+    fin
+    si codigo es 39
+        si grande
+            devuelve 165
+        fin
+        devuelve 164
+    fin
+    si codigo es 43
+        si grande
+            devuelve 128
+        fin
+        devuelve 135
+    fin
+    si codigo es 41
+        si mayus
+            devuelve 166
+        fin
+        devuelve 167
+    fin
+    si codigo es 4 y mayus
+        devuelve 250
+    fin
+    si codigo es mayor que 57
+        devuelve 0
+    fin
+    letra es elemento codigo mas 1 de TECLAS
+    si es_letra con letra
+        si grande
+            devuelve letra menos 32
+        fin
+        devuelve letra
+    fin
+    si mayus
+        letra es elemento codigo mas 1 de TECLAS_MAYUS
+    fin
+    si letra es 126
+        devuelve 0
+    fin
+    devuelve letra
+fin
+
+funcion con_tilde con c
+    si tilde es 1
+        si c es 97
+            devuelve 160
+        si no si c es 101
+            devuelve 130
+        si no si c es 105
+            devuelve 161
+        si no si c es 111
+            devuelve 162
+        si no si c es 117
+            devuelve 163
+        si no si c es 69
+            devuelve 144
+        si no si c es 32
+            devuelve 39
+        fin
+    si no si tilde es 2
+        si c es 117
+            devuelve 129
+        si no si c es 85
+            devuelve 154
+        si no si c es 32
+            devuelve 34
+        fin
+    fin
+    devuelve c
+fin
+
+funcion teclea con c
+    comparte tilde y escritas
+    si c no es igual a 0 y escritas es menor que LARGO_ORDEN
+        si tilde no es igual a 0
+            c es con_tilde con c
+            tilde es 0
+        fin
+        escritas es escritas mas 1
+        elemento escritas de orden es c
+        pon_letra con c
+        mueve_cursor
+    fin
+fin
+
+funcion borra
+    comparte columna y escritas
+    si escritas es mayor que 0
+        escritas es escritas menos 1
+        columna es columna menos 1
+        elemento (fila menos 1) por ANCHO mas columna de pantalla es color por 256 mas 32
+        mueve_cursor
+    fin
+fin
+
+funcion es_orden con nombre
+    si largo de nombre no es igual a escritas
+        devuelve falso
+    fin
+    para cada i desde 1 hasta escritas
+        si (minuscula con (elemento i de orden)) no es igual a (elemento i de nombre)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion indicador
+    pon_color con CIAN_CLARO y NEGRO
+    pinta con "> "
+    pon_color con GRIS y NEGRO
+fin
+
+funcion ejecuta
+    comparte escritas
+    pinta_linea con ""
+    si escritas es 0
+        escritas es 0
+    si no si es_orden con "ayuda"
+        ayuda
+    si no si es_orden con "limpia"
+        limpia
+        barra
+        ve_a con 3 y 1
+    si no si es_orden con "hora"
+        hora
+    si no si es_orden con "colores"
+        colores
+    si no si es_orden con "reinicia"
+        reinicia
+    si no
+        no_conozco
+    fin
+    escritas es 0
+    indicador
+fin
+
+funcion ayuda
+    pinta_linea con "  ayuda      lo que estás leyendo"
+    pinta_linea con "  limpia     deja la pantalla en blanco"
+    pinta_linea con "  hora       la hora del reloj del ordenador, en UTC"
+    pinta_linea con "  colores    los 16 colores que tiene la pantalla"
+    pinta_linea con "  reinicia   vuelve a arrancar"
+    pinta_linea con ""
+fin
+
+funcion no_conozco
+    pon_color con ROJO_CLARO y NEGRO
+    pinta con "  No conozco la orden «"
+    para cada i desde 1 hasta escritas
+        pon_letra con (elemento i de orden)
+    fin
+    pinta_linea con "». Escribe ayuda para ver las que sé."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion lee_cmos con registro
+    pon_en_puerto con 112 y registro
+    devuelve lee_puerto de 113
+fin
+
+funcion del_reloj con registro
+    v es lee_cmos con registro
+    si ((lee_cmos con 11) resto 8) es mayor o igual que 4
+        devuelve v
+    fin
+    devuelve (cociente con v y 16) por 10 mas (v resto 16)
+fin
+
+funcion hora
+    mientras (lee_cmos con 10) es mayor o igual que 128
+    fin
+    pinta con "  Son las "
+    pon_color con BLANCO y NEGRO
+    pinta_dos con (del_reloj con 4)
+    pinta con ":"
+    pinta_dos con (del_reloj con 2)
+    pinta con ":"
+    pinta_dos con (del_reloj con 0)
+    pon_color con GRIS y NEGRO
+    pinta_linea con " en UTC."
+    pinta_linea con ""
+fin
+
+funcion nombre_color con c
+    si c es 0
+        devuelve "negro"
+    si no si c es 1
+        devuelve "azul"
+    si no si c es 2
+        devuelve "verde"
+    si no si c es 3
+        devuelve "cian"
+    si no si c es 4
+        devuelve "rojo"
+    si no si c es 5
+        devuelve "magenta"
+    si no si c es 6
+        devuelve "marrón"
+    si no si c es 7
+        devuelve "gris"
+    si no si c es 8
+        devuelve "gris oscuro"
+    si no si c es 9
+        devuelve "azul claro"
+    si no si c es 10
+        devuelve "verde claro"
+    si no si c es 11
+        devuelve "cian claro"
+    si no si c es 12
+        devuelve "rojo claro"
+    si no si c es 13
+        devuelve "magenta claro"
+    si no si c es 14
+        devuelve "amarillo"
+    fin
+    devuelve "blanco"
+fin
+
+funcion muestra_color con c
+    pon_color con c y NEGRO
+    pon_letra con 219
+    pon_letra con 219
+    pon_letra con 219
+    pon_color con GRIS y NEGRO
+    pinta con " "
+    pinta con (nombre_color con c)
+fin
+
+funcion colores
+    para cada c desde 0 hasta 7
+        pinta con "  "
+        muestra_color con c
+        hasta_columna con 30
+        muestra_color con c mas 8
+        pinta_linea con ""
+    fin
+    pinta_linea con ""
+fin
+
+funcion reinicia
+    pon_en_puerto con 100 y 254
+    congela
+fin
+
+funcion barra
+    pon_color con BLANCO y AZUL
+    ve_a con 1 y 1
+    para cada c desde 1 hasta ANCHO
+        pinta con " "
+    fin
+    ve_a con 1 y 3
+    pinta con "FalOS"
+    ve_a con 1 y 74
+    pinta con "día 1"
+    pon_color con GRIS y NEGRO
+fin
+
+funcion portada
+    pon_color con GRIS y NEGRO
+    limpia
+    barra
+    ve_a con 3 y 3
+    pon_color con BLANCO y NEGRO
+    pinta_linea con "Hola. Soy FalOS, un sistema operativo escrito en Fal."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
+    pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
+    pinta_linea con ""
+    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes."
+    pon_color con AMARILLO y NEGRO
+    pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+escribe "FalOS arrancado"
+portada
+indicador
 escribe "pantalla lista"
-congela
+
+mientras verdadero
+    atiende con espera_tecla
+fin

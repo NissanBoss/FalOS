@@ -4,7 +4,7 @@ Un sistema operativo escrito desde cero en [Fal](https://github.com/NissanBoss/F
 un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en vídeo.
 
-![FalOS arrancado](capturas/dia-1.png)
+![FalOS arrancado](capturas/dia-1-ordenes.png)
 
 ## Por qué
 
@@ -38,9 +38,11 @@ fal --arranca sistema.fal
 Todo el sistema está en [sistema.fal](sistema.fal). Lo que se va añadiendo
 cada día está en el [diario](DIARIO.md).
 
-Hoy FalOS arranca, pasa al modo de 64 bits y escribe en la pantalla, con
-colores y tildes. Cada vez que se sube algo, GitHub lo arranca en QEMU y
-comprueba que llega al final sin reventar.
+Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
+colores y tildes, lee el teclado español y entiende unas pocas órdenes:
+`ayuda`, `limpia`, `hora`, `colores` y `reinicia`. Cada vez que se sube algo,
+GitHub lo arranca en QEMU y comprueba que llega a esperar órdenes sin
+reventar.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -49,8 +51,11 @@ ha dado expresamente.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay teclado, ni memoria que pedir, ni
-  programas, ni disco, ni red. Es el día 1.
+- **Casi todo, de momento.** No hay memoria que pedir, ni programas, ni
+  disco, ni red. Es el día 1.
+- **El teclado se lee preguntando sin parar**, y eso gasta un procesador
+  entero mientras espera. Falta que el teclado avise con una interrupción.
+  Tampoco hay AltGr, así que no se pueden escribir @ ni #.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
   puede, y eso aquí aún no ha pasado. No lo uses para nada que importe.
