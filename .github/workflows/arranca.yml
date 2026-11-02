@@ -1,10 +1,5 @@
 name: Arranca
 
-# Compila FalOS con el Fal de main y lo arranca en QEMU sin pantalla. Si no
-# llega a decir "pantalla lista" por el puerto serie, o si revienta por el
-# camino, la prueba falla. Asi cada dia del diario queda comprobado que
-# arranca de verdad, y no solo que compila.
-
 on:
   push:
   pull_request:
@@ -34,8 +29,6 @@ jobs:
       - name: Compilar FalOS
         run: fal --nucleo sistema.fal
 
-      # El sistema acaba parado con "congela", asi que QEMU no sale solo:
-      # se le corta a los 20 segundos y se mira lo que dijo.
       - name: Arrancar
         run: |
           timeout 20 qemu-system-x86_64 -kernel sistema.bin -display none \

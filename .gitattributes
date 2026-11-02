@@ -1,3 +1,2 @@
-# Los .fal con LF, para que el sistema compile igual en cualquier sitio.
 * text=auto
 *.fal text eol=lf
