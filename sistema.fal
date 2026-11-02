@@ -1,0 +1,243 @@
+# FalOS: un sistema operativo escrito en Fal, un dia cada vez.
+#
+# Dia 1: arrancar y escribir en la pantalla.
+#
+# No hay teclado, ni memoria que pedir, ni programas. Hay lo primero que
+# necesita cualquier sistema para poder contar lo que hace: una pantalla
+# donde escribir, con tildes, y que no se acabe al llegar abajo.
+#
+# Se arranca con:   fal --arranca sistema.fal
+
+
+# Los colores de la pantalla de texto. Son los 16 de las tarjetas CGA de
+# 1981, y siguen en el mismo orden.
+NEGRO es 0
+AZUL es 1
+VERDE es 2
+CIAN es 3
+ROJO es 4
+MAGENTA es 5
+MARRON es 6
+GRIS es 7
+GRIS_OSCURO es 8
+AZUL_CLARO es 9
+VERDE_CLARO es 10
+CIAN_CLARO es 11
+ROJO_CLARO es 12
+MAGENTA_CLARO es 13
+AMARILLO es 14
+BLANCO es 15
+
+
+# La pantalla
+#
+# En modo texto la pantalla no es un dispositivo al que se le piden cosas:
+# es memoria. Desde la direccion 0xB8000 hay 80 por 25 casillas de 2 bytes,
+# la letra abajo y el color arriba. Lo que se escribe ahi sale en el
+# monitor, sin mas.
+
+ANCHO es 80
+ALTO es 25
+pantalla es region con 753664 y ANCHO por ALTO y 2
+
+fila es 1
+columna es 1
+color es GRIS
+
+# Fal guarda los textos en UTF-8 y la pantalla habla la pagina de codigos
+# 437 de IBM. Las letras con tilde ocupan dos bytes en UTF-8: el primero
+# solo avisa de que viene una, y aqui se apunta hasta que llega el segundo.
+a_medias es 0
+
+funcion pon_color con letra y fondo
+    comparte color
+    color es fondo por 16 mas letra
+fin
+
+funcion ve_a con f y c
+    comparte fila y columna
+    fila es f
+    columna es c
+    mueve_cursor
+fin
+
+funcion limpia
+    para cada i desde 1 hasta ANCHO por ALTO
+        elemento i de pantalla es color por 256 mas 32
+    fin
+    ve_a con 1 y 1
+fin
+
+# El cursor que parpadea no es una casilla mas: lo dibuja la tarjeta, y se
+# le dice donde ponerlo por los puertos 0x3D4 y 0x3D5, en dos mitades.
+funcion mueve_cursor
+    sitio es (fila menos 1) por ANCHO mas columna menos 1
+    pon_en_puerto con 980 y 15
+    pon_en_puerto con 981 y (sitio resto 256)
+    pon_en_puerto con 980 y 14
+    pon_en_puerto con 981 y (cociente con sitio y 256)
+fin
+
+funcion pon_letra con codigo
+    comparte columna
+    si codigo es 10
+        baja
+    si no
+        elemento (fila menos 1) por ANCHO mas columna de pantalla es color por 256 mas codigo
+        columna es columna mas 1
+        si columna es mayor que ANCHO
+            baja
+        fin
+    fin
+fin
+
+funcion baja
+    comparte fila y columna
+    columna es 1
+    fila es fila mas 1
+    si fila es mayor que ALTO
+        sube_todo
+        fila es ALTO
+    fin
+fin
+
+# Al llegar abajo, todo sube una fila y la de abajo queda en blanco. Sin
+# esto, la linea 26 se saldria de la region y el sistema se pararia: es
+# justo lo que la region esta para impedir.
+funcion sube_todo
+    para cada i desde 1 hasta ANCHO por (ALTO menos 1)
+        elemento i de pantalla es elemento i mas ANCHO de pantalla
+    fin
+    para cada i desde ANCHO por (ALTO menos 1) mas 1 hasta ANCHO por ALTO
+        elemento i de pantalla es color por 256 mas 32
+    fin
+fin
+
+funcion pon_byte con b
+    comparte a_medias
+    si a_medias no es igual a 0
+        pon_letra con (en_437 con a_medias y b)
+        a_medias es 0
+    si no si b es mayor o igual que 192
+        a_medias es b
+    si no si b es menor que 128
+        pon_letra con b
+    fin
+fin
+
+# Solo estan las letras del castellano y sus signos. Las mayusculas con
+# tilde (menos la E) no existen en la 437, y salen sin ella.
+funcion en_437 con primero y segundo
+    si primero es 195
+        si segundo es 161
+            devuelve 160
+        si no si segundo es 169
+            devuelve 130
+        si no si segundo es 173
+            devuelve 161
+        si no si segundo es 179
+            devuelve 162
+        si no si segundo es 186
+            devuelve 163
+        si no si segundo es 177
+            devuelve 164
+        si no si segundo es 145
+            devuelve 165
+        si no si segundo es 188
+            devuelve 129
+        si no si segundo es 156
+            devuelve 154
+        si no si segundo es 137
+            devuelve 144
+        si no si segundo es 129
+            devuelve 65
+        si no si segundo es 141
+            devuelve 73
+        si no si segundo es 147
+            devuelve 79
+        si no si segundo es 154
+            devuelve 85
+        fin
+    si no si primero es 194
+        si segundo es 191
+            devuelve 168
+        si no si segundo es 161
+            devuelve 173
+        si no si segundo es 186
+            devuelve 167
+        si no si segundo es 170
+            devuelve 166
+        fin
+    fin
+    devuelve 63
+fin
+
+funcion pinta con t
+    para cada b en t
+        pon_byte con b
+    fin
+    mueve_cursor
+fin
+
+funcion pinta_linea con t
+    pinta con t
+    pinta con "\n"
+fin
+
+funcion pinta_numero con n
+    si n es menor que 0
+        pinta con "-"
+        cifras con n
+    si no
+        cifras con 0 menos n
+    fin
+    mueve_cursor
+fin
+
+# En negativo, como el preludio del compilador: el numero mas pequeño no
+# tiene opuesto que quepa.
+funcion cifras con n
+    si n es menor que menos 9
+        cifras con (cociente con n y 10)
+    fin
+    pon_letra con 48 menos (n resto 10)
+fin
+
+
+# El arranque
+
+escribe "FalOS arrancado"
+
+pon_color con GRIS y NEGRO
+limpia
+
+pon_color con BLANCO y AZUL
+para cada c desde 1 hasta ANCHO
+    pinta con " "
+fin
+ve_a con 1 y 3
+pinta con "FalOS"
+ve_a con 1 y 74
+pinta con "día 1"
+
+pon_color con GRIS y NEGRO
+ve_a con 3 y 3
+pon_color con BLANCO y NEGRO
+pinta_linea con "Hola. Soy FalOS, un sistema operativo escrito en Fal."
+pon_color con GRIS y NEGRO
+pinta_linea con ""
+pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
+pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
+pinta_linea con ""
+pinta con "  La pantalla tiene "
+pinta_numero con ANCHO
+pinta con " por "
+pinta_numero con ALTO
+pinta_linea con " casillas, y ya sé escribir ñ, ¿ y ¡."
+pinta_linea con ""
+pon_color con AMARILLO y NEGRO
+pinta_linea con "  Todavía no sé leer el teclado. Mañana, más."
+pon_color con GRIS y NEGRO
+
+escribe "pantalla lista"
+congela

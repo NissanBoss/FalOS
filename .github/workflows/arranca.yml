@@ -1,0 +1,48 @@
+name: Arranca
+
+# Compila FalOS con el Fal de main y lo arranca en QEMU sin pantalla. Si no
+# llega a decir "pantalla lista" por el puerto serie, o si revienta por el
+# camino, la prueba falla. Asi cada dia del diario queda comprobado que
+# arranca de verdad, y no solo que compila.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arrancar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Compilar Fal
+        run: |
+          git clone --depth 1 https://github.com/NissanBoss/Fal.git /tmp/fal
+          cd /tmp/fal && go build -o /usr/local/bin/fal .
+
+      - name: Instalar QEMU
+        run: sudo apt-get update -q && sudo apt-get install -y -q qemu-system-x86
+
+      - name: Compilar FalOS
+        run: fal --nucleo sistema.fal
+
+      # El sistema acaba parado con "congela", asi que QEMU no sale solo:
+      # se le corta a los 20 segundos y se mira lo que dijo.
+      - name: Arrancar
+        run: |
+          timeout 20 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -serial file:serie.txt -no-reboot || true
+          cat serie.txt
+          if grep -q "  X  " serie.txt; then
+            echo "FalOS revento al arrancar"
+            exit 1
+          fi
+          grep -q "pantalla lista" serie.txt
