@@ -196,9 +196,121 @@ tilde es 0
 altgr es falso
 prefijo es falso
 
+PAGINA es 4096
+MEGA es 1048576
+VISIBLE es 1073741824
+RESERVADA es 0
+LIBRE es 1
+MIA es 2
+PRESTADA es 3
+
+estados es nada
+total_paginas es 0
+ram es 0
+pista es 1
+
+funcion reparte_memoria
+    comparte estados y total_paginas y ram
+    si datos_de_arranque es 0
+        falla "El cargador no me ha dicho cuánta memoria hay."
+    fin
+    info es region con datos_de_arranque y 13 y 4
+    si ((elemento 1 de info) resto 128) es menor que 64
+        falla "El cargador no me ha dado el mapa de la memoria."
+    fin
+    tope es 0
+    mapa es elemento 13 de info
+    fin_mapa es mapa mas elemento 12 de info
+    mientras mapa es menor que fin_mapa
+        entrada es region con mapa y 6 y 4
+        si (elemento 6 de entrada) es 1
+            cuanto es (elemento 4 de entrada) mas (elemento 5 de entrada) por 4294967296
+            ram es ram mas cuanto
+            hasta es (elemento 2 de entrada) mas (elemento 3 de entrada) por 4294967296 mas cuanto
+            si hasta es mayor que tope
+                tope es hasta
+            fin
+        fin
+        mapa es mapa mas 4 mas elemento 1 de entrada
+    fin
+    si tope es mayor que VISIBLE
+        tope es VISIBLE
+    fin
+    total_paginas es cociente con tope y PAGINA
+    estados es region con final_del_nucleo y total_paginas
+    para cada p desde 1 hasta total_paginas
+        elemento p de estados es RESERVADA
+    fin
+    mapa es elemento 13 de info
+    mientras mapa es menor que fin_mapa
+        entrada es region con mapa y 6 y 4
+        desde es (elemento 2 de entrada) mas (elemento 3 de entrada) por 4294967296
+        hasta es desde mas (elemento 4 de entrada) mas (elemento 5 de entrada) por 4294967296
+        si hasta es mayor que tope
+            hasta es tope
+        fin
+        primera es (cociente con (desde mas PAGINA menos 1) y PAGINA) mas 1
+        ultima es cociente con hasta y PAGINA
+        si (elemento 6 de entrada) es 1 y primera es menor o igual que ultima
+            para cada p desde primera hasta ultima
+                elemento p de estados es LIBRE
+            fin
+        fin
+        mapa es mapa mas 4 mas elemento 1 de entrada
+    fin
+    para cada p desde 1 hasta (cociente con MEGA y PAGINA)
+        elemento p de estados es RESERVADA
+    fin
+    hasta_aqui es cociente con (final_del_nucleo mas total_paginas mas PAGINA menos 1) y PAGINA
+    para cada p desde (cociente con MEGA y PAGINA) mas 1 hasta hasta_aqui
+        elemento p de estados es MIA
+    fin
+fin
+
+funcion pide_pagina
+    comparte pista
+    p es pista
+    vistas es 0
+    mientras vistas es menor que total_paginas
+        si (elemento p de estados) es LIBRE
+            elemento p de estados es PRESTADA
+            pista es p
+            direccion es (p menos 1) por PAGINA
+            hoja es region con direccion y 512 y 8
+            para cada i desde 1 hasta 512
+                elemento i de hoja es 0
+            fin
+            devuelve direccion
+        fin
+        p es (p resto total_paginas) mas 1
+        vistas es vistas mas 1
+    fin
+    falla "Me he quedado sin memoria."
+fin
+
+funcion suelta_pagina con direccion
+    p es (cociente con direccion y PAGINA) mas 1
+    si (direccion resto PAGINA) no es igual a 0 o direccion es menor que 0 o p es mayor que total_paginas
+        falla "Eso no es el principio de una página."
+    fin
+    si (elemento p de estados) no es igual a PRESTADA
+        falla "Esa página no estaba prestada. Devolver dos veces la misma es un fallo, y lo paro aquí."
+    fin
+    elemento p de estados es LIBRE
+fin
+
+reparte_memoria
+
 LARGO_ORDEN es 70
-orden es region con 2097152 y LARGO_ORDEN
+INICIO es 3
+orden es region con pide_pagina y LARGO_ORDEN
 escritas es 0
+pos es 0
+
+HISTORIAL es 16
+historial es region con pide_pagina y HISTORIAL por 80
+guardadas es 0
+mirando es 1
 
 CONTROLADOR es 32
 CONTROLADOR_DATOS es 33
@@ -211,7 +323,7 @@ TECLADO es 96
 TICS_POR_SEGUNDO es 100
 CAPACIDAD es 64
 
-llegadas es region con 2097152 mas 128 y CAPACIDAD
+llegadas es region con pide_pagina y CAPACIDAD
 entra es 0
 sale es 0
 tics es 0
@@ -305,6 +417,20 @@ funcion atiende_extendida con codigo
         ejecuta
     si no si codigo es 53
         teclea con 47
+    si no si codigo es 75
+        mueve_a con pos menos 1
+    si no si codigo es 77
+        mueve_a con pos mas 1
+    si no si codigo es 71
+        mueve_a con 0
+    si no si codigo es 79
+        mueve_a con escritas
+    si no si codigo es 83
+        suprime
+    si no si codigo es 72 y mirando es mayor que 1
+        recupera con mirando menos 1
+    si no si codigo es 80 y mirando es menor o igual que guardadas
+        recupera con mirando mas 1
     fin
 fin
 
@@ -431,27 +557,124 @@ funcion con_tilde con c
 fin
 
 funcion teclea con c
-    comparte tilde y escritas
+    comparte tilde y escritas y pos
     si c no es igual a 0 y escritas es menor que LARGO_ORDEN
         si tilde no es igual a 0
             c es con_tilde con c
             tilde es 0
         fin
+        i es escritas
+        mientras i es mayor que pos
+            elemento i mas 1 de orden es elemento i de orden
+            i es i menos 1
+        fin
+        elemento pos mas 1 de orden es c
         escritas es escritas mas 1
-        elemento escritas de orden es c
-        pon_letra con c
+        pos es pos mas 1
+        redibuja
+    fin
+fin
+
+funcion saca_letra con i
+    comparte escritas
+    mientras i es menor que escritas
+        elemento i de orden es elemento i mas 1 de orden
+        i es i mas 1
+    fin
+    escritas es escritas menos 1
+fin
+
+funcion borra
+    comparte pos
+    si pos es mayor que 0
+        saca_letra con pos
+        pos es pos menos 1
+        redibuja
+    fin
+fin
+
+funcion suprime
+    si pos es menor que escritas
+        saca_letra con pos mas 1
+        redibuja
+    fin
+fin
+
+funcion mueve_a con donde
+    comparte pos y columna
+    si donde es mayor o igual que 0 y donde es menor o igual que escritas
+        pos es donde
+        columna es INICIO mas pos
         mueve_cursor
     fin
 fin
 
-funcion borra
-    comparte columna y escritas
-    si escritas es mayor que 0
-        escritas es escritas menos 1
-        columna es columna menos 1
-        elemento (fila menos 1) por ANCHO mas columna de pantalla es color por 256 mas 32
-        mueve_cursor
+funcion redibuja
+    comparte columna
+    base es (fila menos 1) por ANCHO mas INICIO menos 1
+    para cada i desde 1 hasta LARGO_ORDEN mas 1
+        letra es 32
+        si i es menor o igual que escritas
+            letra es elemento i de orden
+        fin
+        elemento base mas i de pantalla es color por 256 mas letra
     fin
+    columna es INICIO mas pos
+    mueve_cursor
+fin
+
+funcion sitio_en_historial con k
+    devuelve (k menos 1) por 80 mas 1
+fin
+
+funcion igual_que_la_ultima
+    si guardadas es 0
+        devuelve falso
+    fin
+    sitio es sitio_en_historial con guardadas
+    si (elemento sitio de historial) no es igual a escritas
+        devuelve falso
+    fin
+    para cada i desde 1 hasta escritas
+        si (elemento sitio mas i de historial) no es igual a (elemento i de orden)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion guarda_en_historial
+    comparte guardadas y mirando
+    si escritas es mayor que 0 y no (igual_que_la_ultima)
+        si guardadas es HISTORIAL
+            para cada i desde 1 hasta (HISTORIAL menos 1) por 80
+                elemento i de historial es elemento i mas 80 de historial
+            fin
+            guardadas es guardadas menos 1
+        fin
+        guardadas es guardadas mas 1
+        sitio es sitio_en_historial con guardadas
+        elemento sitio de historial es escritas
+        para cada i desde 1 hasta escritas
+            elemento sitio mas i de historial es elemento i de orden
+        fin
+    fin
+    mirando es guardadas mas 1
+fin
+
+funcion recupera con k
+    comparte escritas y pos y mirando
+    mirando es k
+    escritas es 0
+    si k es menor o igual que guardadas
+        sitio es sitio_en_historial con k
+        escritas es elemento sitio de historial
+        para cada i desde 1 hasta escritas
+            elemento i de orden es elemento sitio mas i de historial
+        fin
+    fin
+    pos es escritas
+    redibuja
 fin
 
 funcion es_orden con nombre
@@ -473,8 +696,9 @@ funcion indicador
 fin
 
 funcion ejecuta
-    comparte escritas
+    comparte escritas y pos
     pinta_linea con ""
+    guarda_en_historial
     si escritas es 0
         escritas es 0
     si no si es_orden con "ayuda"
@@ -489,12 +713,15 @@ funcion ejecuta
         colores
     si no si es_orden con "encendido"
         encendido
+    si no si es_orden con "memoria"
+        memoria
     si no si es_orden con "reinicia"
         reinicia
     si no
         no_conozco
     fin
     escritas es 0
+    pos es 0
     indicador
 fin
 
@@ -504,7 +731,11 @@ funcion ayuda
     pinta_linea con "  hora       la hora del reloj del ordenador, en UTC"
     pinta_linea con "  colores    los 16 colores que tiene la pantalla"
     pinta_linea con "  encendido  cuánto llevo encendido"
+    pinta_linea con "  memoria    cuánta memoria tengo y quién la usa"
     pinta_linea con "  reinicia   vuelve a arrancar"
+    pinta_linea con ""
+    pinta_linea con "  Con las flechas te mueves por lo que escribes, y con las de arriba"
+    pinta_linea con "  y abajo vuelves a las órdenes de antes."
     pinta_linea con ""
 fin
 
@@ -619,6 +850,102 @@ funcion encendido
     pinta_linea con ""
 fin
 
+funcion cuantas_en con estado
+    n es 0
+    para cada p desde 1 hasta total_paginas
+        si (elemento p de estados) es estado
+            n es n mas 1
+        fin
+    fin
+    devuelve n
+fin
+
+funcion pinta_tamano con paginas
+    kb es paginas por 4
+    si kb es menor que 10240
+        pinta_numero con kb
+        pinta con " KB"
+    si no
+        pinta_numero con (cociente con kb y 1024)
+        pinta con " MB"
+    fin
+fin
+
+funcion trozo_de_barra con c y celdas
+    pon_color con c y NEGRO
+    repite celdas veces
+        pon_letra con 219
+    fin
+fin
+
+funcion celdas_de con n
+    celdas es cociente con n por 60 y total_paginas
+    si n es mayor que 0 y celdas es 0
+        devuelve 1
+    fin
+    devuelve celdas
+fin
+
+funcion leyenda con c y nombre y paginas
+    pinta con "  "
+    pon_color con c y NEGRO
+    pon_letra con 254
+    pon_color con GRIS y NEGRO
+    pinta con " "
+    pinta con nombre
+    hasta_columna con 40
+    pon_color con BLANCO y NEGRO
+    pinta_tamano con paginas
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion memoria
+    reservadas es cuantas_en con RESERVADA
+    mias es cuantas_en con MIA
+    prestadas es cuantas_en con PRESTADA
+    libres es cuantas_en con LIBRE
+    pinta con "  Tengo "
+    pon_color con BLANCO y NEGRO
+    pinta_numero con (cociente con ram mas (cociente con MEGA y 2) y MEGA)
+    pinta con " MB"
+    pon_color con GRIS y NEGRO
+    pinta_linea con " de memoria, en páginas de 4 KB."
+    pinta_linea con ""
+    pinta con "  "
+    trozo_de_barra con GRIS_OSCURO y (celdas_de con reservadas)
+    trozo_de_barra con AZUL_CLARO y (celdas_de con mias)
+    trozo_de_barra con AMARILLO y (celdas_de con prestadas)
+    trozo_de_barra con VERDE y 60 menos (celdas_de con reservadas) menos (celdas_de con mias) menos (celdas_de con prestadas)
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    pinta_linea con ""
+    leyenda con GRIS_OSCURO y "de la BIOS y los aparatos" y reservadas
+    leyenda con AZUL_CLARO y "yo: código, pila y tablas" y mias
+    leyenda con AMARILLO y "prestadas: lo que escribes" y prestadas
+    leyenda con VERDE y "libres" y libres
+    pinta_linea con ""
+    prueba es pide_pagina
+    hoja es region con prueba y 512 y 8
+    elemento 1 de hoja es 1234
+    suelta_pagina con prueba
+    otra es pide_pagina
+    vista es region con otra y 512 y 8
+    en_blanco es (elemento 1 de vista) es 0
+    suelta_pagina con otra
+    pinta_linea con "  Presto una página, escriben en ella, me la devuelven y se la presto"
+    pinta con "  a otro: "
+    si otra es prueba y en_blanco
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "le llega en blanco."
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "le llega con lo que dejó el primero."
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
 funcion reinicia
     pon_en_puerto con 100 y 254
     congela
@@ -633,7 +960,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 1"
+    pinta con "día 2"
     pon_color con GRIS y NEGRO
 fin
 

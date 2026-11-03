@@ -2,6 +2,39 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 2: la memoria, y escribir como en una terminal de verdad
+
+![La orden memoria](capturas/dia-2.png)
+
+**Lo que hay.** FalOS sabe cuánta memoria tiene y quién la usa. La orden
+`memoria` lo enseña: de 127 MB, todo FalOS (su código, su pila y sus tablas)
+ocupa 524 KB. Y la reparte: quien necesita memoria pide una página de 4 KB,
+y cuando acaba, la devuelve.
+
+Y ya se escribe como en cualquier terminal: las flechas mueven el cursor
+por lo que has escrito, Inicio y Fin te llevan a los extremos, Supr borra
+hacia delante, y las flechas de arriba y abajo traen las órdenes de antes.
+
+**Lo que se aprende.** Un sistema operativo no sabe al arrancar cuánta
+memoria tiene. Se lo dice quien lo carga: deja en un registro del procesador
+la dirección de una lista con los trozos de memoria y de qué es cada uno.
+Hay agujeros: entre los 640 KB y el primer mega no hay memoria, sino la
+pantalla y la BIOS. Es una herencia del primer PC de IBM, de 1981, que dejó 640 KB
+para los programas y puso todo lo demás justo encima.
+
+**La seguridad.** Cada página que FalOS presta, la entrega borrada. Si no,
+el siguiente que la pidiera podría leer lo que dejó el anterior: contraseñas,
+claves, lo que fuera. La orden `memoria` lo comprueba cada vez: presta una
+página, escribe en ella, la recupera, se la presta a otro y mira que llega en
+blanco. Y devolver dos veces la misma página para el sistema en seco, con la
+pantalla roja: en C, ese descuido es uno de los agujeros de seguridad más
+conocidos.
+
+**Lo que costó.** El dato de dónde está esa lista llega en un registro, y el
+arranque lo pisaba antes de mirarlo: Fal ha tenido que aprender a guardarlo.
+Y la pantalla roja de los errores ponía "p?gina": no sabía escribir tildes.
+Ahora sí.
+
 ## Día 1: arrancar, escribir en la pantalla, leer el teclado y dormir
 
 ![FalOS al arrancar](capturas/dia-1.png)

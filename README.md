@@ -39,12 +39,15 @@ Todo el sistema está en [sistema.fal](sistema.fal). Lo que se va añadiendo
 cada día está en el [diario](DIARIO.md).
 
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
-colores y tildes, lee el teclado español con AltGr y entiende unas pocas órdenes:
-`ayuda`, `limpia`, `hora`, `colores`, `encendido` y `reinicia`. El teclado y
-el reloj avisan por interrupciones, así que mientras espera, el procesador
-duerme. Cada vez que se sube algo,
-GitHub lo arranca en QEMU y comprueba que llega a esperar órdenes sin
-reventar.
+colores y tildes, lee el teclado español con AltGr y entiende unas pocas
+órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria` y
+`reinicia`. Lo que escribes se corrige con las flechas, y las de arriba y
+abajo traen las órdenes de antes.
+
+Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
+siempre borradas. El teclado y el reloj avisan por interrupciones, así que
+mientras espera, el procesador duerme. Cada vez que se sube algo, GitHub lo
+arranca en QEMU y comprueba que llega a esperar órdenes sin reventar.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -53,11 +56,11 @@ ha dado expresamente.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay memoria que pedir, ni programas, ni
-  disco, ni red. Es el día 1.
-- **Solo el teclado español, y sin flechas.** Lo que escribes se corrige con
-  la tecla de borrar y nada más. Tampoco hay €: la pantalla de 1981 no lo
-  tiene.
+- **Casi todo, de momento.** No hay programas, ni disco, ni red. Es el
+  día 2.
+- **Solo el teclado español.** Y sin €: la pantalla de 1981 no lo tiene.
+- **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
+  no se usa todavía.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
   puede, y eso aquí aún no ha pasado. No lo uses para nada que importe.
