@@ -76,7 +76,7 @@ funcion baja
 fin
 
 funcion sube_todo
-    para cada i desde 1 hasta ANCHO por (ALTO menos 1)
+    para cada i desde ANCHO mas 1 hasta ANCHO por (ALTO menos 1)
         elemento i de pantalla es elemento i mas ANCHO de pantalla
     fin
     para cada i desde ANCHO por (ALTO menos 1) mas 1 hasta ANCHO por ALTO
@@ -299,7 +299,57 @@ funcion suelta_pagina con direccion
     elemento p de estados es LIBRE
 fin
 
+PRESENTE es 1
+ESCRIBIBLE es 2
+GRANDE es 128
+NO_EJECUTABLE es 0 menos 9223372036854775807 menos 1
+DOS_MEGAS es 2097152
+
+prohibe_ejecutar es 0
+
+funcion permisos_de con direccion
+    si direccion es 0
+        devuelve 0
+    fin
+    si direccion es mayor o igual que inicio_del_codigo y direccion es menor que final_del_codigo
+        devuelve PRESENTE
+    fin
+    devuelve PRESENTE mas ESCRIBIBLE mas prohibe_ejecutar
+fin
+
+funcion protege_memoria
+    comparte prohibe_ejecutar
+    si hay_no_ejecutar
+        prohibe_ejecutar es NO_EJECUTABLE
+    fin
+    raiz es pide_pagina
+    nivel_3 es pide_pagina
+    nivel_2 es pide_pagina
+    arriba es region con raiz y 512 y 8
+    medio es region con nivel_3 y 512 y 8
+    directorio es region con nivel_2 y 512 y 8
+    elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE
+    elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE
+    con_detalle es cociente con (final_del_codigo mas DOS_MEGAS menos 1) y DOS_MEGAS
+    para cada t desde 1 hasta 512
+        desde es (t menos 1) por DOS_MEGAS
+        si t es menor o igual que con_detalle
+            tabla es pide_pagina
+            paginas es region con tabla y 512 y 8
+            para cada i desde 1 hasta 512
+                direccion es desde mas (i menos 1) por PAGINA
+                elemento i de paginas es direccion mas (permisos_de con direccion)
+            fin
+            elemento t de directorio es tabla mas PRESENTE mas ESCRIBIBLE
+        si no
+            elemento t de directorio es desde mas PRESENTE mas ESCRIBIBLE mas GRANDE mas prohibe_ejecutar
+        fin
+    fin
+    usa_tablas con raiz
+fin
+
 reparte_memoria
+protege_memoria
 
 LARGO_ORDEN es 70
 INICIO es 3
@@ -893,7 +943,7 @@ funcion leyenda con c y nombre y paginas
     pon_color con GRIS y NEGRO
     pinta con " "
     pinta con nombre
-    hasta_columna con 40
+    hasta_columna con 44
     pon_color con BLANCO y NEGRO
     pinta_tamano con paginas
     pon_color con GRIS y NEGRO
@@ -922,7 +972,7 @@ funcion memoria
     pinta_linea con ""
     leyenda con GRIS_OSCURO y "de la BIOS y los aparatos" y reservadas
     leyenda con AZUL_CLARO y "yo: código, pila y tablas" y mias
-    leyenda con AMARILLO y "prestadas: lo que escribes" y prestadas
+    leyenda con AMARILLO y "prestadas: tablas y lo que escribes" y prestadas
     leyenda con VERDE y "libres" y libres
     pinta_linea con ""
     prueba es pide_pagina
@@ -944,6 +994,23 @@ funcion memoria
     fin
     pon_color con GRIS y NEGRO
     pinta_linea con ""
+    pinta_linea con "  Y el procesador hace cumplir esto, también a mí:"
+    protegido con "mi código es de solo lectura" y verdadero
+    protegido con "los datos no se pueden ejecutar" y prohibe_ejecutar no es igual a 0
+    protegido con "la dirección 0 no existe" y verdadero
+    pinta_linea con ""
+fin
+
+funcion protegido con frase y si_esta
+    si si_esta
+        pon_color con VERDE_CLARO y NEGRO
+        pinta con "    sí  "
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta con "    no  "
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con frase
 fin
 
 funcion reinicia

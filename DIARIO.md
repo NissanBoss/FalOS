@@ -30,10 +30,26 @@ blanco. Y devolver dos veces la misma página para el sistema en seco, con la
 pantalla roja: en C, ese descuido es uno de los agujeros de seguridad más
 conocidos.
 
+**Y el procesador vigila.** Al final del día, una cosa más: FalOS monta sus
+propias tablas de páginas, la lista que el procesador consulta en cada acceso
+a memoria para saber qué se puede hacer con cada página. Con ellas:
+
+- su propio código es de solo lectura, y nadie lo puede cambiar mientras
+  corre, ni siquiera FalOS;
+- los datos no se pueden ejecutar, que es la defensa contra el truco clásico
+  de colar código en la memoria y saltar a él;
+- la dirección 0 no existe.
+
+![Escribir encima del código](capturas/dia-2-solo-lectura.png)
+
+No es una comprobación de FalOS: la hace el procesador, en cada acceso, sin
+coste. Es lo mismo que hacen Windows y Linux.
+
 **Lo que costó.** El dato de dónde está esa lista llega en un registro, y el
 arranque lo pisaba antes de mirarlo: Fal ha tenido que aprender a guardarlo.
-Y la pantalla roja de los errores ponía "p?gina": no sabía escribir tildes.
-Ahora sí.
+La pantalla roja de los errores ponía "p?gina": no sabía escribir tildes.
+Y para que el procesador haga cumplir el "solo lectura" al propio núcleo hay
+que encenderle un bit aparte; sin él, el núcleo se lo salta.
 
 ## Día 1: arrancar, escribir en la pantalla, leer el teclado y dormir
 

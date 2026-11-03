@@ -45,9 +45,13 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
-siempre borradas. El teclado y el reloj avisan por interrupciones, así que
-mientras espera, el procesador duerme. Cada vez que se sube algo, GitHub lo
-arranca en QEMU y comprueba que llega a esperar órdenes sin reventar.
+siempre borradas. Monta sus propias tablas de páginas: su código es de solo
+lectura, los datos no se pueden ejecutar y la dirección 0 no existe, y eso
+lo hace cumplir el procesador.
+
+El teclado y el reloj avisan por interrupciones, así que mientras espera, el
+procesador duerme. Cada vez que se sube algo, GitHub lo arranca en QEMU y
+comprueba que llega a esperar órdenes sin reventar.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
