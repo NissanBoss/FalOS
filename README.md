@@ -2,7 +2,8 @@
 
 Un sistema operativo escrito desde cero en [Fal](https://github.com/NissanBoss/Fal),
 un lenguaje de programación en español. Se construye en público, un día cada
-vez: cada día, un paso que se pueda ver, subido aquí y contado en vídeo.
+vez: cada día, un paso que se pueda ver, subido aquí y contado en
+[TikTok](https://www.tiktok.com/@fal.lang).
 
 ![FalOS arrancado](capturas/dia-1-ordenes.png)
 
