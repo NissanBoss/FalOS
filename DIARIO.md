@@ -70,7 +70,8 @@ ahora depende de en cuál estés.
 
 Hay dos trampas que no avisan. El procesador mira un mapa para saber qué puertos
 puede tocar un programa, y si no le dices dónde está, cree que empieza en el
-byte 0 de una tabla llena de ceros, y un cero significa "permitido". Y un
+byte 0 de una tabla llena de ceros, y un cero significa "permitido". Quité esa
+línea para comprobarlo, y `apaga` reinició el ordenador de verdad. Y un
 programa puede poner al revés una bandera del procesador que el núcleo da por
 hecho: al borrar su memoria, el núcleo iría hacia atrás, pisando lo que el
 programa quisiera.
