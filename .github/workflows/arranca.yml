@@ -39,3 +39,31 @@ jobs:
             exit 1
           fi
           grep -q "pantalla lista" serie.txt
+
+      - name: Programas que intentan lo que no deben
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/./& /g; s/  / spc /g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza apaga"
+            sleep 4
+            teclea "lanza espia"
+            sleep 4
+            teclea "lanza apaga"
+            sleep 4
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -serial file:programas.txt -monitor stdio -no-reboot > /dev/null
+          cat programas.txt
+          if grep -q "  X  " programas.txt; then
+            echo "Un programa ha tumbado a FalOS"
+            exit 1
+          fi
+          test "$(grep -c "apaga cerrado por la excepción 13" programas.txt)" = 2
+          grep -q "espia cerrado por la excepción 14" programas.txt

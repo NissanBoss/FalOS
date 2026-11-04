@@ -1,0 +1,10 @@
+funcion duerme con centesimas
+    llama_al_sistema con 4 y centesimas
+fin
+
+para cada segundo desde 1 hasta 3600
+    escribe "llevo " sin salto
+    escribe segundo sin salto
+    escribe " segundos"
+    duerme con 100
+fin

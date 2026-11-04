@@ -1,0 +1,4 @@
+escribe "voy a leer la memoria de FalOS..."
+llama_al_sistema con 4 y 200
+memoria_de_falos es region con 1048576 y 4
+escribe elemento 1 de memoria_de_falos

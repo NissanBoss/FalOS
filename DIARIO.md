@@ -2,6 +2,87 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 3: varias cosas a la vez, y programas sin permisos
+
+![apaga intenta apagar el ordenador](capturas/dia-3.png)
+
+**Lo que hay.** FalOS corre programas, varios a la vez, y sigue atendiéndote
+mientras tanto. `lanza cuenta` y `lanza primos` se ponen a trabajar abajo, cada
+uno en su línea, y tú sigues escribiendo arriba.
+
+Y esos programas no tienen permisos. `apaga` tiene exactamente esta línea:
+
+```
+pon_en_puerto con 100 y 254
+```
+
+Es la misma que usa la orden `reinicia`. Cuando la escribe FalOS, el ordenador
+se reinicia. Cuando la intenta `apaga`, el procesador la para antes de
+ejecutarla, FalOS cierra el programa y todo lo demás sigue en marcha. `espia`
+intenta leer la memoria de FalOS, y le pasa lo mismo.
+
+Las órdenes nuevas:
+
+- `programas`: los que lleva dentro.
+- `lanza X`: pone a correr X.
+- `tareas`: lo que está corriendo, en qué estado y cuánto procesador lleva.
+- `para N`: cierra la tarea N.
+
+**Lo que se aprende.** Un procesador tiene una sola mano: hacer dos cosas a la
+vez es un truco. Cien veces por segundo, el reloj lo interrumpe. FalOS guarda
+los registros del programa que corría, deja los de otro y sigue. El programa
+no se entera. Y si un programa no suelta el procesador nunca, da igual: nadie
+le pide permiso para quitárselo. `bucle` es un `mientras verdadero` vacío, y
+puedes seguir escribiendo como si nada.
+
+![bucle no suelta el procesador, y da igual](capturas/dia-3-bucle.png)
+
+El procesador tiene cuatro anillos de permisos, y casi nadie usa más de dos: el
+núcleo en el 0, los programas en el 3. Desde el 3 no se puede tocar un aparato,
+cerrar las interrupciones, parar la máquina ni cambiar las tablas de páginas.
+La única salida es una puerta: una instrucción que salta a un sitio fijo del
+núcleo. Eso es una llamada al sistema, y hay cinco: salir, escribir una letra,
+ceder el turno, preguntar la hora y dormir.
+
+**La seguridad.** Cada programa tiene sus propias tablas de páginas, así que
+ve su memoria y nada más. Su código es de solo lectura, y sus datos no se
+pueden ejecutar. La página que el procesador usa para entrar en el núcleo es
+aparte, y al cerrarlo, todo lo suyo vuelve al repartidor, que lo entrega en
+blanco.
+
+![espia intenta leer la memoria de FalOS](capturas/dia-3-espia.png)
+
+Y lo más importante no es lo que hace el programa, sino lo que hace el núcleo
+con lo que le llega. Todo lo que entra por una llamada al sistema es hostil.
+En Fal, una cuenta que se sale para el sistema entero: si `dormir` sumara sin
+mirar el número que le pasan, un programa podría tumbar a FalOS con solo pedir
+dormir un número gigantesco. Ahora se mira cada dato antes de usarlo, y las letras van de
+una en una para que el núcleo no tenga que leer nunca la memoria de un programa.
+
+Lo probé con programas hechos para romperlo: pintar en la pantalla directamente,
+leer el teclado, cambiar las tablas de páginas, reescribir su propio código,
+desbordar su pila y pasar números absurdos en cada llamada. Ninguno tumbó nada.
+
+**Lo que costó.** Cada interrupción se atiende en una pila aparte, una sola
+para todo el sistema, igual que en seL4, y Fal ha tenido que aprender a saltar
+de una a otra. La comprobación de "te has quedado sin pila" era una constante;
+ahora depende de en cuál estés.
+
+Hay dos trampas que no avisan. El procesador mira un mapa para saber qué puertos
+puede tocar un programa, y si no le dices dónde está, cree que empieza en el
+byte 0 de una tabla llena de ceros, y un cero significa "permitido". Y un
+programa puede poner al revés una bandera del procesador que el núcleo da por
+hecho: al borrar su memoria, el núcleo iría hacia atrás, pisando lo que el
+programa quisiera.
+
+El primer intento reinició la máquina sin decir nada. Era una errata mía: le
+había puesto el programa en el segundo giga en vez de en el primero. El registro
+de QEMU lo dijo en un minuto: fallo de página, luego fallo doble, luego fallo
+triple. El tercero es el que reinicia.
+
+Y Fal no distingue mayúsculas: la constante `MARCO` y la variable `marco` eran
+la misma, y el compilador me lo dijo con otra pareja que había escrito igual.
+
 ## Día 2: la memoria, y escribir como en una terminal de verdad
 
 ![La orden memoria](capturas/dia-2.png)

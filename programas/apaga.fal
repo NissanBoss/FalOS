@@ -1,0 +1,4 @@
+escribe "voy a apagar el ordenador..."
+llama_al_sistema con 4 y 200
+pon_en_puerto con 100 y 254
+escribe "lo he apagado"

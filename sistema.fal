@@ -17,6 +17,7 @@ BLANCO es 15
 
 ANCHO es 80
 ALTO es 25
+ABAJO es 21
 pantalla es region con 753664 y ANCHO por ALTO y 2
 
 fila es 1
@@ -38,7 +39,7 @@ funcion ve_a con f y c
 fin
 
 funcion limpia
-    para cada i desde 1 hasta ANCHO por ALTO
+    para cada i desde 1 hasta ANCHO por ABAJO
         elemento i de pantalla es color por 256 mas 32
     fin
     ve_a con 1 y 1
@@ -69,17 +70,17 @@ funcion baja
     comparte fila y columna
     columna es 1
     fila es fila mas 1
-    si fila es mayor que ALTO
+    si fila es mayor que ABAJO
         sube_todo
-        fila es ALTO
+        fila es ABAJO
     fin
 fin
 
 funcion sube_todo
-    para cada i desde ANCHO mas 1 hasta ANCHO por (ALTO menos 1)
+    para cada i desde ANCHO mas 1 hasta ANCHO por (ABAJO menos 1)
         elemento i de pantalla es elemento i mas ANCHO de pantalla
     fin
-    para cada i desde ANCHO por (ALTO menos 1) mas 1 hasta ANCHO por ALTO
+    para cada i desde ANCHO por (ABAJO menos 1) mas 1 hasta ANCHO por ABAJO
         elemento i de pantalla es color por 256 mas 32
     fin
 fin
@@ -198,7 +199,7 @@ prefijo es falso
 
 PAGINA es 4096
 MEGA es 1048576
-VISIBLE es 1073741824
+VISIBLE es 805306368
 RESERVADA es 0
 LIBRE es 1
 MIA es 2
@@ -306,6 +307,8 @@ NO_EJECUTABLE es 0 menos 9223372036854775807 menos 1
 DOS_MEGAS es 2097152
 
 prohibe_ejecutar es 0
+raiz_nucleo es 0
+directorio_nucleo es 0
 
 funcion permisos_de con direccion
     si direccion es 0
@@ -318,7 +321,7 @@ funcion permisos_de con direccion
 fin
 
 funcion protege_memoria
-    comparte prohibe_ejecutar
+    comparte prohibe_ejecutar y raiz_nucleo y directorio_nucleo
     si hay_no_ejecutar
         prohibe_ejecutar es NO_EJECUTABLE
     fin
@@ -328,6 +331,8 @@ funcion protege_memoria
     arriba es region con raiz y 512 y 8
     medio es region con nivel_3 y 512 y 8
     directorio es region con nivel_2 y 512 y 8
+    raiz_nucleo es raiz
+    directorio_nucleo es nivel_2
     elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE
     elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE
     con_detalle es cociente con (final_del_codigo mas DOS_MEGAS menos 1) y DOS_MEGAS
@@ -377,6 +382,258 @@ llegadas es region con pide_pagina y CAPACIDAD
 entra es 0
 sale es 0
 tics es 0
+tics_dormido es 0
+
+USUARIO es 4
+MAGIA es 20071938299543878
+DONDE_VAN es 805306368
+TOPE_PROGRAMA es 1048576
+BANDERAS es 514
+SEGMENTO_CODIGO es 27
+SEGMENTO_DATOS es 35
+TAMANO_MARCO es 160
+
+EN_RDI es 9
+EN_RSI es 10
+EN_RDX es 13
+EN_RAX es 15
+EN_RIP es 16
+EN_CS es 17
+EN_BANDERAS es 18
+EN_SS es 20
+
+SALIR es 0
+MANDA_LETRA es 1
+CEDE es 2
+PIDE_TICS es 3
+DUERME es 4
+
+MAX_TAREAS es 4
+CONSOLA es 5
+SIN_USAR es 0
+EN_MARCHA es 1
+DORMIDA es 2
+CERRADA es 3
+SALIO es 0 menos 1
+LA_PARARON es 0 menos 2
+DE_INICIO es 12
+
+estados_tarea es region con pide_pagina y 512 y 8
+contextos es region con pide_pagina y 512 y 8
+raices es region con pide_pagina y 512 y 8
+pilas es region con pide_pagina y 512 y 8
+hora_de_despertar es region con pide_pagina y 512 y 8
+listas_de_paginas es region con pide_pagina y 512 y 8
+paginas_usadas es region con pide_pagina y 512 y 8
+programa_de es region con pide_pagina y 512 y 8
+programa_tamano es region con pide_pagina y 512 y 8
+tiempo_de es region con pide_pagina y 512 y 8
+columna_de es region con pide_pagina y 512 y 8
+medias_de es region con pide_pagina y 512 y 8
+causas es region con pide_pagina y 512 y 8
+codigos es region con pide_pagina y 512 y 8
+direcciones es region con pide_pagina y 512 y 8
+instrucciones es region con pide_pagina y 512 y 8
+registro_rax es region con pide_pagina y 512 y 8
+registro_rdx es region con pide_pagina y 512 y 8
+
+actual es CONSOLA
+esperando es falso
+hay_cerradas es falso
+
+elemento CONSOLA de estados_tarea es EN_MARCHA
+elemento CONSOLA de raices es raiz_nucleo
+
+CUANTOS_PROGRAMAS es 5
+cuenta_imagen es incluye_programa de "programas/cuenta.fal"
+primos_imagen es incluye_programa de "programas/primos.fal"
+apaga_imagen es incluye_programa de "programas/apaga.fal"
+espia_imagen es incluye_programa de "programas/espia.fal"
+bucle_imagen es incluye_programa de "programas/bucle.fal"
+
+funcion imagen_de con n
+    si n es 1
+        devuelve cuenta_imagen
+    si no si n es 2
+        devuelve primos_imagen
+    si no si n es 3
+        devuelve apaga_imagen
+    si no si n es 4
+        devuelve espia_imagen
+    fin
+    devuelve bucle_imagen
+fin
+
+funcion nombre_de con n
+    si n es 1
+        devuelve "cuenta"
+    si no si n es 2
+        devuelve "primos"
+    si no si n es 3
+        devuelve "apaga"
+    si no si n es 4
+        devuelve "espia"
+    fin
+    devuelve "bucle"
+fin
+
+funcion que_hace con n
+    si n es 1
+        devuelve "cuenta los segundos, uno a uno"
+    si no si n es 2
+        devuelve "busca números primos sin parar"
+    si no si n es 3
+        devuelve "intenta apagar el ordenador"
+    si no si n es 4
+        devuelve "intenta leer la memoria de FalOS"
+    fin
+    devuelve "no suelta el procesador nunca"
+fin
+
+funcion color_de con t
+    si t es 1
+        devuelve VERDE_CLARO
+    si no si t es 2
+        devuelve AMARILLO
+    si no si t es 3
+        devuelve MAGENTA_CLARO
+    fin
+    devuelve CIAN_CLARO
+fin
+
+funcion renglon_de con t
+    devuelve (ABAJO mas t menos 1) por ANCHO
+fin
+
+funcion limpia_renglon con t
+    base es renglon_de con t
+    para cada c desde 1 hasta ANCHO
+        elemento base mas c de pantalla es GRIS por 256 mas 32
+    fin
+fin
+
+funcion pon_en_renglon con t y c y letra y tinta
+    elemento (renglon_de con t) mas c de pantalla es tinta por 256 mas letra
+fin
+
+funcion etiqueta_renglon con t
+    limpia_renglon con t
+    pon_en_renglon con t y 2 y 48 mas t y GRIS_OSCURO
+    nombre es nombre_de con (elemento t de programa_de)
+    para cada i desde 1 hasta largo de nombre
+        pon_en_renglon con t y 3 mas i y (elemento i de nombre) y (color_de con t)
+    fin
+fin
+
+funcion letra_de_programa con b
+    t es actual
+    medias es elemento t de medias_de
+    si b es 10
+        para cada c desde (elemento t de columna_de) hasta ANCHO
+            pon_en_renglon con t y c y 32 y GRIS
+        fin
+        elemento t de columna_de es DE_INICIO
+        elemento t de medias_de es 0
+    si no si b es mayor o igual que 192
+        elemento t de medias_de es b
+    si no si medias no es igual a 0 o b es menor que 128 y b es mayor o igual que 32
+        letra es b
+        si medias no es igual a 0
+            letra es en_437 con medias y b
+            elemento t de medias_de es 0
+        fin
+        c es elemento t de columna_de
+        si c es menor o igual que ANCHO
+            pon_en_renglon con t y c y letra y BLANCO
+            elemento t de columna_de es c mas 1
+        fin
+    fin
+fin
+
+funcion se_puede_correr con t
+    si t es CONSOLA
+        devuelve no esperando o entra no es igual a sale o hay_cerradas
+    fin
+    si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
+        elemento t de estados_tarea es EN_MARCHA
+    fin
+    devuelve (elemento t de estados_tarea) es EN_MARCHA
+fin
+
+funcion elige_tarea
+    t es actual
+    para cada vuelta desde 1 hasta CONSOLA
+        t es (t resto CONSOLA) mas 1
+        si se_puede_correr con t
+            devuelve t
+        fin
+    fin
+    devuelve CONSOLA
+fin
+
+funcion cambia_de_tarea
+    comparte actual
+    elemento actual de contextos es contexto
+    siguiente es elige_tarea
+    si siguiente no es igual a actual
+        actual es siguiente
+        usa_tablas con (elemento actual de raices)
+        si actual no es igual a CONSOLA
+            pila_de_entrada con (elemento actual de pilas)
+        fin
+        pon_contexto con (elemento actual de contextos)
+    fin
+fin
+
+funcion cierra_tarea con t y causa
+    comparte hay_cerradas
+    elemento t de causas es causa
+    elemento t de estados_tarea es CERRADA
+    hay_cerradas es verdadero
+fin
+
+funcion al_llamar
+    marco es region con contexto y 20 y 8
+    numero es elemento EN_RAX de marco
+    a es elemento EN_RDI de marco
+    elemento EN_RAX de marco es 0
+    si numero es SALIR
+        elemento actual de codigos es a
+        cierra_tarea con actual y SALIO
+        cambia_de_tarea
+    si no si numero es MANDA_LETRA
+        si a es mayor o igual que 0 y a es menor que 256
+            letra_de_programa con a
+        fin
+    si no si numero es CEDE
+        cambia_de_tarea
+    si no si numero es PIDE_TICS
+        elemento EN_RAX de marco es tics
+    si no si numero es DUERME y a es mayor o igual que 0 y a es menor que 100000
+        elemento actual de hora_de_despertar es tics mas a
+        elemento actual de estados_tarea es DORMIDA
+        cambia_de_tarea
+    si no
+        elemento EN_RAX de marco es 0 menos 1
+    fin
+fin
+
+funcion al_fallar con numero y codigo y direccion
+    marco es region con contexto y 20 y 8
+    rip es elemento EN_RIP de marco
+    elemento actual de codigos es codigo
+    elemento actual de direcciones es direccion
+    elemento actual de registro_rax es elemento EN_RAX de marco
+    elemento actual de registro_rdx es elemento EN_RDX de marco
+    elemento actual de instrucciones es 0
+    fin_codigo es DONDE_VAN mas elemento actual de programa_tamano
+    si rip es mayor o igual que DONDE_VAN y rip es menor que fin_codigo
+        byte es region con rip y 1
+        elemento actual de instrucciones es elemento 1 de byte
+    fin
+    cierra_tarea con actual y numero
+    cambia_de_tarea
+fin
 
 funcion al_pulsar
     comparte entra
@@ -390,16 +647,28 @@ funcion al_pulsar
 fin
 
 funcion al_tic
-    comparte tics
+    comparte tics y tics_dormido
     tics es tics mas 1
+    elemento actual de tiempo_de es (elemento actual de tiempo_de) mas 1
+    si actual es CONSOLA y esperando
+        tics_dormido es tics_dormido mas 1
+    fin
     pon_en_puerto con CONTROLADOR y YA_ESTA
+    cambia_de_tarea
 fin
 
 funcion siguiente_tecla
-    comparte sale
+    comparte sale y esperando
     desactiva_interrupciones
     mientras sale es entra
-        espera_interrupcion
+        si hay_cerradas
+            activa_interrupciones
+            recoge_tareas con verdadero
+        si no
+            esperando es verdadero
+            espera_interrupcion
+            esperando es falso
+        fin
         desactiva_interrupciones
     fin
     codigo es elemento sale mas 1 de llegadas
@@ -425,6 +694,8 @@ funcion prepara_interrupciones
     pon_en_puerto con RELOJ y (cociente con divisor y 256)
     atiende_interrupcion con 32 y al_tic
     atiende_interrupcion con 33 y al_pulsar
+    atiende_llamadas con al_llamar
+    atiende_fallos con al_fallar
     activa_interrupciones
 fin
 
@@ -739,6 +1010,30 @@ funcion es_orden con nombre
     devuelve verdadero
 fin
 
+funcion empieza_por con nombre
+    si escritas es menor que largo de nombre
+        devuelve falso
+    fin
+    para cada i desde 1 hasta largo de nombre
+        si (minuscula con (elemento i de orden)) no es igual a (elemento i de nombre)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion resto_es con primera y nombre
+    si escritas menos primera mas 1 no es igual a largo de nombre
+        devuelve falso
+    fin
+    para cada i desde 1 hasta largo de nombre
+        si (minuscula con (elemento primera mas i menos 1 de orden)) no es igual a (elemento i de nombre)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
 funcion indicador
     pon_color con CIAN_CLARO y NEGRO
     pinta con "> "
@@ -765,6 +1060,14 @@ funcion ejecuta
         encendido
     si no si es_orden con "memoria"
         memoria
+    si no si es_orden con "programas"
+        programas
+    si no si es_orden con "tareas"
+        tareas
+    si no si empieza_por con "lanza "
+        lanza
+    si no si empieza_por con "para "
+        para_tarea
     si no si es_orden con "reinicia"
         reinicia
     si no
@@ -782,6 +1085,10 @@ funcion ayuda
     pinta_linea con "  colores    los 16 colores que tiene la pantalla"
     pinta_linea con "  encendido  cuánto llevo encendido"
     pinta_linea con "  memoria    cuánta memoria tengo y quién la usa"
+    pinta_linea con "  programas  los programas que llevo dentro"
+    pinta_linea con "  lanza X    pone a correr el programa X"
+    pinta_linea con "  tareas     lo que está corriendo ahora"
+    pinta_linea con "  para N     cierra la tarea N"
     pinta_linea con "  reinicia   vuelve a arrancar"
     pinta_linea con ""
     pinta_linea con "  Con las flechas te mueves por lo que escribes, y con las de arriba"
@@ -896,7 +1203,12 @@ funcion encendido
     pinta_numero con segundos resto 60
     pinta con " s"
     pon_color con GRIS y NEGRO
-    pinta_linea con ", y casi todo ese tiempo, dormido."
+    pinta con ", y he dormido el "
+    pon_color con BLANCO y NEGRO
+    pinta_numero con (cociente con tics_dormido por 100 y tics mas 1)
+    pinta con " %"
+    pon_color con GRIS y NEGRO
+    pinta_linea con " del tiempo."
     pinta_linea con ""
 fin
 
@@ -1018,6 +1330,356 @@ funcion reinicia
     congela
 fin
 
+funcion programas
+    para cada n desde 1 hasta CUANTOS_PROGRAMAS
+        pinta con "  "
+        pon_color con BLANCO y NEGRO
+        pinta con (nombre_de con n)
+        pon_color con GRIS y NEGRO
+        hasta_columna con 13
+        pinta_linea con (que_hace con n)
+    fin
+    pinta_linea con ""
+    pinta_linea con "  Todos corren en el anillo 3, sin permisos. Prueba con: lanza apaga"
+    pinta_linea con ""
+fin
+
+funcion hueco_libre
+    para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) es SIN_USAR
+            devuelve t
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion apunta_pagina con t y pagina
+    lista es region con (elemento t de listas_de_paginas) y 512 y 8
+    cuantas es (elemento t de paginas_usadas) mas 1
+    elemento t de paginas_usadas es cuantas
+    elemento cuantas de lista es pagina
+fin
+
+funcion pagina_de_tarea con t
+    pagina es pide_pagina
+    apunta_pagina con t y pagina
+    devuelve pagina
+fin
+
+funcion copia_directorio con destino
+    de_nucleo es region con directorio_nucleo y 512 y 8
+    copia es region con destino y 512 y 8
+    para cada i desde 1 hasta 512
+        elemento i de copia es elemento i de de_nucleo
+    fin
+fin
+
+funcion monta_programa con t y imagen
+    archivo es elemento 3 de imagen
+    total es elemento 4 de imagen
+    raiz es pagina_de_tarea con t
+    nivel_3 es pagina_de_tarea con t
+    nivel_2 es pagina_de_tarea con t
+    hojas es pagina_de_tarea con t
+    arriba es region con raiz y 512 y 8
+    medio es region con nivel_3 y 512 y 8
+    directorio es region con nivel_2 y 512 y 8
+    entradas es region con hojas y 512 y 8
+    copia_directorio con nivel_2
+    elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE mas USUARIO
+    elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE mas USUARIO
+    elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
+    de_codigo es cociente con (archivo mas PAGINA menos 1) y PAGINA
+    en_total es cociente con (total mas PAGINA menos 1) y PAGINA
+    para cada p desde 1 hasta en_total
+        trozo es pagina_de_tarea con t
+        si p es menor o igual que de_codigo
+            elemento p de entradas es trozo mas PRESENTE mas USUARIO
+            hoja es region con trozo y 512 y 8
+            para cada i desde 1 hasta 512
+                sitio es (p menos 1) por 512 mas i
+                si sitio es menor o igual que largo de imagen
+                    elemento i de hoja es elemento sitio de imagen
+                fin
+            fin
+        si no
+            elemento p de entradas es trozo mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+        fin
+    fin
+    devuelve raiz
+fin
+
+funcion lanza_programa con n
+    imagen es imagen_de con n
+    t es hueco_libre
+    si (elemento 1 de imagen) no es igual a MAGIA o (elemento 4 de imagen) es mayor que TOPE_PROGRAMA
+        pinta_linea con "  Eso no es un programa que yo pueda cargar."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    si t es 0
+        pinta_linea con "  Ya hay cuatro programas corriendo. Cierra uno con: para N"
+        pinta_linea con ""
+        devuelve nada
+    fin
+    elemento t de listas_de_paginas es pide_pagina
+    elemento t de paginas_usadas es 0
+    elemento t de programa_de es n
+    elemento t de programa_tamano es elemento 3 de imagen
+    elemento t de tiempo_de es 0
+    elemento t de columna_de es DE_INICIO
+    elemento t de medias_de es 0
+    elemento t de raices es monta_programa con t y imagen
+    pila es pagina_de_tarea con t
+    elemento t de pilas es pila mas PAGINA
+    marco es region con pila mas PAGINA menos TAMANO_MARCO y 20 y 8
+    elemento EN_RIP de marco es elemento 2 de imagen
+    elemento EN_CS de marco es SEGMENTO_CODIGO
+    elemento EN_BANDERAS de marco es BANDERAS
+    elemento EN_SS de marco es SEGMENTO_DATOS
+    elemento t de contextos es pila mas PAGINA menos TAMANO_MARCO
+    etiqueta_renglon con t
+    elemento t de estados_tarea es EN_MARCHA
+fin
+
+funcion lanza
+    para cada n desde 1 hasta CUANTOS_PROGRAMAS
+        si resto_es con 7 y (nombre_de con n)
+            lanza_programa con n
+            devuelve nada
+        fin
+    fin
+    pon_color con ROJO_CLARO y NEGRO
+    pinta_linea con "  No llevo ningún programa con ese nombre. Mira: programas"
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion numero_de_la_orden con primera
+    n es 0
+    para cada i desde primera hasta escritas
+        letra es elemento i de orden
+        si letra es menor que 48 o letra es mayor que 57 o n es mayor que 1000
+            devuelve 0
+        fin
+        n es n por 10 mas letra menos 48
+    fin
+    devuelve n
+fin
+
+funcion para_tarea
+    t es numero_de_la_orden con 6
+    si t es menor que 1 o t es mayor que MAX_TAREAS o (elemento t de estados_tarea) es SIN_USAR
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No hay ninguna tarea con ese número. Mira: tareas"
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+    si no
+        cierra_tarea con t y LA_PARARON
+        recoge_tareas con falso
+    fin
+fin
+
+funcion nombre_estado con t
+    e es elemento t de estados_tarea
+    si e es DORMIDA
+        devuelve "durmiendo"
+    si no si e es CERRADA
+        devuelve "cerrándose"
+    fin
+    devuelve "corriendo"
+fin
+
+funcion tareas
+    hay es falso
+    para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) no es igual a SIN_USAR
+            hay es verdadero
+            pinta con "  "
+            pon_color con (color_de con t) y NEGRO
+            pinta_numero con t
+            pinta con "  "
+            pinta con (nombre_de con (elemento t de programa_de))
+            pon_color con GRIS y NEGRO
+            hasta_columna con 15
+            pinta con (nombre_estado con t)
+            hasta_columna con 28
+            pinta_numero con (cociente con (elemento t de tiempo_de) y TICS_POR_SEGUNDO)
+            pinta con " s de procesador"
+            hasta_columna con 50
+            pinta_tamano con (elemento t de paginas_usadas) mas 1
+            pinta_linea con ""
+        fin
+    fin
+    si no hay
+        pinta_linea con "  Ahora mismo no corre ningún programa. Mira: programas"
+    fin
+    pinta_linea con ""
+fin
+
+funcion pinta_hex con n
+    si n es menor que 0
+        pinta con "una dirección imposible"
+    si no
+        pinta con "0x"
+        cifras_hex con 0 menos n
+        mueve_cursor
+    fin
+fin
+
+funcion cifras_hex con n
+    si n es menor o igual que menos 16
+        cifras_hex con (cociente con n y 16)
+    fin
+    cifra es 0 menos (n resto 16)
+    si cifra es menor que 10
+        pon_letra con 48 mas cifra
+    si no
+        pon_letra con 55 mas cifra
+    fin
+fin
+
+funcion puerto_legible con t
+    d es elemento t de registro_rdx
+    devuelve d es mayor o igual que 0 y d es menor que 65536
+fin
+
+funcion cuenta_general con t
+    instruccion es elemento t de instrucciones
+    si instruccion es 238 y puerto_legible con t
+        puerto es elemento t de registro_rdx
+        valor es elemento t de registro_rax
+        si puerto es 100 y valor es 254
+            pinta_linea con "quiso apagar el ordenador."
+        si no
+            pinta con "quiso escribir en el puerto "
+            pinta_numero con puerto
+            pinta_linea con "."
+        fin
+        pinta_linea con "  Solo el núcleo toca los aparatos, y el procesador lo ha parado."
+    si no si instruccion es 236
+        pinta_linea con "quiso leer de un aparato."
+        pinta_linea con "  Solo el núcleo toca los aparatos, y el procesador lo ha parado."
+    si no
+        pinta_linea con "quiso usar una instrucción reservada al núcleo."
+    fin
+fin
+
+funcion cuenta_pagina con t
+    codigo es elemento t de codigos
+    direccion es elemento t de direcciones
+    escribiendo es ((cociente con codigo y 2) resto 2) es 1
+    si ((cociente con codigo y 16) resto 2) es 1
+        pinta con "quiso ejecutar "
+        pinta_hex con direccion
+        pinta_linea con ", que no es código."
+    si no si direccion es mayor o igual que DONDE_VAN y direccion es menor que DONDE_VAN mas TOPE_PROGRAMA
+        pinta_linea con "quiso reescribir su propio código, que es de solo lectura."
+    si no si direccion es mayor o igual que DONDE_VAN o direccion es menor que 0
+        pinta con "quiso tocar "
+        pinta_hex con direccion
+        pinta_linea con ", que no existe."
+    si no
+        si escribiendo
+            pinta con "quiso escribir en "
+        si no
+            pinta con "quiso leer "
+        fin
+        pinta_hex con direccion
+        pinta_linea con ", que es memoria del núcleo."
+        pinta_linea con "  Esa memoria no es suya, y el procesador no le deja tocarla."
+    fin
+fin
+
+funcion ultima_linea con t
+    base es renglon_de con t
+    final es ANCHO
+    mientras final es mayor que DE_INICIO y ((elemento base mas final de pantalla) resto 256) es 32
+        final es final menos 1
+    fin
+    para cada c desde DE_INICIO hasta final
+        pon_letra con ((elemento base mas c de pantalla) resto 256)
+    fin
+    mueve_cursor
+fin
+
+funcion cuenta_el_final con t
+    causa es elemento t de causas
+    nombre es nombre_de con (elemento t de programa_de)
+    si causa es SALIO
+        pinta con "  "
+        pinta con nombre
+        si (elemento t de codigos) no es igual a 0
+            pinta_linea con " ha reventado:"
+            pinta con "  "
+            ultima_linea con t
+            pinta_linea con ""
+        si no
+            pinta_linea con " ha terminado."
+        fin
+    si no si causa es LA_PARARON
+        pinta con "  He cerrado "
+        pinta con nombre
+        pinta_linea con "."
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta con "  "
+        pinta con nombre
+        pon_color con BLANCO y NEGRO
+        pinta con " "
+        si causa es 13
+            cuenta_general con t
+        si no si causa es 14
+            cuenta_pagina con t
+        si no
+            pinta con "ha roto algo: excepción "
+            pinta_numero con causa
+            pinta_linea con "."
+        fin
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "  Lo he cerrado. Todo lo demás sigue en marcha."
+        escribe nombre sin salto
+        escribe " cerrado por la excepción " sin salto
+        escribe causa
+    fin
+    pon_color con GRIS y NEGRO
+fin
+
+funcion suelta_tarea con t
+    lista es region con (elemento t de listas_de_paginas) y 512 y 8
+    para cada i desde 1 hasta elemento t de paginas_usadas
+        suelta_pagina con (elemento i de lista)
+    fin
+    suelta_pagina con (elemento t de listas_de_paginas)
+    limpia_renglon con t
+    elemento t de estados_tarea es SIN_USAR
+fin
+
+funcion recoge_tareas con en_el_indicador
+    comparte hay_cerradas y columna
+    hay_cerradas es falso
+    alguna es falso
+    para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) es CERRADA
+            si en_el_indicador y no alguna
+                base es (fila menos 1) por ANCHO
+                para cada c desde 1 hasta ANCHO
+                    elemento base mas c de pantalla es color por 256 mas 32
+                fin
+                columna es 1
+            fin
+            alguna es verdadero
+            cuenta_el_final con t
+            pinta_linea con ""
+            suelta_tarea con t
+        fin
+    fin
+    si alguna y en_el_indicador
+        indicador
+        redibuja
+    fin
+fin
+
 funcion barra
     pon_color con BLANCO y AZUL
     ve_a con 1 y 1
@@ -1027,7 +1689,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 2"
+    pinta con "día 3"
     pon_color con GRIS y NEGRO
 fin
 
@@ -1043,8 +1705,9 @@ funcion portada
     pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
     pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
     pinta_linea con ""
-    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes. Y mientras"
-    pinta_linea con "  espero, duermo: el teclado me despierta cuando pulsas una tecla."
+    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes. Y hago varias"
+    pinta_linea con "  cosas a la vez: los programas corren sin permisos, y si intentan"
+    pinta_linea con "  lo que no deben, el procesador los para y yo los cierro."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -1052,6 +1715,9 @@ funcion portada
 fin
 
 escribe "FalOS arrancado"
+para cada t desde 1 hasta MAX_TAREAS
+    limpia_renglon con t
+fin
 portada
 prepara_interrupciones
 indicador

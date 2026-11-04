@@ -1,0 +1,23 @@
+funcion es_primo con n
+    d es 2
+    mientras d por d es menor o igual que n
+        si (n resto d) es 0
+            devuelve falso
+        fin
+        d es d mas 1
+    fin
+    devuelve verdadero
+fin
+
+n es 2
+cuantos es 0
+mientras verdadero
+    si es_primo con n
+        cuantos es cuantos mas 1
+        escribe "el primo número " sin salto
+        escribe cuantos sin salto
+        escribe " es el " sin salto
+        escribe n
+    fin
+    n es n mas 1
+fin

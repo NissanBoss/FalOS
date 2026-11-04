@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS arrancado](capturas/dia-1-ordenes.png)
+![FalOS cerrando un programa que intenta apagar el ordenador](capturas/dia-3.png)
 
 ## Por qué
 
@@ -36,14 +36,15 @@ cd Fal && go build -o fal .
 fal --arranca sistema.fal
 ```
 
-Todo el sistema está en [sistema.fal](sistema.fal). Lo que se va añadiendo
-cada día está en el [diario](DIARIO.md).
+Todo el sistema está en [sistema.fal](sistema.fal), y los programas que lleva
+dentro, en [programas/](programas). Lo que se va añadiendo cada día está en el
+[diario](DIARIO.md).
 
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
-órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria` y
-`reinicia`. Lo que escribes se corrige con las flechas, y las de arriba y
-abajo traen las órdenes de antes.
+órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
+`programas`, `lanza`, `tareas`, `para` y `reinicia`. Lo que escribes se corrige
+con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
 siempre borradas. Monta sus propias tablas de páginas: su código es de solo
@@ -51,8 +52,25 @@ lectura, los datos no se pueden ejecutar y la dirección 0 no existe, y eso
 lo hace cumplir el procesador.
 
 El teclado y el reloj avisan por interrupciones, así que mientras espera, el
-procesador duerme. Cada vez que se sube algo, GitHub lo arranca en QEMU y
-comprueba que llega a esperar órdenes sin reventar.
+procesador duerme.
+
+Y corre programas, varios a la vez, cada uno con 10 ms de procesador por turno.
+Van en el anillo 3, sin permisos, cada uno con sus propias tablas de páginas:
+no ven la memoria de nadie. Para hacer algo, tienen que pedírselo al sistema.
+Si intentan tocar un aparato o leer memoria ajena, el procesador los para y
+FalOS los cierra sin que caiga nada más.
+
+```
+lanza cuenta
+lanza primos
+lanza apaga
+lanza espia
+tareas
+```
+
+Cada vez que se sube algo, GitHub lo arranca en QEMU, comprueba que llega a
+esperar órdenes sin reventar, lanza `apaga` y `espia` y mira que los dos acaban
+cerrados y el sistema sigue.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -61,8 +79,13 @@ ha dado expresamente.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay programas, ni disco, ni red. Es el
-  día 2.
+- **Casi todo, de momento.** No hay disco ni red, y los programas van metidos
+  en FalOS al compilarlo: no se pueden escribir dentro. Es el día 3.
+- **La consola va dentro del núcleo.** Los programas no tienen permisos, pero
+  lo que lee tus órdenes sí, y un fallo ahí para todo. Sacarla es parte de
+  llegar al micronúcleo.
+- **Los programas no hablan entre sí.** Solo con el sistema, y solo para
+  escribir, dormir y salir.
 - **Solo el teclado español.** Y sin €: la pantalla de 1981 no lo tiene.
 - **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
   no se usa todavía.
