@@ -1,0 +1,23 @@
+probadas es 0
+abiertas es 0
+
+funcion prueba con llave
+    comparte probadas y abiertas
+    probadas es probadas mas 1
+    si (llama_al_sistema con 5 y llave y 1) es mayor o igual que 0
+        abiertas es abiertas mas 1
+    fin
+fin
+
+mientras verdadero
+    prueba con 0 menos 1
+    prueba con 9223372036854775807
+    para cada llave desde 0 hasta 998
+        prueba con llave
+    fin
+    escribe "he probado " sin salto
+    escribe probadas sin salto
+    escribe " llaves y he abierto " sin salto
+    escribe abiertas
+    llama_al_sistema con 4 y 50
+fin

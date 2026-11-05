@@ -2,6 +2,72 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 4: los programas hablan, si tú les dejas
+
+![curioso consigue el secreto de caja](capturas/dia-4.png)
+
+**Lo que hay.** Los programas se pueden mandar mensajes, y para eso necesitan
+permiso. Tres programas lo enseñan:
+
+- `caja` guarda un secreto, y lo cuenta si le preguntan.
+- `curioso` pregunta cada segundo.
+- `ladron` prueba miles de llaves a ver si alguna abre algo.
+
+Al lanzarlos, nadie puede hablar con nadie. `curioso` dice que no tiene permiso,
+y `ladron` lleva miles de intentos sin abrir nada.
+
+![Nadie puede hablar con nadie](capturas/dia-4-sin-permiso.png)
+
+Con `permite 2 1`, `curioso` ya puede preguntar a `caja`, y al segundo siguiente
+sale el secreto en la pantalla. Con `prohibe 2 1`, deja de poder en el acto, sin
+reiniciar nada y sin que el programa pueda hacer nada por evitarlo. Y `permisos`
+enseña quién puede qué, y cuántas preguntas le han rechazado a cada uno.
+
+![La orden permisos](capturas/dia-4-permisos.png)
+
+Se hace como en seL4: el que pregunta se queda parado hasta que le contestan, y
+el núcleo le pasa el turno directamente al otro. No hay cola de mensajes ni
+memoria compartida. Un mensaje es un número de 64 bits y viaja en un registro,
+así que el núcleo sigue sin leer nunca la memoria de un programa. Una pregunta y
+su respuesta tardan tan poco que caben unas 42.000 por segundo, en un ordenador
+emulado.
+
+**Lo que se aprende.** Hay dos maneras de decidir quién puede qué. Una es la
+lista de invitados: el portero mira quién eres y si estás en la lista. La usan
+Windows y Linux, y la pregunta siempre es "¿quién eres?". Por eso un programa
+que lanzas tú puede leer todos tus archivos: es tú.
+
+La otra es la llave. Nadie mira quién eres: si tienes la llave, abres. Eso es
+una **capacidad**, y es la idea de seL4. Un programa no tiene nada al nacer, y
+nada que no le hayan dado. Lo que no le han dado no es que esté prohibido: es que
+no tiene forma de nombrarlo.
+
+**La seguridad.** Las llaves no están en la memoria del programa, sino en la del
+núcleo. El programa solo dice "la llave número 1", y ese número solo significa
+algo en su propia tabla. Si no hay llave ahí, no hay nada que forzar: `ladron`
+prueba los números uno a uno, negativos y gigantes incluidos, y lo único que
+consigue es que el contador de rechazos suba.
+
+Y hay una trampa clásica. Si cierras `caja` y lanzas otro programa que cae en su
+mismo sitio, una llave vieja abriría al nuevo, que no tiene nada que ver. Por eso
+cada programa que arranca lleva un número de generación, y la llave guarda el
+suyo: si no coincide, no abre. Lo mismo si el programa ya no existe.
+
+Lo probé con programas hechos para atascarlo: uno que escucha y nunca contesta,
+otro que contesta sin que le pregunten, otro que deja a uno esperando y se pone a
+escuchar a otro, y dos que se preguntan el uno al otro hasta quedarse los dos
+parados para siempre. Eso último no se puede evitar, porque es culpa de ellos,
+pero no arrastra a nadie más: `tareas` los enseña esperando, y `para` los cierra.
+Al cerrar a quien te tiene esperando, te despiertan con un error, y no te quedas
+ahí para siempre.
+
+**Lo que costó.** `pregunta` es una palabra de Fal, la que lee del teclado, así
+que mi primera versión no compilaba. Cuando alguien escucha dos veces seguidas,
+el que esperaba del primer mensaje se quedaba colgado para siempre. Lo vi
+pensando qué haría un servidor malo: ahora le llega un error. Y el núcleo ha
+crecido a más de 2.000 líneas: en un micronúcleo de verdad, todo lo que se pueda
+tiene que salir de ahí. Es lo siguiente.
+
 ## Día 3: varias cosas a la vez, y programas sin permisos
 
 ![apaga intenta apagar el ordenador](capturas/dia-3.png)

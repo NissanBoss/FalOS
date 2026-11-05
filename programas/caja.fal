@@ -1,0 +1,24 @@
+SECRETO es "la contraseña es tortilla"
+contestadas es 0
+
+funcion escucha
+    devuelve llama_al_sistema con 6
+fin
+
+funcion contesta con valor
+    llama_al_sistema con 7 y valor
+fin
+
+escribe "guardo un secreto"
+mientras verdadero
+    posicion es escucha
+    si posicion es mayor o igual que 1 y posicion es menor o igual que largo de SECRETO
+        contesta con (elemento posicion de SECRETO)
+    si no
+        contesta con 0
+        contestadas es contestadas mas 1
+        escribe "lo he contado " sin salto
+        escribe contestadas sin salto
+        escribe " veces"
+    fin
+fin

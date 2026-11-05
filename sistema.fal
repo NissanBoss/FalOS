@@ -407,6 +407,9 @@ MANDA_LETRA es 1
 CEDE es 2
 PIDE_TICS es 3
 DUERME es 4
+HAZ_PREGUNTA es 5
+ESCUCHA es 6
+CONTESTA es 7
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -414,6 +417,11 @@ SIN_USAR es 0
 EN_MARCHA es 1
 DORMIDA es 2
 CERRADA es 3
+ESCUCHANDO es 4
+PREGUNTANDO es 5
+ESPERA_RESPUESTA es 6
+RECHAZADA es 0 menos 1
+LLAVES es 4
 SALIO es 0 menos 1
 LA_PARARON es 0 menos 2
 DE_INICIO es 12
@@ -436,6 +444,14 @@ direcciones es region con pide_pagina y 512 y 8
 instrucciones es region con pide_pagina y 512 y 8
 registro_rax es region con pide_pagina y 512 y 8
 registro_rdx es region con pide_pagina y 512 y 8
+generaciones es region con pide_pagina y 512 y 8
+llave_a es region con pide_pagina y 512 y 8
+llave_generacion es region con pide_pagina y 512 y 8
+mensaje_de es region con pide_pagina y 512 y 8
+hablando_con es region con pide_pagina y 512 y 8
+atendiendo_a es region con pide_pagina y 512 y 8
+mensajes_de es region con pide_pagina y 512 y 8
+rechazos_de es region con pide_pagina y 512 y 8
 
 actual es CONSOLA
 esperando es falso
@@ -444,12 +460,15 @@ hay_cerradas es falso
 elemento CONSOLA de estados_tarea es EN_MARCHA
 elemento CONSOLA de raices es raiz_nucleo
 
-CUANTOS_PROGRAMAS es 5
+CUANTOS_PROGRAMAS es 8
 cuenta_imagen es incluye_programa de "programas/cuenta.fal"
 primos_imagen es incluye_programa de "programas/primos.fal"
 apaga_imagen es incluye_programa de "programas/apaga.fal"
 espia_imagen es incluye_programa de "programas/espia.fal"
 bucle_imagen es incluye_programa de "programas/bucle.fal"
+caja_imagen es incluye_programa de "programas/caja.fal"
+curioso_imagen es incluye_programa de "programas/curioso.fal"
+ladron_imagen es incluye_programa de "programas/ladron.fal"
 
 funcion imagen_de con n
     si n es 1
@@ -460,8 +479,14 @@ funcion imagen_de con n
         devuelve apaga_imagen
     si no si n es 4
         devuelve espia_imagen
+    si no si n es 5
+        devuelve bucle_imagen
+    si no si n es 6
+        devuelve caja_imagen
+    si no si n es 7
+        devuelve curioso_imagen
     fin
-    devuelve bucle_imagen
+    devuelve ladron_imagen
 fin
 
 funcion nombre_de con n
@@ -473,8 +498,14 @@ funcion nombre_de con n
         devuelve "apaga"
     si no si n es 4
         devuelve "espia"
+    si no si n es 5
+        devuelve "bucle"
+    si no si n es 6
+        devuelve "caja"
+    si no si n es 7
+        devuelve "curioso"
     fin
-    devuelve "bucle"
+    devuelve "ladron"
 fin
 
 funcion que_hace con n
@@ -486,8 +517,14 @@ funcion que_hace con n
         devuelve "intenta apagar el ordenador"
     si no si n es 4
         devuelve "intenta leer la memoria de FalOS"
+    si no si n es 5
+        devuelve "no suelta el procesador nunca"
+    si no si n es 6
+        devuelve "guarda un secreto y contesta si le preguntan"
+    si no si n es 7
+        devuelve "quiere saber el secreto de la caja"
     fin
-    devuelve "no suelta el procesador nunca"
+    devuelve "prueba miles de llaves a ver si alguna abre algo"
 fin
 
 funcion color_de con t
@@ -585,11 +622,103 @@ funcion cambia_de_tarea
     fin
 fin
 
+funcion despierta_con con t y valor
+    marco es region con (elemento t de contextos) y 20 y 8
+    elemento EN_RAX de marco es valor
+    elemento t de estados_tarea es EN_MARCHA
+fin
+
 funcion cierra_tarea con t y causa
     comparte hay_cerradas
     elemento t de causas es causa
     elemento t de estados_tarea es CERRADA
     hay_cerradas es verdadero
+    para cada otra desde 1 hasta MAX_TAREAS
+        estado es elemento otra de estados_tarea
+        si (elemento otra de atendiendo_a) es t
+            elemento otra de atendiendo_a es 0
+        fin
+        si (estado es PREGUNTANDO o estado es ESPERA_RESPUESTA) y (elemento otra de hablando_con) es t
+            despierta_con con otra y RECHAZADA
+        fin
+    fin
+fin
+
+funcion sitio_de_llave con t y llave
+    devuelve (t menos 1) por LLAVES mas llave
+fin
+
+funcion sigue_viva con t
+    estado es elemento t de estados_tarea
+    devuelve estado no es igual a SIN_USAR y estado no es igual a CERRADA
+fin
+
+funcion abre_llave con t y llave
+    si llave es menor que 1 o llave es mayor que LLAVES
+        devuelve 0
+    fin
+    sitio es sitio_de_llave con t y llave
+    destino es elemento sitio de llave_a
+    si destino es 0
+        devuelve 0
+    fin
+    si (elemento destino de generaciones) no es igual a (elemento sitio de llave_generacion)
+        devuelve 0
+    fin
+    si no (sigue_viva con destino)
+        devuelve 0
+    fin
+    devuelve destino
+fin
+
+funcion pregunta_a con llave y valor
+    yo es actual
+    destino es abre_llave con yo y llave
+    si destino es 0 o destino es yo
+        elemento yo de rechazos_de es (elemento yo de rechazos_de) mas 1
+        devuelve nada
+    fin
+    elemento yo de mensajes_de es (elemento yo de mensajes_de) mas 1
+    elemento yo de hablando_con es destino
+    si (elemento destino de estados_tarea) es ESCUCHANDO
+        elemento destino de atendiendo_a es yo
+        elemento yo de estados_tarea es ESPERA_RESPUESTA
+        despierta_con con destino y valor
+    si no
+        elemento yo de mensaje_de es valor
+        elemento yo de estados_tarea es PREGUNTANDO
+    fin
+    cambia_de_tarea
+fin
+
+funcion escucha_mensaje
+    yo es actual
+    pendiente es elemento yo de atendiendo_a
+    si pendiente no es igual a 0
+        elemento yo de atendiendo_a es 0
+        despierta_con con pendiente y RECHAZADA
+    fin
+    para cada otra desde 1 hasta MAX_TAREAS
+        si (elemento otra de estados_tarea) es PREGUNTANDO y (elemento otra de hablando_con) es yo
+            elemento otra de estados_tarea es ESPERA_RESPUESTA
+            elemento yo de atendiendo_a es otra
+            devuelve elemento otra de mensaje_de
+        fin
+    fin
+    elemento yo de estados_tarea es ESCUCHANDO
+    cambia_de_tarea
+    devuelve 0
+fin
+
+funcion contesta_a con valor
+    yo es actual
+    quien es elemento yo de atendiendo_a
+    si quien es 0
+        devuelve RECHAZADA
+    fin
+    elemento yo de atendiendo_a es 0
+    despierta_con con quien y valor
+    devuelve 0
 fin
 
 funcion al_llamar
@@ -613,6 +742,13 @@ funcion al_llamar
         elemento actual de hora_de_despertar es tics mas a
         elemento actual de estados_tarea es DORMIDA
         cambia_de_tarea
+    si no si numero es HAZ_PREGUNTA
+        elemento EN_RAX de marco es RECHAZADA
+        pregunta_a con a y (elemento EN_RSI de marco)
+    si no si numero es ESCUCHA
+        elemento EN_RAX de marco es escucha_mensaje
+    si no si numero es CONTESTA
+        elemento EN_RAX de marco es contesta_a con a
     si no
         elemento EN_RAX de marco es 0 menos 1
     fin
@@ -1064,6 +1200,12 @@ funcion ejecuta
         programas
     si no si es_orden con "tareas"
         tareas
+    si no si es_orden con "permisos"
+        permisos
+    si no si empieza_por con "permite "
+        permite
+    si no si empieza_por con "prohibe "
+        prohibe
     si no si empieza_por con "lanza "
         lanza
     si no si empieza_por con "para "
@@ -1089,6 +1231,9 @@ funcion ayuda
     pinta_linea con "  lanza X    pone a correr el programa X"
     pinta_linea con "  tareas     lo que está corriendo ahora"
     pinta_linea con "  para N     cierra la tarea N"
+    pinta_linea con "  permisos   quién puede hablar con quién"
+    pinta_linea con "  permite N M    deja que la tarea N hable con la M"
+    pinta_linea con "  prohibe N M    se lo quita, en el acto"
     pinta_linea con "  reinicia   vuelve a arrancar"
     pinta_linea con ""
     pinta_linea con "  Con las flechas te mueves por lo que escribes, y con las de arriba"
@@ -1340,7 +1485,7 @@ funcion programas
         pinta_linea con (que_hace con n)
     fin
     pinta_linea con ""
-    pinta_linea con "  Todos corren en el anillo 3, sin permisos. Prueba con: lanza apaga"
+    pinta_linea con "  Todos corren en el anillo 3 y nacen sin permisos. Prueba: lanza apaga"
     pinta_linea con ""
 fin
 
@@ -1429,6 +1574,11 @@ funcion lanza_programa con n
     elemento t de tiempo_de es 0
     elemento t de columna_de es DE_INICIO
     elemento t de medias_de es 0
+    elemento t de generaciones es (elemento t de generaciones) mas 1
+    elemento t de atendiendo_a es 0
+    elemento t de hablando_con es 0
+    elemento t de mensajes_de es 0
+    elemento t de rechazos_de es 0
     elemento t de raices es monta_programa con t y imagen
     pila es pagina_de_tarea con t
     elemento t de pilas es pila mas PAGINA
@@ -1455,9 +1605,12 @@ funcion lanza
     pinta_linea con ""
 fin
 
-funcion numero_de_la_orden con primera
+funcion numero_entre con primera y ultima
     n es 0
-    para cada i desde primera hasta escritas
+    si primera es mayor que ultima
+        devuelve 0
+    fin
+    para cada i desde primera hasta ultima
         letra es elemento i de orden
         si letra es menor que 48 o letra es mayor que 57 o n es mayor que 1000
             devuelve 0
@@ -1468,14 +1621,16 @@ funcion numero_de_la_orden con primera
 fin
 
 funcion para_tarea
-    t es numero_de_la_orden con 6
+    t es numero_entre con 6 y escritas
     si t es menor que 1 o t es mayor que MAX_TAREAS o (elemento t de estados_tarea) es SIN_USAR
         pon_color con ROJO_CLARO y NEGRO
         pinta_linea con "  No hay ninguna tarea con ese número. Mira: tareas"
         pon_color con GRIS y NEGRO
         pinta_linea con ""
     si no
+        desactiva_interrupciones
         cierra_tarea con t y LA_PARARON
+        activa_interrupciones
         recoge_tareas con falso
     fin
 fin
@@ -1484,6 +1639,10 @@ funcion nombre_estado con t
     e es elemento t de estados_tarea
     si e es DORMIDA
         devuelve "durmiendo"
+    si no si e es ESCUCHANDO
+        devuelve "escuchando"
+    si no si e es PREGUNTANDO o e es ESPERA_RESPUESTA
+        devuelve "esperando"
     si no si e es CERRADA
         devuelve "cerrándose"
     fin
@@ -1515,6 +1674,167 @@ funcion tareas
         pinta_linea con "  Ahora mismo no corre ningún programa. Mira: programas"
     fin
     pinta_linea con ""
+fin
+
+funcion cabecera_de_tarea con t
+    pinta con "  "
+    pon_color con (color_de con t) y NEGRO
+    pinta_numero con t
+    pinta con "  "
+    pinta con (nombre_de con (elemento t de programa_de))
+    pon_color con GRIS y NEGRO
+    hasta_columna con 15
+fin
+
+funcion permisos
+    hay es falso
+    para cada t desde 1 hasta MAX_TAREAS
+        si sigue_viva con t
+            hay es verdadero
+            cabecera_de_tarea con t
+            ninguna es verdadero
+            para cada llave desde 1 hasta LLAVES
+                destino es abre_llave con t y llave
+                si destino no es igual a 0
+                    si ninguna
+                        pinta con "habla con "
+                    si no
+                        pinta con ", "
+                    fin
+                    ninguna es falso
+                    pon_color con (color_de con destino) y NEGRO
+                    pinta con (nombre_de con (elemento destino de programa_de))
+                    pon_color con GRIS y NEGRO
+                fin
+            fin
+            si ninguna
+                pinta con "sin permisos"
+            fin
+            pinta_linea con ""
+            hasta_columna con 15
+            pon_color con GRIS_OSCURO y NEGRO
+            pinta_numero con (elemento t de mensajes_de)
+            pinta con " preguntas, "
+            pinta_numero con (elemento t de rechazos_de)
+            pinta_linea con " rechazadas"
+            pon_color con GRIS y NEGRO
+        fin
+    fin
+    si no hay
+        pinta_linea con "  Ahora mismo no corre ningún programa. Mira: programas"
+    fin
+    pinta_linea con ""
+fin
+
+primer_numero es 0
+segundo_numero es 0
+
+funcion dos_numeros con primera
+    comparte primer_numero y segundo_numero
+    hueco es primera
+    mientras hueco es menor que escritas y (elemento hueco de orden) no es igual a 32
+        hueco es hueco mas 1
+    fin
+    primer_numero es numero_entre con primera y hueco menos 1
+    segundo_numero es numero_entre con hueco mas 1 y escritas
+fin
+
+funcion tareas_buenas
+    para cada n desde 1 hasta 2
+        t es primer_numero
+        si n es 2
+            t es segundo_numero
+        fin
+        si t es menor que 1 o t es mayor que MAX_TAREAS
+            devuelve falso
+        fin
+        si no (sigue_viva con t)
+            devuelve falso
+        fin
+    fin
+    devuelve primer_numero no es igual a segundo_numero
+fin
+
+funcion no_hay_esas_tareas
+    pon_color con ROJO_CLARO y NEGRO
+    pinta_linea con "  Necesito dos tareas que existan y sean distintas. Mira: tareas"
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion llave_hacia con t y destino
+    para cada llave desde 1 hasta LLAVES
+        si (abre_llave con t y llave) es destino
+            devuelve llave
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion llave_libre con t
+    para cada llave desde 1 hasta LLAVES
+        si (abre_llave con t y llave) es 0
+            devuelve llave
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion permite
+    dos_numeros con 9
+    si no tareas_buenas
+        no_hay_esas_tareas
+        devuelve nada
+    fin
+    si (llave_hacia con primer_numero y segundo_numero) no es igual a 0
+        pinta_linea con "  Ya tenía ese permiso."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    llave es llave_libre con primer_numero
+    si llave es 0
+        pinta_linea con "  Esa tarea no puede llevar más permisos."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    sitio es sitio_de_llave con primer_numero y llave
+    desactiva_interrupciones
+    elemento sitio de llave_generacion es elemento segundo_numero de generaciones
+    elemento sitio de llave_a es segundo_numero
+    activa_interrupciones
+    pon_color con VERDE_CLARO y NEGRO
+    pinta con "  "
+    pinta con (nombre_de con (elemento primer_numero de programa_de))
+    pinta con " ya puede hablar con "
+    pinta_linea con (nombre_de con (elemento segundo_numero de programa_de))
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion prohibe
+    dos_numeros con 9
+    si no tareas_buenas
+        no_hay_esas_tareas
+        devuelve nada
+    fin
+    llave es llave_hacia con primer_numero y segundo_numero
+    si llave es 0
+        pinta_linea con "  No tenía ese permiso."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    elemento (sitio_de_llave con primer_numero y llave) de llave_a es 0
+    pon_color con ROJO_CLARO y NEGRO
+    pinta con "  "
+    pinta con (nombre_de con (elemento primer_numero de programa_de))
+    pinta con " ya no puede hablar con "
+    pinta_linea con (nombre_de con (elemento segundo_numero de programa_de))
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    escribe (nombre_de con (elemento primer_numero de programa_de)) sin salto
+    escribe " pierde el permiso tras " sin salto
+    escribe (elemento primer_numero de mensajes_de) sin salto
+    escribe " preguntas"
 fin
 
 funcion pinta_hex con n
@@ -1621,6 +1941,12 @@ funcion cuenta_el_final con t
         pinta con "  He cerrado "
         pinta con nombre
         pinta_linea con "."
+        escribe nombre sin salto
+        escribe " cerrado con " sin salto
+        escribe (elemento t de mensajes_de) sin salto
+        escribe " preguntas y " sin salto
+        escribe (elemento t de rechazos_de) sin salto
+        escribe " rechazadas"
     si no
         pon_color con ROJO_CLARO y NEGRO
         pinta con "  "
@@ -1652,6 +1978,9 @@ funcion suelta_tarea con t
     fin
     suelta_pagina con (elemento t de listas_de_paginas)
     limpia_renglon con t
+    para cada llave desde 1 hasta LLAVES
+        elemento (sitio_de_llave con t y llave) de llave_a es 0
+    fin
     elemento t de estados_tarea es SIN_USAR
 fin
 
@@ -1689,7 +2018,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 3"
+    pinta con "día 4"
     pon_color con GRIS y NEGRO
 fin
 
@@ -1706,8 +2035,8 @@ funcion portada
     pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
     pinta_linea con ""
     pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes. Y hago varias"
-    pinta_linea con "  cosas a la vez: los programas corren sin permisos, y si intentan"
-    pinta_linea con "  lo que no deben, el procesador los para y yo los cierro."
+    pinta_linea con "  cosas a la vez. Los programas nacen sin permisos, solo hablan entre"
+    pinta_linea con "  ellos si tú les dejas, y si intentan algo más, los cierro."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO

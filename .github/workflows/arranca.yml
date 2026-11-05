@@ -67,3 +67,35 @@ jobs:
           fi
           test "$(grep -c "apaga cerrado por la excepción 13" programas.txt)" = 2
           grep -q "espia cerrado por la excepción 14" programas.txt
+
+      - name: Permisos que se dan y se quitan
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/./& /g; s/  / spc /g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza caja"
+            teclea "lanza curioso"
+            teclea "lanza ladron"
+            sleep 2
+            teclea "permite 2 1"
+            sleep 3
+            teclea "prohibe 2 1"
+            sleep 1
+            teclea "para 3"
+            sleep 1
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -serial file:permisos.txt -monitor stdio -no-reboot > /dev/null
+          cat permisos.txt
+          if grep -q "  X  " permisos.txt; then
+            echo "Un programa ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -Eq "curioso pierde el permiso tras [1-9]" permisos.txt
+          grep -Eq "ladron cerrado con 0 preguntas y [1-9]" permisos.txt

@@ -1,0 +1,27 @@
+LLAVE es 1
+RECHAZADA es 0 menos 1
+
+funcion consulta con posicion
+    devuelve llama_al_sistema con 5 y LLAVE y posicion
+fin
+
+funcion duerme con centesimas
+    llama_al_sistema con 4 y centesimas
+fin
+
+mientras verdadero
+    posicion es 1
+    letra es consulta con posicion
+    si letra es RECHAZADA
+        escribe "no tengo permiso para preguntar a nadie"
+    si no
+        escribe "me ha dicho: " sin salto
+        mientras letra es mayor que 0
+            llama_al_sistema con 1 y letra
+            posicion es posicion mas 1
+            letra es consulta con posicion
+        fin
+        escribe ""
+    fin
+    duerme con 100
+fin

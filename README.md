@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS cerrando un programa que intenta apagar el ordenador](capturas/dia-3.png)
+![Un programa consigue el secreto de otro porque se le ha dado permiso](capturas/dia-4.png)
 
 ## Por qué
 
@@ -43,7 +43,8 @@ dentro, en [programas/](programas). Lo que se va añadiendo cada día está en e
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
-`programas`, `lanza`, `tareas`, `para` y `reinicia`. Lo que escribes se corrige
+`programas`, `lanza`, `tareas`, `para`, `permisos`, `permite`, `prohibe` y
+`reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -68,24 +69,43 @@ lanza espia
 tareas
 ```
 
+Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
+hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
+una capacidad que guarda el núcleo y que un programa no puede fabricar ni
+adivinar. Las das y las quitas tú, mientras corren:
+
+```
+lanza caja
+lanza curioso
+lanza ladron
+permite 2 1
+prohibe 2 1
+permisos
+```
+
 Cada vez que se sube algo, GitHub lo arranca en QEMU, comprueba que llega a
 esperar órdenes sin reventar, lanza `apaga` y `espia` y mira que los dos acaban
-cerrados y el sistema sigue.
+cerrados y el sistema sigue. Y da un permiso, lo quita y mira que `ladron` no ha
+abierto nada.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
 programa y cada controlador en su propia caja, sin poder tocar lo que no se le
-ha dado expresamente.
+ha dado expresamente. Los mensajes y las capacidades ya están. Falta sacar del
+núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
 - **Casi todo, de momento.** No hay disco ni red, y los programas van metidos
-  en FalOS al compilarlo: no se pueden escribir dentro. Es el día 3.
-- **La consola va dentro del núcleo.** Los programas no tienen permisos, pero
-  lo que lee tus órdenes sí, y un fallo ahí para todo. Sacarla es parte de
-  llegar al micronúcleo.
-- **Los programas no hablan entre sí.** Solo con el sistema, y solo para
-  escribir, dormir y salir.
+  en FalOS al compilarlo: no se pueden escribir dentro. Es el día 4.
+- **Aún no es un micronúcleo.** La consola, el teclado y la pantalla van dentro
+  del núcleo: los programas no tienen permisos, pero eso sí, y un fallo ahí
+  para todo.
+- **Las capacidades solo cubren hablar con otro programa.** La línea de la
+  pantalla, el procesador y la memoria se reparten sin ellas. Y las das tú desde
+  la consola: un programa no le puede pasar una a otro.
+- **seL4 está demostrado matemáticamente, y FalOS no.** Copiar la idea no
+  copia la demostración.
 - **Solo el teclado español.** Y sin €: la pantalla de 1981 no lo tiene.
 - **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
   no se usa todavía.
