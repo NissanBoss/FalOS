@@ -70,8 +70,8 @@ detiene: cuenta hacia atrás. Se salía de la pantalla, y Fal paró el núcleo.
 Las dos veces, Fal hizo lo que debe: parar y decir en qué línea, en vez de seguir
 escribiendo donde no toca. En C serían dos agujeros. Aquí fueron dos pantallas
 rojas. Pero también dos fallos, y el segundo lo podía provocar un programa sin
-permisos. Los dos están ahora en la prueba automática, y hasta hoy decía que nada
-tumbaba a FalOS porque no lo había probado bien.
+permisos. Los dos están ahora en la prueba automática. Hasta hoy creía que ningún
+programa podía tumbar FalOS, y era porque no lo había probado bien.
 
 Y el teclado no volvía después de colgarse. El aparato avisa una vez, y si nadie
 recoge la tecla, no vuelve a avisar: el programa nuevo se quedaba esperando un
