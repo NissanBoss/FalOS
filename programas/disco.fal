@@ -1,0 +1,325 @@
+ESPERA es 8
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+
+ORDEN_LISTA es 1
+ORDEN_ABRE es 2
+
+NO_HAY_DISCO es 0 menos 1
+NO_ES_MIO es 0 menos 2
+NO_ESTA es 0 menos 3
+NO_SE_LEE es 0 menos 4
+DANADO es 0 menos 5
+
+DATOS es 496
+CUENTA es 498
+BAJO es 499
+MEDIO es 500
+ALTO es 501
+UNIDAD es 502
+ESTADO es 503
+LEER es 32
+QUIEN_ERES es 236
+
+MAGIA es "FALDISCO"
+LARGO_NOMBRE es 32
+TOPE_SECTORES es 8
+TOPE_ARCHIVO es 4096
+PACIENCIA es 200000
+
+buzon es region con 807399424 y 4096
+mesa es region con 807395328 y 4096
+
+total_sectores es 0
+leido es 1
+salida es 0
+nombre_largo es 0
+campo_sector es 0
+campo_bytes es 0
+
+funcion bit_de con valor y cual
+    devuelve ((cociente con valor y cual) resto 2) es 1
+fin
+
+funcion libre_y_con_datos
+    para cada vuelta desde 1 hasta PACIENCIA
+        visto es lee_puerto de ESTADO
+        si visto es 0 o visto es 255
+            devuelve falso
+        fin
+        si no (bit_de con visto y 128)
+            si bit_de con visto y 1
+                devuelve falso
+            fin
+            si bit_de con visto y 8
+                devuelve verdadero
+            fin
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion identifica
+    comparte total_sectores
+    pon_en_puerto con UNIDAD y 160
+    pon_en_puerto con CUENTA y 0
+    pon_en_puerto con BAJO y 0
+    pon_en_puerto con MEDIO y 0
+    pon_en_puerto con ALTO y 0
+    pon_en_puerto con ESTADO y QUIEN_ERES
+    si no libre_y_con_datos
+        devuelve falso
+    fin
+    para cada i desde 1 hasta 256
+        palabra es lee_palabra de DATOS
+        elemento i por 2 menos 1 de mesa es cociente con palabra y 256
+        elemento i por 2 de mesa es palabra resto 256
+    fin
+    alto_total es (elemento 123 de mesa) por 256 mas (elemento 124 de mesa)
+    bajo_total es (elemento 121 de mesa) por 256 mas (elemento 122 de mesa)
+    total_sectores es alto_total por 65536 mas bajo_total
+    devuelve total_sectores es mayor que 0
+fin
+
+funcion lee_sector con numero y destino y desde
+    n es numero
+    pon_en_puerto con UNIDAD y 224 mas (cociente con n y 16777216)
+    pon_en_puerto con CUENTA y 1
+    pon_en_puerto con BAJO y n resto 256
+    n es cociente con n y 256
+    pon_en_puerto con MEDIO y n resto 256
+    n es cociente con n y 256
+    pon_en_puerto con ALTO y n resto 256
+    pon_en_puerto con ESTADO y LEER
+    si no libre_y_con_datos
+        devuelve falso
+    fin
+    para cada i desde 1 hasta 256
+        palabra es lee_palabra de DATOS
+        elemento desde mas i por 2 menos 1 de destino es palabra resto 256
+        elemento desde mas i por 2 de destino es cociente con palabra y 256
+    fin
+    devuelve verdadero
+fin
+
+funcion saca_letra con b
+    comparte salida
+    si salida es menor que TOPE_ARCHIVO
+        salida es salida mas 1
+        elemento salida de buzon es b
+    fin
+fin
+
+funcion saca con t
+    para cada b en t
+        saca_letra con b
+    fin
+fin
+
+funcion saca_numero con n
+    si n es mayor que 9
+        saca_numero con (cociente con n y 10)
+    fin
+    saca_letra con 48 mas n resto 10
+fin
+
+funcion es_de_mi_formato
+    para cada i desde 1 hasta largo de MAGIA
+        si (elemento i de mesa) no es igual a (elemento i de MAGIA)
+            devuelve falso
+        fin
+    fin
+    devuelve (elemento 9 de mesa) es 10
+fin
+
+funcion salta_hasta_fin_de_linea
+    comparte leido
+    mientras leido es menor o igual que 512 y (elemento leido de mesa) no es igual a 10
+        leido es leido mas 1
+    fin
+    leido es leido mas 1
+fin
+
+funcion numero_en_mesa
+    comparte leido
+    n es 0
+    cifras es 0
+    mientras leido es menor o igual que 512
+        letra es elemento leido de mesa
+        si letra es menor que 48 o letra es mayor que 57 o n es mayor que 1000000000000
+            detente
+        fin
+        n es n por 10 mas letra menos 48
+        cifras es cifras mas 1
+        leido es leido mas 1
+    fin
+    si cifras es 0
+        devuelve 0 menos 1
+    fin
+    devuelve n
+fin
+
+funcion lee_linea
+    comparte leido y nombre_largo y campo_sector y campo_bytes
+    nombre_largo es 0
+    mientras leido es menor o igual que 512
+        letra es elemento leido de mesa
+        si letra es 32 o letra es 10
+            detente
+        fin
+        si letra es menor que 33 o letra es mayor que 126 o nombre_largo es mayor o igual que LARGO_NOMBRE
+            devuelve falso
+        fin
+        nombre_largo es nombre_largo mas 1
+        elemento 1024 mas nombre_largo de mesa es letra
+        leido es leido mas 1
+    fin
+    si nombre_largo es 0 o leido es mayor que 512 o (elemento leido de mesa) no es igual a 32
+        devuelve falso
+    fin
+    leido es leido mas 1
+    campo_sector es numero_en_mesa
+    si leido es mayor que 512 o (elemento leido de mesa) no es igual a 32
+        devuelve falso
+    fin
+    leido es leido mas 1
+    campo_bytes es numero_en_mesa
+    si leido es mayor que 512 o (elemento leido de mesa) no es igual a 10
+        devuelve falso
+    fin
+    si campo_sector es menor que 1 o campo_bytes es menor que 0
+        devuelve falso
+    fin
+    devuelve campo_sector mas (cociente con campo_bytes mas 511 y 512) es menor o igual que total_sectores
+fin
+
+funcion queda_entrada
+    devuelve leido es menor que 512 y (elemento leido de mesa) no es igual a 10 y (elemento leido de mesa) no es igual a 0 y (elemento leido de mesa) no es igual a 32
+fin
+
+funcion abre_disco
+    comparte leido
+    si no identifica
+        devuelve NO_HAY_DISCO
+    fin
+    para cada i desde 1 hasta 40
+        elemento 512 mas i de mesa es elemento 54 mas i de mesa
+    fin
+    si no (lee_sector con 0 y mesa y 0)
+        devuelve NO_SE_LEE
+    fin
+    si no es_de_mi_formato
+        devuelve NO_ES_MIO
+    fin
+    leido es 10
+    devuelve 0
+fin
+
+funcion lista
+    comparte salida
+    total es abre_disco
+    si total es menor que 0
+        devuelve total
+    fin
+    salida es 0
+    saca con "  Disco: "
+    fin_del_modelo es 40
+    mientras fin_del_modelo es mayor que 1 y (elemento 512 mas fin_del_modelo de mesa) es 32
+        fin_del_modelo es fin_del_modelo menos 1
+    fin
+    para cada i desde 1 hasta fin_del_modelo
+        letra es elemento 512 mas i de mesa
+        si letra es menor que 32 o letra es mayor que 126
+            letra es 63
+        fin
+        saca_letra con letra
+    fin
+    saca con ", "
+    saca_numero con (cociente con total_sectores y 2)
+    saca con " KB\n\n"
+    mientras queda_entrada
+        si lee_linea
+            saca con "    "
+            para cada i desde 1 hasta nombre_largo
+                saca_letra con (elemento 1024 mas i de mesa)
+            fin
+            hueco es nombre_largo
+            mientras hueco es menor que 20
+                saca_letra con 32
+                hueco es hueco mas 1
+            fin
+            saca_numero con campo_bytes
+            saca con " bytes\n"
+        si no
+            saca con "    una entrada dañada, que me salto\n"
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    devuelve salida
+fin
+
+funcion mismo_nombre con pedido y largo_pedido
+    si largo_pedido no es igual a nombre_largo
+        devuelve falso
+    fin
+    para cada i desde 1 hasta largo_pedido
+        si (elemento 1024 mas i de mesa) no es igual a (elemento 2048 mas i de mesa)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion abre_archivo
+    largo_pedido es 0
+    mientras largo_pedido es menor que LARGO_NOMBRE y (elemento largo_pedido mas 1 de buzon) no es igual a 0
+        largo_pedido es largo_pedido mas 1
+        elemento 2048 mas largo_pedido de mesa es elemento largo_pedido de buzon
+    fin
+    total es abre_disco
+    si total es menor que 0
+        devuelve total
+    fin
+    mientras queda_entrada
+        si lee_linea
+            si mismo_nombre con 0 y largo_pedido
+                devuelve trae_archivo
+            fin
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    devuelve NO_ESTA
+fin
+
+funcion trae_archivo
+    bytes es campo_bytes
+    si bytes es mayor que TOPE_ARCHIVO
+        bytes es TOPE_ARCHIVO
+    fin
+    sectores es cociente con bytes mas 511 y 512
+    s es 0
+    mientras s es menor que sectores
+        si no (lee_sector con campo_sector mas s y buzon y s por 512)
+            devuelve NO_SE_LEE
+        fin
+        s es s mas 1
+    fin
+    devuelve bytes
+fin
+
+respuesta es SIN_RESPUESTA
+mientras verdadero
+    aviso es llama_al_sistema con ESPERA y respuesta
+    respuesta es SIN_RESPUESTA
+    si aviso es AVISO_CUELGA
+        mientras verdadero
+        fin
+    si no si aviso es AVISO_ROMPE
+        pon_en_puerto con 100 y 254
+    si no si aviso es ORDEN_LISTA
+        respuesta es lista
+    si no si aviso es ORDEN_ABRE
+        respuesta es abre_archivo
+    fin
+fin

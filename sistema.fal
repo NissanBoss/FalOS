@@ -188,15 +188,6 @@ funcion hasta_columna con n
     fin
 fin
 
-TECLAS es "~~1234567890'~~~qwertyuiop~+~~asdfghjkl~~~~~zxcvbnm,.-~*~ "
-TECLAS_MAYUS es "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
-
-mayus es falso
-bloq_mayus es falso
-tilde es 0
-altgr es falso
-prefijo es falso
-
 PAGINA es 4096
 MEGA es 1048576
 VISIBLE es 805306368
@@ -362,8 +353,8 @@ orden es region con pide_pagina y LARGO_ORDEN
 escritas es 0
 pos es 0
 
-HISTORIAL es 16
-historial es region con pide_pagina y HISTORIAL por 80
+CUPO_HISTORIAL es 16
+historial es region con pide_pagina y CUPO_HISTORIAL por 80
 guardadas es 0
 mirando es 1
 
@@ -374,11 +365,22 @@ ESCLAVO_DATOS es 161
 YA_ESTA es 32
 RELOJ es 64
 RELOJ_ORDEN es 67
-TECLADO es 96
 TICS_POR_SEGUNDO es 100
 CAPACIDAD es 64
+TODAS_ABIERTAS es 252
+SIN_TECLADO es 254
 
-llegadas es region con pide_pagina y CAPACIDAD
+TECLA_INTRO es 256
+TECLA_BORRA es 257
+TECLA_IZQUIERDA es 258
+TECLA_DERECHA es 259
+TECLA_INICIO es 260
+TECLA_FIN es 261
+TECLA_SUPRIME es 262
+TECLA_ARRIBA es 263
+TECLA_ABAJO es 264
+
+llegadas es region con pide_pagina y CAPACIDAD por 8 y 8
 entra es 0
 sale es 0
 tics es 0
@@ -388,6 +390,8 @@ USUARIO es 4
 MAGIA es 20071938299543878
 DONDE_VAN es 805306368
 TOPE_PROGRAMA es 1048576
+SITIO_MESA es 511
+SITIO_BUZON es 512
 BANDERAS es 514
 SEGMENTO_CODIGO es 27
 SEGMENTO_DATOS es 35
@@ -410,9 +414,14 @@ DUERME es 4
 HAZ_PREGUNTA es 5
 ESCUCHA es 6
 CONTESTA es 7
+ESPERA_AVISO es 8
+ENTREGA_TECLA es 9
 
 MAX_TAREAS es 4
 CONSOLA es 5
+TAREA_TECLADO es 6
+TAREA_DISCO es 7
+ULTIMA_TAREA es 7
 SIN_USAR es 0
 EN_MARCHA es 1
 DORMIDA es 2
@@ -420,11 +429,34 @@ CERRADA es 3
 ESCUCHANDO es 4
 PREGUNTANDO es 5
 ESPERA_RESPUESTA es 6
+EN_ESPERA es 7
 RECHAZADA es 0 menos 1
 LLAVES es 4
 SALIO es 0 menos 1
 LA_PARARON es 0 menos 2
-DE_INICIO es 12
+SE_COLGO es 0 menos 3
+DE_INICIO es 14
+
+AVISO_TECLA es 1
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+PACIENCIA es 100
+
+ORDEN_LISTA es 1
+ORDEN_ABRE es 2
+NO_HAY_DISCO es 0 menos 1
+NO_ES_MIO es 0 menos 2
+NO_ESTA es 0 menos 3
+NO_SE_LEE es 0 menos 4
+SIN_CONTROLADOR es 0 menos 9
+TOPE_BUZON es 4096
+
+BYTE_TECLADO es 13
+BYTE_DISCO es 63
+SOLO_EL_96 es 254
+LOS_OCHO es 0
+CERRADOS es 255
 
 estados_tarea es region con pide_pagina y 512 y 8
 contextos es region con pide_pagina y 512 y 8
@@ -452,15 +484,27 @@ hablando_con es region con pide_pagina y 512 y 8
 atendiendo_a es region con pide_pagina y 512 y 8
 mensajes_de es region con pide_pagina y 512 y 8
 rechazos_de es region con pide_pagina y 512 y 8
+buzones es region con pide_pagina y 512 y 8
+avisos es region con pide_pagina y 512 y 8
+despertada_en es region con pide_pagina y 512 y 8
+cerrada_en es region con pide_pagina y 512 y 8
+reinicios_de es region con pide_pagina y 512 y 8
 
 actual es CONSOLA
 esperando es falso
 hay_cerradas es falso
+peticion_abierta es falso
+disco_listo es falso
+resultado_disco es 0
+tecla_sin_leer es falso
+puertos es region con mapa_de_puertos y 8192
 
 elemento CONSOLA de estados_tarea es EN_MARCHA
 elemento CONSOLA de raices es raiz_nucleo
 
-CUANTOS_PROGRAMAS es 8
+CUANTOS_PROGRAMAS es 11
+EL_TECLADO es 12
+EL_DISCO es 13
 cuenta_imagen es incluye_programa de "programas/cuenta.fal"
 primos_imagen es incluye_programa de "programas/primos.fal"
 apaga_imagen es incluye_programa de "programas/apaga.fal"
@@ -469,6 +513,11 @@ bucle_imagen es incluye_programa de "programas/bucle.fal"
 caja_imagen es incluye_programa de "programas/caja.fal"
 curioso_imagen es incluye_programa de "programas/curioso.fal"
 ladron_imagen es incluye_programa de "programas/ladron.fal"
+fisgon_imagen es incluye_programa de "programas/fisgon.fal"
+impostor_imagen es incluye_programa de "programas/impostor.fal"
+larga_imagen es incluye_programa de "programas/larga.fal"
+teclado_imagen es incluye_programa de "programas/teclado.fal"
+disco_imagen es incluye_programa de "programas/disco.fal"
 
 funcion imagen_de con n
     si n es 1
@@ -485,8 +534,18 @@ funcion imagen_de con n
         devuelve caja_imagen
     si no si n es 7
         devuelve curioso_imagen
+    si no si n es 8
+        devuelve ladron_imagen
+    si no si n es 9
+        devuelve fisgon_imagen
+    si no si n es 10
+        devuelve impostor_imagen
+    si no si n es 11
+        devuelve larga_imagen
+    si no si n es EL_TECLADO
+        devuelve teclado_imagen
     fin
-    devuelve ladron_imagen
+    devuelve disco_imagen
 fin
 
 funcion nombre_de con n
@@ -504,8 +563,18 @@ funcion nombre_de con n
         devuelve "caja"
     si no si n es 7
         devuelve "curioso"
+    si no si n es 8
+        devuelve "ladron"
+    si no si n es 9
+        devuelve "fisgon"
+    si no si n es 10
+        devuelve "impostor"
+    si no si n es 11
+        devuelve "larga"
+    si no si n es EL_TECLADO
+        devuelve "teclado"
     fin
-    devuelve "ladron"
+    devuelve "disco"
 fin
 
 funcion que_hace con n
@@ -523,8 +592,14 @@ funcion que_hace con n
         devuelve "guarda un secreto y contesta si le preguntan"
     si no si n es 7
         devuelve "quiere saber el secreto de la caja"
+    si no si n es 8
+        devuelve "prueba miles de llaves a ver si alguna abre algo"
+    si no si n es 9
+        devuelve "quiere leer lo que escribes en el teclado"
+    si no si n es 10
+        devuelve "quiere escribir órdenes haciéndose pasar por ti"
     fin
-    devuelve "prueba miles de llaves a ver si alguna abre algo"
+    devuelve "escribe una línea que no cabe"
 fin
 
 funcion color_de con t
@@ -534,8 +609,10 @@ funcion color_de con t
         devuelve AMARILLO
     si no si t es 3
         devuelve MAGENTA_CLARO
+    si no si t es 4
+        devuelve CIAN_CLARO
     fin
-    devuelve CIAN_CLARO
+    devuelve AZUL_CLARO
 fin
 
 funcion renglon_de con t
@@ -553,7 +630,14 @@ funcion pon_en_renglon con t y c y letra y tinta
     elemento (renglon_de con t) mas c de pantalla es tinta por 256 mas letra
 fin
 
+funcion es_controlador con t
+    devuelve t es mayor que CONSOLA
+fin
+
 funcion etiqueta_renglon con t
+    si es_controlador con t
+        devuelve nada
+    fin
     limpia_renglon con t
     pon_en_renglon con t y 2 y 48 mas t y GRIS_OSCURO
     nombre es nombre_de con (elemento t de programa_de)
@@ -564,10 +648,15 @@ fin
 
 funcion letra_de_programa con b
     t es actual
+    si es_controlador con t
+        devuelve nada
+    fin
     medias es elemento t de medias_de
     si b es 10
-        para cada c desde (elemento t de columna_de) hasta ANCHO
+        c es elemento t de columna_de
+        mientras c es menor o igual que ANCHO
             pon_en_renglon con t y c y 32 y GRIS
+            c es c mas 1
         fin
         elemento t de columna_de es DE_INICIO
         elemento t de medias_de es 0
@@ -589,7 +678,7 @@ fin
 
 funcion se_puede_correr con t
     si t es CONSOLA
-        devuelve no esperando o entra no es igual a sale o hay_cerradas
+        devuelve no esperando o entra no es igual a sale o hay_cerradas o disco_listo
     fin
     si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
         elemento t de estados_tarea es EN_MARCHA
@@ -599,13 +688,23 @@ fin
 
 funcion elige_tarea
     t es actual
-    para cada vuelta desde 1 hasta CONSOLA
-        t es (t resto CONSOLA) mas 1
+    para cada vuelta desde 1 hasta ULTIMA_TAREA
+        t es (t resto ULTIMA_TAREA) mas 1
         si se_puede_correr con t
             devuelve t
         fin
     fin
     devuelve CONSOLA
+fin
+
+funcion abre_puertos_de con t
+    elemento BYTE_TECLADO de puertos es CERRADOS
+    elemento BYTE_DISCO de puertos es CERRADOS
+    si t es TAREA_TECLADO
+        elemento BYTE_TECLADO de puertos es SOLO_EL_96
+    si no si t es TAREA_DISCO
+        elemento BYTE_DISCO de puertos es LOS_OCHO
+    fin
 fin
 
 funcion cambia_de_tarea
@@ -614,6 +713,7 @@ funcion cambia_de_tarea
     siguiente es elige_tarea
     si siguiente no es igual a actual
         actual es siguiente
+        abre_puertos_de con actual
         usa_tablas con (elemento actual de raices)
         si actual no es igual a CONSOLA
             pila_de_entrada con (elemento actual de pilas)
@@ -628,11 +728,26 @@ funcion despierta_con con t y valor
     elemento t de estados_tarea es EN_MARCHA
 fin
 
+funcion avisa_a con t y aviso
+    si (elemento t de estados_tarea) es EN_ESPERA
+        elemento t de despertada_en es tics
+        despierta_con con t y aviso
+    si no
+        elemento t de avisos es aviso
+    fin
+fin
+
 funcion cierra_tarea con t y causa
-    comparte hay_cerradas
+    comparte hay_cerradas y peticion_abierta y disco_listo y resultado_disco
     elemento t de causas es causa
     elemento t de estados_tarea es CERRADA
+    elemento t de cerrada_en es tics
     hay_cerradas es verdadero
+    si t es TAREA_DISCO y peticion_abierta
+        peticion_abierta es falso
+        resultado_disco es SIN_CONTROLADOR
+        disco_listo es verdadero
+    fin
     para cada otra desde 1 hasta MAX_TAREAS
         estado es elemento otra de estados_tarea
         si (elemento otra de atendiendo_a) es t
@@ -721,6 +836,54 @@ funcion contesta_a con valor
     devuelve 0
 fin
 
+funcion rechaza_a_actual
+    elemento actual de rechazos_de es (elemento actual de rechazos_de) mas 1
+    devuelve RECHAZADA
+fin
+
+funcion aguarda_aviso con respuesta
+    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer
+    yo es actual
+    si no (es_controlador con yo)
+        devuelve rechaza_a_actual
+    fin
+    si yo es TAREA_DISCO y peticion_abierta y respuesta no es igual a SIN_RESPUESTA
+        resultado_disco es respuesta
+        peticion_abierta es falso
+        disco_listo es verdadero
+    fin
+    aviso es elemento yo de avisos
+    si aviso no es igual a 0
+        elemento yo de avisos es 0
+        elemento yo de despertada_en es tics
+        devuelve aviso
+    fin
+    si yo es TAREA_TECLADO
+        tecla_sin_leer es falso
+        pon_en_puerto con CONTROLADOR_DATOS y TODAS_ABIERTAS
+    fin
+    elemento yo de estados_tarea es EN_ESPERA
+    cambia_de_tarea
+    devuelve 0
+fin
+
+funcion recibe_tecla con tecla
+    comparte entra
+    si actual no es igual a TAREA_TECLADO
+        devuelve rechaza_a_actual
+    fin
+    si tecla es menor que 1 o tecla es mayor que TECLA_ABAJO
+        devuelve RECHAZADA
+    fin
+    siguiente es (entra mas 1) resto CAPACIDAD
+    si siguiente es sale
+        devuelve RECHAZADA
+    fin
+    elemento entra mas 1 de llegadas es tecla
+    entra es siguiente
+    devuelve 0
+fin
+
 funcion al_llamar
     marco es region con contexto y 20 y 8
     numero es elemento EN_RAX de marco
@@ -749,6 +912,10 @@ funcion al_llamar
         elemento EN_RAX de marco es escucha_mensaje
     si no si numero es CONTESTA
         elemento EN_RAX de marco es contesta_a con a
+    si no si numero es ESPERA_AVISO
+        elemento EN_RAX de marco es aguarda_aviso con a
+    si no si numero es ENTREGA_TECLA
+        elemento EN_RAX de marco es recibe_tecla con a
     si no
         elemento EN_RAX de marco es 0 menos 1
     fin
@@ -772,14 +939,22 @@ funcion al_fallar con numero y codigo y direccion
 fin
 
 funcion al_pulsar
-    comparte entra
-    codigo es lee_puerto de TECLADO
-    siguiente es (entra mas 1) resto CAPACIDAD
-    si siguiente no es igual a sale
-        elemento entra mas 1 de llegadas es codigo
-        entra es siguiente
-    fin
+    comparte tecla_sin_leer
+    tecla_sin_leer es verdadero
+    pon_en_puerto con CONTROLADOR_DATOS y SIN_TECLADO
     pon_en_puerto con CONTROLADOR y YA_ESTA
+    avisa_a con TAREA_TECLADO y AVISO_TECLA
+    cambia_de_tarea
+fin
+
+funcion vigila con t
+    estado es elemento t de estados_tarea
+    si estado es SIN_USAR o estado es CERRADA o estado es EN_ESPERA
+        devuelve nada
+    fin
+    si tics menos (elemento t de despertada_en) es mayor que PACIENCIA
+        cierra_tarea con t y SE_COLGO
+    fin
 fin
 
 funcion al_tic
@@ -790,6 +965,8 @@ funcion al_tic
         tics_dormido es tics_dormido mas 1
     fin
     pon_en_puerto con CONTROLADOR y YA_ESTA
+    vigila con TAREA_TECLADO
+    vigila con TAREA_DISCO
     cambia_de_tarea
 fin
 
@@ -813,6 +990,30 @@ funcion siguiente_tecla
     devuelve codigo
 fin
 
+funcion atiende con tecla
+    si tecla es menor que TECLA_INTRO
+        teclea con tecla
+    si no si tecla es TECLA_INTRO
+        ejecuta
+    si no si tecla es TECLA_BORRA
+        borra
+    si no si tecla es TECLA_IZQUIERDA
+        mueve_a con pos menos 1
+    si no si tecla es TECLA_DERECHA
+        mueve_a con pos mas 1
+    si no si tecla es TECLA_INICIO
+        mueve_a con 0
+    si no si tecla es TECLA_FIN
+        mueve_a con escritas
+    si no si tecla es TECLA_SUPRIME
+        suprime
+    si no si tecla es TECLA_ARRIBA y mirando es mayor que 1
+        recupera con mirando menos 1
+    si no si tecla es TECLA_ABAJO y mirando es menor o igual que guardadas
+        recupera con mirando mas 1
+    fin
+fin
+
 funcion prepara_interrupciones
     pon_en_puerto con CONTROLADOR y 17
     pon_en_puerto con ESCLAVO y 17
@@ -822,7 +1023,7 @@ funcion prepara_interrupciones
     pon_en_puerto con ESCLAVO_DATOS y 2
     pon_en_puerto con CONTROLADOR_DATOS y 1
     pon_en_puerto con ESCLAVO_DATOS y 1
-    pon_en_puerto con CONTROLADOR_DATOS y 252
+    pon_en_puerto con CONTROLADOR_DATOS y TODAS_ABIERTAS
     pon_en_puerto con ESCLAVO_DATOS y 255
     divisor es cociente con 1193182 y TICS_POR_SEGUNDO
     pon_en_puerto con RELOJ_ORDEN y 54
@@ -835,100 +1036,6 @@ funcion prepara_interrupciones
     activa_interrupciones
 fin
 
-funcion atiende con codigo
-    comparte mayus y bloq_mayus y prefijo
-    extendida es prefijo
-    prefijo es falso
-    si codigo es 224
-        prefijo es verdadero
-    si no si extendida
-        atiende_extendida con codigo
-    si no si codigo es 42 o codigo es 54
-        mayus es verdadero
-    si no si codigo es 170 o codigo es 182
-        mayus es falso
-    si no si codigo es 58
-        bloq_mayus es no bloq_mayus
-    si no si codigo es 28
-        ejecuta
-    si no si codigo es 14
-        borra
-    si no si altgr
-        si codigo es menor que 128
-            teclea con (con_altgr con codigo)
-        fin
-    si no si codigo es 40
-        pon_tilde
-    si no si codigo es menor que 128
-        teclea con (letra_de con codigo)
-    fin
-fin
-
-funcion atiende_extendida con codigo
-    comparte altgr
-    si codigo es 56
-        altgr es verdadero
-    si no si codigo es 184
-        altgr es falso
-    si no si codigo es 28
-        ejecuta
-    si no si codigo es 53
-        teclea con 47
-    si no si codigo es 75
-        mueve_a con pos menos 1
-    si no si codigo es 77
-        mueve_a con pos mas 1
-    si no si codigo es 71
-        mueve_a con 0
-    si no si codigo es 79
-        mueve_a con escritas
-    si no si codigo es 83
-        suprime
-    si no si codigo es 72 y mirando es mayor que 1
-        recupera con mirando menos 1
-    si no si codigo es 80 y mirando es menor o igual que guardadas
-        recupera con mirando mas 1
-    fin
-fin
-
-funcion con_altgr con codigo
-    si codigo es 2
-        devuelve 124
-    si no si codigo es 3
-        devuelve 64
-    si no si codigo es 4
-        devuelve 35
-    si no si codigo es 5
-        devuelve 126
-    si no si codigo es 7
-        devuelve 170
-    si no si codigo es 26
-        devuelve 91
-    si no si codigo es 27
-        devuelve 93
-    si no si codigo es 40
-        devuelve 123
-    si no si codigo es 41
-        devuelve 92
-    si no si codigo es 43
-        devuelve 125
-    fin
-    devuelve 0
-fin
-
-funcion pon_tilde
-    comparte tilde
-    si mayus
-        tilde es 2
-    si no
-        tilde es 1
-    fin
-fin
-
-funcion es_letra con c
-    devuelve c es mayor o igual que 97 y c es menor o igual que 122
-fin
-
 funcion minuscula con c
     si c es mayor o igual que 65 y c es menor o igual que 90
         devuelve c mas 32
@@ -936,90 +1043,9 @@ funcion minuscula con c
     devuelve c
 fin
 
-funcion letra_de con codigo
-    grande es mayus no es igual a bloq_mayus
-    si codigo es 13
-        si mayus
-            devuelve 168
-        fin
-        devuelve 173
-    fin
-    si codigo es 39
-        si grande
-            devuelve 165
-        fin
-        devuelve 164
-    fin
-    si codigo es 43
-        si grande
-            devuelve 128
-        fin
-        devuelve 135
-    fin
-    si codigo es 41
-        si mayus
-            devuelve 166
-        fin
-        devuelve 167
-    fin
-    si codigo es 4 y mayus
-        devuelve 250
-    fin
-    si codigo es mayor que 57
-        devuelve 0
-    fin
-    letra es elemento codigo mas 1 de TECLAS
-    si es_letra con letra
-        si grande
-            devuelve letra menos 32
-        fin
-        devuelve letra
-    fin
-    si mayus
-        letra es elemento codigo mas 1 de TECLAS_MAYUS
-    fin
-    si letra es 126
-        devuelve 0
-    fin
-    devuelve letra
-fin
-
-funcion con_tilde con c
-    si tilde es 1
-        si c es 97
-            devuelve 160
-        si no si c es 101
-            devuelve 130
-        si no si c es 105
-            devuelve 161
-        si no si c es 111
-            devuelve 162
-        si no si c es 117
-            devuelve 163
-        si no si c es 69
-            devuelve 144
-        si no si c es 32
-            devuelve 39
-        fin
-    si no si tilde es 2
-        si c es 117
-            devuelve 129
-        si no si c es 85
-            devuelve 154
-        si no si c es 32
-            devuelve 34
-        fin
-    fin
-    devuelve c
-fin
-
 funcion teclea con c
-    comparte tilde y escritas y pos
-    si c no es igual a 0 y escritas es menor que LARGO_ORDEN
-        si tilde no es igual a 0
-            c es con_tilde con c
-            tilde es 0
-        fin
+    comparte escritas y pos
+    si escritas es menor que LARGO_ORDEN
         i es escritas
         mientras i es mayor que pos
             elemento i mas 1 de orden es elemento i de orden
@@ -1103,8 +1129,8 @@ fin
 funcion guarda_en_historial
     comparte guardadas y mirando
     si escritas es mayor que 0 y no (igual_que_la_ultima)
-        si guardadas es HISTORIAL
-            para cada i desde 1 hasta (HISTORIAL menos 1) por 80
+        si guardadas es CUPO_HISTORIAL
+            para cada i desde 1 hasta (CUPO_HISTORIAL menos 1) por 80
                 elemento i de historial es elemento i mas 80 de historial
             fin
             guardadas es guardadas menos 1
@@ -1210,6 +1236,14 @@ funcion ejecuta
         lanza
     si no si empieza_por con "para "
         para_tarea
+    si no si es_orden con "disco"
+        orden_disco
+    si no si empieza_por con "lee "
+        lee_archivo
+    si no si empieza_por con "cuelga "
+        estropea con 8 y AVISO_CUELGA
+    si no si empieza_por con "rompe "
+        estropea con 7 y AVISO_ROMPE
     si no si es_orden con "reinicia"
         reinicia
     si no
@@ -1221,23 +1255,22 @@ funcion ejecuta
 fin
 
 funcion ayuda
-    pinta_linea con "  ayuda      lo que estás leyendo"
-    pinta_linea con "  limpia     deja la pantalla en blanco"
-    pinta_linea con "  hora       la hora del reloj del ordenador, en UTC"
-    pinta_linea con "  colores    los 16 colores que tiene la pantalla"
-    pinta_linea con "  encendido  cuánto llevo encendido"
-    pinta_linea con "  memoria    cuánta memoria tengo y quién la usa"
-    pinta_linea con "  programas  los programas que llevo dentro"
-    pinta_linea con "  lanza X    pone a correr el programa X"
-    pinta_linea con "  tareas     lo que está corriendo ahora"
-    pinta_linea con "  para N     cierra la tarea N"
-    pinta_linea con "  permisos   quién puede hablar con quién"
+    pinta_linea con "  ayuda  limpia  hora  colores  encendido  memoria  reinicia"
+    pinta_linea con ""
+    pinta_linea con "  programas      los programas que llevo dentro"
+    pinta_linea con "  lanza X        pone a correr el programa X"
+    pinta_linea con "  tareas         lo que está corriendo ahora"
+    pinta_linea con "  para N         cierra la tarea N"
+    pinta_linea con ""
+    pinta_linea con "  permisos       quién puede hablar con quién y tocar qué"
     pinta_linea con "  permite N M    deja que la tarea N hable con la M"
     pinta_linea con "  prohibe N M    se lo quita, en el acto"
-    pinta_linea con "  reinicia   vuelve a arrancar"
     pinta_linea con ""
-    pinta_linea con "  Con las flechas te mueves por lo que escribes, y con las de arriba"
-    pinta_linea con "  y abajo vuelves a las órdenes de antes."
+    pinta_linea con "  disco          lo que hay en el disco"
+    pinta_linea con "  lee X          enseña un archivo del disco"
+    pinta_linea con ""
+    pinta_linea con "  cuelga X       cuelga a propósito el teclado o el disco"
+    pinta_linea con "  rompe X        hace que intenten algo prohibido"
     pinta_linea con ""
 fin
 
@@ -1485,7 +1518,7 @@ funcion programas
         pinta_linea con (que_hace con n)
     fin
     pinta_linea con ""
-    pinta_linea con "  Todos corren en el anillo 3 y nacen sin permisos. Prueba: lanza apaga"
+    pinta_linea con "  Todos corren en el anillo 3 y nacen sin permisos. Prueba: lanza fisgon"
     pinta_linea con ""
 fin
 
@@ -1534,6 +1567,13 @@ funcion monta_programa con t y imagen
     elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
+    si es_controlador con t
+        mesa es pagina_de_tarea con t
+        buzon es pagina_de_tarea con t
+        elemento t de buzones es buzon
+        elemento SITIO_MESA de entradas es mesa mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+        elemento SITIO_BUZON de entradas es buzon mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+    fin
     de_codigo es cociente con (archivo mas PAGINA menos 1) y PAGINA
     en_total es cociente con (total mas PAGINA menos 1) y PAGINA
     para cada p desde 1 hasta en_total
@@ -1554,10 +1594,14 @@ funcion monta_programa con t y imagen
     devuelve raiz
 fin
 
-funcion lanza_programa con n
+funcion se_puede_cargar con n
     imagen es imagen_de con n
+    devuelve (elemento 1 de imagen) es MAGIA y (elemento 4 de imagen) es menor o igual que TOPE_PROGRAMA
+fin
+
+funcion lanza_programa con n
     t es hueco_libre
-    si (elemento 1 de imagen) no es igual a MAGIA o (elemento 4 de imagen) es mayor que TOPE_PROGRAMA
+    si no (se_puede_cargar con n)
         pinta_linea con "  Eso no es un programa que yo pueda cargar."
         pinta_linea con ""
         devuelve nada
@@ -1567,6 +1611,16 @@ funcion lanza_programa con n
         pinta_linea con ""
         devuelve nada
     fin
+    prepara_tarea con t y n
+fin
+
+funcion prepara_tarea con t y n
+    imagen es imagen_de con n
+    elemento t de avisos es 0
+    si t es TAREA_TECLADO y tecla_sin_leer
+        elemento t de avisos es AVISO_TECLA
+    fin
+    elemento t de despertada_en es tics
     elemento t de listas_de_paginas es pide_pagina
     elemento t de paginas_usadas es 0
     elemento t de programa_de es n
@@ -1622,7 +1676,7 @@ fin
 
 funcion para_tarea
     t es numero_entre con 6 y escritas
-    si t es menor que 1 o t es mayor que MAX_TAREAS o (elemento t de estados_tarea) es SIN_USAR
+    si t es menor que 1 o t es mayor que ULTIMA_TAREA o t es CONSOLA o (elemento t de estados_tarea) es SIN_USAR
         pon_color con ROJO_CLARO y NEGRO
         pinta_linea con "  No hay ninguna tarea con ese número. Mira: tareas"
         pon_color con GRIS y NEGRO
@@ -1643,36 +1697,48 @@ funcion nombre_estado con t
         devuelve "escuchando"
     si no si e es PREGUNTANDO o e es ESPERA_RESPUESTA
         devuelve "esperando"
+    si no si e es EN_ESPERA
+        devuelve "esperando trabajo"
     si no si e es CERRADA
         devuelve "cerrándose"
     fin
     devuelve "corriendo"
 fin
 
-funcion tareas
-    hay es falso
-    para cada t desde 1 hasta MAX_TAREAS
-        si (elemento t de estados_tarea) no es igual a SIN_USAR
-            hay es verdadero
-            pinta con "  "
-            pon_color con (color_de con t) y NEGRO
-            pinta_numero con t
-            pinta con "  "
-            pinta con (nombre_de con (elemento t de programa_de))
-            pon_color con GRIS y NEGRO
-            hasta_columna con 15
-            pinta con (nombre_estado con t)
-            hasta_columna con 28
-            pinta_numero con (cociente con (elemento t de tiempo_de) y TICS_POR_SEGUNDO)
-            pinta con " s de procesador"
-            hasta_columna con 50
-            pinta_tamano con (elemento t de paginas_usadas) mas 1
-            pinta_linea con ""
+funcion linea_de_tarea con t
+    pinta con "  "
+    pon_color con (color_de con t) y NEGRO
+    pinta_numero con t
+    pinta con "  "
+    pinta con (nombre_de con (elemento t de programa_de))
+    pon_color con GRIS y NEGRO
+    hasta_columna con 15
+    pinta con (nombre_estado con t)
+    hasta_columna con 34
+    pinta_numero con (cociente con (elemento t de tiempo_de) y TICS_POR_SEGUNDO)
+    pinta con " s de procesador"
+    hasta_columna con 56
+    pinta_tamano con (elemento t de paginas_usadas) mas 1
+    si (elemento t de reinicios_de) es mayor que 0
+        hasta_columna con 66
+        pinta_numero con (elemento t de reinicios_de)
+        si (elemento t de reinicios_de) es 1
+            pinta con " reinicio"
+        si no
+            pinta con " reinicios"
         fin
     fin
-    si no hay
-        pinta_linea con "  Ahora mismo no corre ningún programa. Mira: programas"
+    pinta_linea con ""
+fin
+
+funcion tareas
+    para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) no es igual a SIN_USAR
+            linea_de_tarea con t
+        fin
     fin
+    linea_de_tarea con TAREA_TECLADO
+    linea_de_tarea con TAREA_DISCO
     pinta_linea con ""
 fin
 
@@ -1720,9 +1786,10 @@ funcion permisos
             pon_color con GRIS y NEGRO
         fin
     fin
-    si no hay
-        pinta_linea con "  Ahora mismo no corre ningún programa. Mira: programas"
-    fin
+    cabecera_de_tarea con TAREA_TECLADO
+    pinta_linea con "solo el puerto 96, para leer las teclas"
+    cabecera_de_tarea con TAREA_DISCO
+    pinta_linea con "solo los puertos del 496 al 503, los del disco"
     pinta_linea con ""
 fin
 
@@ -1864,6 +1931,18 @@ funcion puerto_legible con t
     devuelve d es mayor o igual que 0 y d es menor que 65536
 fin
 
+funcion cuenta_lectura con t
+    puerto es elemento t de registro_rdx
+    si (puerto_legible con t) y puerto es 96
+        pinta_linea con "quiso espiar lo que escribes en el teclado."
+    si no si (puerto_legible con t) y puerto es mayor o igual que 496 y puerto es menor o igual que 503
+        pinta_linea con "quiso leer el disco por su cuenta."
+    si no
+        pinta_linea con "quiso leer de un aparato."
+    fin
+    pinta_linea con "  Ese puerto no es suyo, y el procesador lo ha parado."
+fin
+
 funcion cuenta_general con t
     instruccion es elemento t de instrucciones
     si instruccion es 238 y puerto_legible con t
@@ -1876,10 +1955,9 @@ funcion cuenta_general con t
             pinta_numero con puerto
             pinta_linea con "."
         fin
-        pinta_linea con "  Solo el núcleo toca los aparatos, y el procesador lo ha parado."
-    si no si instruccion es 236
-        pinta_linea con "quiso leer de un aparato."
-        pinta_linea con "  Solo el núcleo toca los aparatos, y el procesador lo ha parado."
+        pinta_linea con "  Ese puerto no es suyo, y el procesador lo ha parado."
+    si no si instruccion es 236 o instruccion es 102
+        cuenta_lectura con t
     si no
         pinta_linea con "quiso usar una instrucción reservada al núcleo."
     fin
@@ -1926,10 +2004,18 @@ fin
 funcion cuenta_el_final con t
     causa es elemento t de causas
     nombre es nombre_de con (elemento t de programa_de)
-    si causa es SALIO
+    si causa es SE_COLGO
+        pon_color con ROJO_CLARO y NEGRO
         pinta con "  "
         pinta con nombre
-        si (elemento t de codigos) no es igual a 0
+        pon_color con BLANCO y NEGRO
+        pinta_linea con " lleva 1 s sin contestar: se ha colgado."
+    si no si causa es SALIO
+        pinta con "  "
+        pinta con nombre
+        si es_controlador con t
+            pinta_linea con " ha reventado por dentro."
+        si no si (elemento t de codigos) no es igual a 0
             pinta_linea con " ha reventado:"
             pinta con "  "
             ultima_linea con t
@@ -1962,8 +2048,10 @@ funcion cuenta_el_final con t
             pinta_numero con causa
             pinta_linea con "."
         fin
-        pon_color con VERDE_CLARO y NEGRO
-        pinta_linea con "  Lo he cerrado. Todo lo demás sigue en marcha."
+        si no (es_controlador con t)
+            pon_color con VERDE_CLARO y NEGRO
+            pinta_linea con "  Lo he cerrado. Todo lo demás sigue en marcha."
+        fin
         escribe nombre sin salto
         escribe " cerrado por la excepción " sin salto
         escribe causa
@@ -1977,19 +2065,40 @@ funcion suelta_tarea con t
         suelta_pagina con (elemento i de lista)
     fin
     suelta_pagina con (elemento t de listas_de_paginas)
-    limpia_renglon con t
+    si no (es_controlador con t)
+        limpia_renglon con t
+    fin
     para cada llave desde 1 hasta LLAVES
         elemento (sitio_de_llave con t y llave) de llave_a es 0
     fin
     elemento t de estados_tarea es SIN_USAR
 fin
 
+funcion vuelve_a_lanzar con t
+    n es elemento t de programa_de
+    elemento t de reinicios_de es (elemento t de reinicios_de) mas 1
+    prepara_tarea con t y n
+    pon_color con VERDE_CLARO y NEGRO
+    tardado es (tics menos (elemento t de cerrada_en)) por 10
+    pinta con "  He lanzado otro en "
+    si tardado es 0
+        pinta con "menos de 10"
+    si no
+        pinta_numero con tardado
+    fin
+    pinta_linea con " ms. Todo lo demás sigue en marcha."
+    pon_color con GRIS y NEGRO
+    escribe (nombre_de con n) sin salto
+    escribe " reiniciado, y van " sin salto
+    escribe (elemento t de reinicios_de)
+fin
+
 funcion recoge_tareas con en_el_indicador
     comparte hay_cerradas y columna
     hay_cerradas es falso
     alguna es falso
-    para cada t desde 1 hasta MAX_TAREAS
-        si (elemento t de estados_tarea) es CERRADA
+    para cada t desde 1 hasta ULTIMA_TAREA
+        si t no es igual a CONSOLA y (elemento t de estados_tarea) es CERRADA
             si en_el_indicador y no alguna
                 base es (fila menos 1) por ANCHO
                 para cada c desde 1 hasta ANCHO
@@ -1999,14 +2108,115 @@ funcion recoge_tareas con en_el_indicador
             fin
             alguna es verdadero
             cuenta_el_final con t
-            pinta_linea con ""
             suelta_tarea con t
+            si es_controlador con t
+                vuelve_a_lanzar con t
+            fin
+            pinta_linea con ""
         fin
     fin
     si alguna y en_el_indicador
         indicador
         redibuja
     fin
+fin
+
+funcion pide_al_disco con peticion
+    comparte peticion_abierta y disco_listo y esperando
+    recoge_tareas con falso
+    desactiva_interrupciones
+    disco_listo es falso
+    peticion_abierta es verdadero
+    avisa_a con TAREA_DISCO y peticion
+    mientras no disco_listo
+        esperando es verdadero
+        espera_interrupcion
+        esperando es falso
+        desactiva_interrupciones
+    fin
+    disco_listo es falso
+    activa_interrupciones
+    devuelve resultado_disco
+fin
+
+funcion fallo_de_disco con motivo
+    pon_color con ROJO_CLARO y NEGRO
+    si motivo es NO_HAY_DISCO
+        pinta_linea con "  No hay ningún disco conectado."
+    si no si motivo es NO_ES_MIO
+        pinta_linea con "  Ese disco no tiene mi formato."
+    si no si motivo es NO_ESTA
+        pinta_linea con "  No hay ningún archivo con ese nombre. Mira: disco"
+    si no si motivo es NO_SE_LEE
+        pinta_linea con "  El disco no me deja leer ese trozo."
+    si no
+        pinta_linea con "  El programa del disco ha caído antes de contestar."
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion pinta_buzon con cuantos
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    i es 1
+    mientras i es menor o igual que cuantos
+        pon_byte con (elemento i de buzon)
+        i es i mas 1
+    fin
+    mueve_cursor
+fin
+
+funcion orden_disco
+    respuesta es pide_al_disco con ORDEN_LISTA
+    si respuesta es menor que 0 o respuesta es mayor que TOPE_BUZON
+        fallo_de_disco con respuesta
+    si no
+        pinta_buzon con respuesta
+        pinta_linea con ""
+        pinta_linea con "  Lo ha leído un programa sin permisos, que solo toca ocho puertos."
+        pinta_linea con ""
+    fin
+fin
+
+funcion lee_archivo
+    recoge_tareas con falso
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    i es 1
+    mientras i mas 4 es menor o igual que escritas
+        elemento i de buzon es elemento i mas 4 de orden
+        i es i mas 1
+    fin
+    elemento i de buzon es 0
+    respuesta es pide_al_disco con ORDEN_ABRE
+    si respuesta es menor que 0 o respuesta es mayor que TOPE_BUZON
+        fallo_de_disco con respuesta
+    si no
+        pon_color con BLANCO y NEGRO
+        pinta_buzon con respuesta
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        escribe "archivo leido: " sin salto
+        escribe respuesta
+    fin
+fin
+
+funcion estropea con primera y aviso
+    objetivo es 0
+    si resto_es con primera y "teclado"
+        objetivo es TAREA_TECLADO
+    si no si resto_es con primera y "disco"
+        objetivo es TAREA_DISCO
+    fin
+    si objetivo es 0
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  Solo sé hacerlo con el teclado o con el disco."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    desactiva_interrupciones
+    avisa_a con objetivo y aviso
+    activa_interrupciones
 fin
 
 funcion barra
@@ -2018,7 +2228,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 4"
+    pinta con "día 5"
     pon_color con GRIS y NEGRO
 fin
 
@@ -2034,9 +2244,10 @@ funcion portada
     pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
     pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
     pinta_linea con ""
-    pinta_linea con "  Ya sé leer el teclado español, con su ñ y sus tildes. Y hago varias"
-    pinta_linea con "  cosas a la vez. Los programas nacen sin permisos, solo hablan entre"
-    pinta_linea con "  ellos si tú les dejas, y si intentan algo más, los cierro."
+    pinta_linea con "  Hago varias cosas a la vez. Los programas nacen sin permisos, solo"
+    pinta_linea con "  hablan entre ellos si tú les dejas, y si intentan algo más, los cierro."
+    pinta_linea con "  El teclado y el disco ya no van dentro de mí: son programas, y si se"
+    pinta_linea con "  cuelgan, lanzo otros."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -2048,6 +2259,8 @@ para cada t desde 1 hasta MAX_TAREAS
     limpia_renglon con t
 fin
 portada
+prepara_tarea con TAREA_TECLADO y EL_TECLADO
+prepara_tarea con TAREA_DISCO y EL_DISCO
 prepara_interrupciones
 indicador
 escribe "pantalla lista"

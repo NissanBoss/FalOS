@@ -1,0 +1,10 @@
+Hola:
+
+Si estás leyendo esto, FalOS acaba de leer un disco de verdad.
+
+Esta carta no la conoce el núcleo. La ha sacado del disco un programa sin
+permisos, que corre en el anillo 3 y solo puede tocar ocho puertos. Si este
+archivo estuviera hecho para romperlo, se rompería él, y el sistema lo
+volvería a lanzar.
+
+Mañana, los programas saldrán de aquí.

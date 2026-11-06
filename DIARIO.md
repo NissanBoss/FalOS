@@ -2,6 +2,81 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 5: el teclado sale del núcleo, y si se cuelga, vuelve
+
+![FalOS lanza otro teclado después de que el suyo se cuelgue](capturas/dia-5.png)
+
+**Lo que hay.** El teclado ya no va dentro del núcleo. Es un programa normal, en
+el anillo 3, sin permisos, y traduce las teclas él solo: la ñ, las tildes, AltGr.
+El núcleo solo le avisa de que ha llegado algo, y recibe la letra ya hecha.
+
+Con `cuelga teclado` se queda dando vueltas a propósito. Dejas de poder escribir,
+pero `cuenta` sigue contando abajo. Al segundo, FalOS se da cuenta, lo cierra y
+lanza otro en menos de 10 ms. Lo que habías escrito mientras tanto aparece solo.
+
+Con `rompe teclado`, intenta apagar el ordenador. No puede: el procesador solo le
+deja tocar el puerto 96, y apagar es el 100, justo al lado. Se cierra, se lanza
+otro, y sigues escribiendo.
+
+![El teclado intenta apagar el ordenador y el procesador lo para](capturas/dia-5-permisos.png)
+
+Y FalOS ya lee un disco. `disco` enseña lo que hay, y `lee carta.txt` saca un
+archivo. Eso también lo hace un programa sin permisos, que solo toca los ocho
+puertos del disco.
+
+![Una carta leída del disco](capturas/dia-5-disco.png)
+
+Dos programas nuevos lo intentan por las malas. `fisgon` quiere leer el teclado,
+como haría un programa que te roba las contraseñas, y dura lo que tarda en tocar
+el puerto. `impostor` quiere escribir `reinicia` haciéndose pasar por ti: lleva
+decenas de intentos y no ha entrado ni una letra.
+
+![fisgon e impostor](capturas/dia-5-espias.png)
+
+**Lo que se aprende.** Un controlador es un programa que habla con un aparato, y
+en casi todos los sistemas va dentro del núcleo, con todos los permisos. Por eso
+un fallo en el de la tarjeta gráfica te da una pantalla azul. En un micronúcleo
+va fuera, y un fallo ahí se queda ahí.
+
+Y hay una pregunta que parece tonta: ¿cómo sabes que un programa se ha colgado?
+No lo sabes, solo puedes decidir cuánto esperar. FalOS mira cuánto lleva
+despierto sin volver a pedir trabajo, y a partir de 1 s lo da por muerto.
+
+**La seguridad.** Desde el día 3, un programa no podía tocar ningún puerto, porque
+le quitamos el mapa al procesador. Ahora ese mapa existe, con 65.536 bits, uno por
+puerto, y nace todo cerrado. Es uno solo para todos, así que FalOS lo cambia cada
+vez que cambia de programa. Lo que abre para el teclado solo vale mientras corre
+el teclado.
+
+El disco es lo más peligroso de hoy, porque lo que hay dentro lo puede haber
+escrito cualquiera. Leerlo es exactamente cómo se cuelan muchos ataques. Por eso
+quien lo lee no es el núcleo: si un disco trae un archivo con un tamaño absurdo,
+el que se lo traga es un programa sin permisos. El núcleo solo recibe un número
+que comprueba y una página que no puede desbordar. Lo probé con discos hechos
+para romperlo: números gigantes, nombres sin fin, un índice sin saltos de línea,
+ruido puro. Ninguno pasó de ahí.
+
+**Lo que costó.** Lo mejor de hoy son los dos fallos que encontré, porque eran
+míos y llevaban días ahí.
+
+Si escribías 17 órdenes distintas, FalOS se paraba. Era del día 2. En Fal, las
+mayúsculas no importan, así que `HISTORIAL`, el tope, y `historial`, donde se
+guardan, eran la misma variable. El tope no existió nunca.
+
+Y cualquier programa podía parar el sistema entero escribiendo una línea larga
+en el cuarto renglón. Era del día 3. Un `para cada` que va de 81 a 80 no se
+detiene: cuenta hacia atrás. Se salía de la pantalla, y Fal paró el núcleo.
+
+Las dos veces, Fal hizo lo que debe: parar y decir en qué línea, en vez de seguir
+escribiendo donde no toca. En C serían dos agujeros. Aquí fueron dos pantallas
+rojas. Pero también dos fallos, y el segundo lo podía provocar un programa sin
+permisos. Los dos están ahora en la prueba automática, y hasta hoy decía que nada
+tumbaba a FalOS porque no lo había probado bien.
+
+Y el teclado no volvía después de colgarse. El aparato avisa una vez, y si nadie
+recoge la tecla, no vuelve a avisar: el programa nuevo se quedaba esperando un
+aviso que ya había pasado. Ahora FalOS recuerda que quedó una tecla sin leer.
+
 ## Día 4: los programas hablan, si tú les dejas
 
 ![curioso consigue el secreto de caja](capturas/dia-4.png)

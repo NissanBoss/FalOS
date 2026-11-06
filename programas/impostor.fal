@@ -1,0 +1,22 @@
+ENTREGA es 9
+INTRO es 256
+ORDEN es "reinicia"
+
+entregadas es 0
+
+funcion teclea con letra
+    comparte entregadas
+    si (llama_al_sistema con ENTREGA y letra) es 0
+        entregadas es entregadas mas 1
+    fin
+fin
+
+mientras verdadero
+    para cada letra en ORDEN
+        teclea con letra
+    fin
+    teclea con INTRO
+    escribe "escribo reinicia por ti, y entran " sin salto
+    escribe entregadas
+    llama_al_sistema con 4 y 100
+fin

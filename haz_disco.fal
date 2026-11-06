@@ -1,0 +1,54 @@
+SECTOR es 512
+CARPETA es "disco"
+DESTINO es "disco.img"
+ESPACIO es 2048
+UN_BYTE es " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~\n\t"
+DOS_BYTES es "áéíóúüñÁÉÍÓÚÜÑ¿¡«»ºªç"
+
+funcion bytes_de con texto
+    n es 0
+    para cada letra en texto
+        si contiene con UN_BYTE y letra
+            n es n mas 1
+        si no si contiene con DOS_BYTES y letra
+            n es n mas 2
+        si no
+            falla "Esta letra no sé medirla: " mas letra
+        fin
+    fin
+    devuelve n
+fin
+
+funcion relleno con cuantos
+    trozo es ""
+    repite cuantos veces
+        trozo es trozo mas " "
+    fin
+    devuelve trozo
+fin
+
+siguiente es 1
+indice es "FALDISCO\n"
+contenido es ""
+para cada nombre en archivos de CARPETA
+    texto es lee de (CARPETA mas "/" mas nombre)
+    medida es bytes_de con texto
+    indice es indice mas nombre mas " " mas siguiente mas " " mas medida mas "\n"
+    sobra es medida resto SECTOR
+    si sobra no es igual a 0
+        texto es texto mas relleno con SECTOR menos sobra
+        medida es medida mas SECTOR menos sobra
+    fin
+    contenido es contenido mas texto
+    siguiente es siguiente mas medida entre SECTOR
+fin
+indice es indice mas "\n"
+si largo de indice es mayor que SECTOR
+    falla "No caben tantos archivos en el indice del disco."
+fin
+indice es indice mas relleno con SECTOR menos largo de indice
+graba con DESTINO y indice mas contenido
+para cada s desde siguiente hasta ESPACIO
+    anexa con DESTINO y relleno con SECTOR
+fin
+escribe "disco.img listo: " mas (siguiente menos 1) mas " sectores usados"

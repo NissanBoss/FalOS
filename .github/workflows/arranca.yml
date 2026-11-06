@@ -26,8 +26,10 @@ jobs:
       - name: Instalar QEMU
         run: sudo apt-get update -q && sudo apt-get install -y -q qemu-system-x86
 
-      - name: Compilar FalOS
-        run: fal --nucleo sistema.fal
+      - name: Compilar FalOS y su disco
+        run: |
+          fal --nucleo sistema.fal
+          fal haz_disco.fal
 
       - name: Arrancar
         run: |
@@ -99,3 +101,132 @@ jobs:
           fi
           grep -Eq "curioso pierde el permiso tras [1-9]" permisos.txt
           grep -Eq "ladron cerrado con 0 preguntas y [1-9]" permisos.txt
+
+      - name: El teclado y el disco se cuelgan y vuelven
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lee carta.txt"
+            sleep 2
+            teclea "cuelga teclado"
+            sleep 3
+            teclea "lanza apaga"
+            sleep 2
+            teclea "rompe teclado"
+            sleep 2
+            teclea "cuelga disco"
+            sleep 3
+            teclea "rompe disco"
+            sleep 2
+            teclea "lee carta.txt"
+            sleep 2
+            teclea "lanza fisgon"
+            sleep 3
+            teclea "lanza impostor"
+            sleep 2
+            teclea "para 1"
+            sleep 1
+            echo quit
+          } | timeout 80 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:aparatos.txt -monitor stdio -no-reboot > /dev/null
+          cat aparatos.txt
+          if grep -q "  X  " aparatos.txt; then
+            echo "Un aparato ha tumbado a FalOS"
+            exit 1
+          fi
+          test "$(grep -Ec "archivo leido: [1-9]" aparatos.txt)" = 2
+          grep -q "teclado reiniciado, y van 2" aparatos.txt
+          grep -q "disco reiniciado, y van 2" aparatos.txt
+          grep -q "apaga cerrado por la excepción 13" aparatos.txt
+          grep -q "fisgon cerrado por la excepción 13" aparatos.txt
+          grep -Eq "impostor cerrado con 0 preguntas y [1-9]" aparatos.txt
+
+      - name: Discos hechos para romperlo
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          python3 - <<'FIN'
+          sector = 512
+          indice = (b"FALDISCO\n"
+                    b"bien.txt 1 11\n"
+                    b"vacio.txt 1 0\n"
+                    b"lejos.txt 99999999 10\n"
+                    b"gigante.txt 1 999999999999999999999999999\n"
+                    b"negativo.txt -5 10\n"
+                    b"nombre_de_mas_de_treinta_y_dos_letras_seguidas.txt 1 5\n"
+                    b"ra\x07ro.txt 1 5\n"
+                    b"grande.txt 1 32256\n")
+          open("malo.img", "wb").write(indice.ljust(sector, b" ") + b"hola, malo\n".ljust(sector * 63, b"x"))
+          open("sin_salto.img", "wb").write(b"FALDISCO\n" + b"a" * (sector * 32 - 9))
+          open("ruido.img", "wb").write(bytes(range(256)) * 128)
+          FIN
+          for disco in malo sin_salto ruido; do
+            {
+              sleep 4
+              teclea "disco"
+              sleep 2
+              teclea "lee vacio.txt"
+              sleep 1
+              teclea "lee gigante.txt"
+              sleep 1
+              teclea "lee grande.txt"
+              sleep 2
+              teclea "lee"
+              sleep 1
+              teclea "lee bien.txt"
+              sleep 1
+              echo quit
+            } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+              -drive file=$disco.img,format=raw,if=ide \
+              -serial file:$disco.txt -monitor stdio -no-reboot > /dev/null
+            cat $disco.txt
+            if grep -q "  X  " $disco.txt; then
+              echo "El disco $disco ha tumbado a FalOS"
+              exit 1
+            fi
+          done
+          grep -q "archivo leido: 4096" malo.txt
+
+      - name: Lo que ya tumbo a FalOS
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza bucle"
+            teclea "lanza bucle"
+            teclea "lanza bucle"
+            teclea "lanza larga"
+            for orden in a b c d e f g h i j k l m n o p q r s t; do
+              teclea "$orden"
+            done
+            sleep 1
+            teclea "para 4"
+            sleep 1
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -serial file:antes.txt -monitor stdio -no-reboot > /dev/null
+          cat antes.txt
+          if grep -q "  X  " antes.txt; then
+            echo "Ha vuelto un fallo viejo"
+            exit 1
+          fi
+          grep -q "larga cerrado con" antes.txt

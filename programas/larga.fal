@@ -1,0 +1,3 @@
+escribe "esta línea no cabe en el panel de abajo, así que tiene que cortarse en el borde sin romper nada, por larga que sea"
+escribe "y esta cabe"
+llama_al_sistema con 4 y 1000
