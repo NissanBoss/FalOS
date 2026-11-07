@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS lanza otro teclado después de que el suyo se cuelgue, y todo sigue en marcha](capturas/dia-5.png)
+![FalOS en modo gráfico, con la letra que dibuja un programa sin permisos](capturas/dia-6.png)
 
 ## Por qué
 
@@ -40,12 +40,13 @@ fal haz_disco.fal
 fal --arranca sistema.fal
 ```
 
-`haz_disco.fal` mete lo que hay en la carpeta [disco/](disco) en un `disco.img`, y
-`fal --arranca` lo conecta solo.
+`haz_disco.fal` compila lo que hay en [programas/](programas), lo junta con los
+textos de [disco/](disco) y hace un `disco.img`, y `fal --arranca` lo conecta
+solo.
 
-Todo el sistema está en [sistema.fal](sistema.fal), y los programas que lleva
-dentro, en [programas/](programas). Lo que se va añadiendo cada día está en el
-[diario](DIARIO.md).
+El núcleo está en [sistema.fal](sistema.fal), y los tres programas que necesita
+para ver, oír y leer, en [controladores/](controladores). Lo que se va añadiendo
+cada día está en el [diario](DIARIO.md).
 
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
@@ -63,7 +64,8 @@ El reloj y el teclado avisan por interrupciones, así que mientras espera, el
 procesador duerme.
 
 Y corre programas, varios a la vez, cada uno con 10 ms de procesador por turno.
-Van en el anillo 3, sin permisos, cada uno con sus propias tablas de páginas:
+Salen del disco, y FalOS no se cree lo que dicen: mira su cabecera antes de hacer
+una sola cuenta con ella, y si miente, no los carga. Van en el anillo 3, sin permisos, cada uno con sus propias tablas de páginas:
 no ven la memoria de nadie. Para hacer algo, tienen que pedírselo al sistema.
 Si intentan tocar un aparato o leer memoria ajena, el procesador los para y
 FalOS los cierra sin que caiga nada más.
@@ -74,6 +76,14 @@ lanza primos
 lanza apaga
 lanza espia
 tareas
+```
+
+```
+lanza gigante
+lanza desborda
+lanza fuera
+lanza corto
+lanza carta
 ```
 
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
@@ -90,15 +100,19 @@ prohibe 2 1
 permisos
 ```
 
-El teclado y el disco ya no van dentro del núcleo. Son programas del anillo 3,
-y el procesador solo les deja tocar sus puertos: `teclado` el 96, y `disco` del
-496 al 503. Si uno se cuelga o se rompe, FalOS lo nota, lo cierra y lanza otro
-sin que caiga nada más. Se puede probar:
+El teclado, el disco y la pantalla ya no van dentro del núcleo. Son programas
+del anillo 3, y el procesador solo les deja tocar lo suyo: `teclado`, el puerto
+96; `disco`, del 496 al 503; y `pantalla`, los puertos de la tarjeta gráfica y su
+imagen, y lee lo que hay que pintar sin poder cambiarlo. Si uno se cuelga o se
+rompe, FalOS lo nota, lo cierra y lanza otro sin que caiga nada más. Se puede
+probar:
 
 ```
 lanza cuenta
 cuelga teclado
 rompe teclado
+cuelga pantalla
+rompe pantalla
 disco
 lee carta.txt
 lanza fisgon
@@ -108,23 +122,35 @@ lanza impostor
 Cada vez que se sube algo, GitHub lo arranca en QEMU, comprueba que llega a
 esperar órdenes sin reventar, lanza `apaga` y `espia` y mira que los dos acaban
 cerrados y el sistema sigue. Da un permiso, lo quita y mira que `ladron` no ha
-abierto nada. Cuelga y rompe el teclado y el disco, y comprueba que el teclado
-sigue escribiendo. Y le conecta discos hechos para romperlo.
+abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
+todo vuelve. Le da archivos que mienten sobre lo que son, y le conecta discos
+hechos para romperlo.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
 programa y cada controlador en su propia caja, sin poder tocar lo que no se le
-ha dado expresamente. Los mensajes, las capacidades y los dos primeros
-controladores ya están. Falta sacar del núcleo lo que todavía vive en él.
+ha dado expresamente. Los mensajes, las capacidades y tres controladores ya
+están. Falta sacar del núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay red, el disco solo se lee, y los programas
-  van metidos en FalOS al compilarlo: no se pueden escribir dentro. Es el día 5.
-- **Aún no es un micronúcleo.** El teclado y el disco ya salieron, pero la
-  consola, la pantalla y el vigilante que los reinicia siguen dentro del núcleo,
-  y un fallo ahí para todo. El núcleo no ha adelgazado: sale lo que traduce las
-  teclas y entra lo que vigila, y sigue en unas 2.300 líneas.
+- **Casi todo, de momento.** No hay red ni ventanas ni ratón, y el disco solo se
+  lee: no se puede escribir un programa dentro de FalOS. Es el día 6.
+- **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
+  pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 2.400 líneas,
+  más que ayer, porque ahora también carga programas.
+- **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
+  cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
+  protege es la caja, no saber de dónde viene.
+- **La cabecera se mira, el código no.** Un programa que no miente sobre su forma
+  se carga aunque sea malo. Hace lo que quiera dentro de su caja.
+- **El programa de la pantalla ve todo lo que se pinta, y puede pintar mentiras.**
+  No puede cambiar lo que escribe el núcleo, pero sí enseñarte otra cosa. Aún no
+  hay nada en la pantalla de lo que te puedas fiar del todo.
+- **Los gráficos son los de la tarjeta de QEMU.** Con otra tarjeta, FalOS se queda
+  en modo de texto. En un portátil de verdad haría falta otro camino.
+- **La letra tiene 119 caracteres.** El español y poco más.
 - **El programa del teclado ve todo lo que escribes.** Está en su caja y no
   puede hacer nada más, pero si alguien lo cambiara por otro, lo leería todo.
 - **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
@@ -139,7 +165,7 @@ controladores ya están. Falta sacar del núcleo lo que todavía vive en él.
   das tú desde la consola: un programa no le puede pasar una a otro.
 - **seL4 está demostrado matemáticamente, y FalOS no.** Copiar la idea no
   copia la demostración.
-- **Solo el teclado español.** Y sin €: la pantalla de 1981 no lo tiene.
+- **Solo el teclado español.** Y sin €: todavía no lo he dibujado.
 - **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
   no se usa todavía.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo

@@ -2,6 +2,79 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 6: los programas salen del disco, y FalOS dibuja su propia letra
+
+![FalOS en modo gráfico](capturas/dia-6.png)
+
+**Lo que hay.** Se acabó la pantalla de 1981. FalOS ya pinta píxeles: 960 por 600,
+con 32 bits por píxel, y una letra que no viene de ningún sitio. Cada carácter
+está dibujado a mano en [un archivo de texto](controladores/letra.txt), con puntos
+y almohadillas, en una rejilla de 6 por 12. Son 119. Al arrancar, FalOS los agranda
+al doble y redondea las esquinas.
+
+Quien pinta tampoco va dentro del núcleo. Es el tercer programa sin permisos,
+como el teclado y el disco. Con `cuelga pantalla`, la imagen se congela un segundo
+y vuelve. Nada de lo escrito se pierde, porque lo que hay que pintar lo guarda el
+núcleo en una página que ese programa solo puede leer.
+
+![La pantalla se cuelga, se rompe y vuelve](capturas/dia-6-pantalla.png)
+
+Y los programas ya no van metidos en FalOS. Están en el disco, como archivos.
+`lanza cuenta` los busca, los trae y les monta su caja. Lo único que FalOS lleva
+dentro son los tres controladores que necesita para ver, oír y leer.
+
+![Lo que hay en el disco](capturas/dia-6-disco.png)
+
+**Lo que se aprende.** Hasta hoy, FalOS se fiaba de lo que ejecutaba, porque lo
+llevaba compilado dentro. Un archivo de un disco es otra cosa: lo ha podido escribir
+cualquiera. Y lo primero que se lee de un programa es su cabecera, cuatro números
+en los que el propio programa dice cuánto ocupa, cuánta memoria quiere y por dónde
+empieza. Es decir, le estás preguntando al desconocido quién es.
+
+Un cargador que se lo cree es uno de los fallos más viejos que hay. Por eso `haz_disco`
+mete en el disco cinco archivos hechos para engañar a FalOS:
+
+![FalOS se niega a cargar cinco archivos](capturas/dia-6-mentiras.png)
+
+`gigante` dice que necesita un terabyte. `fuera` dice que empieza dentro del núcleo.
+`corto` está a medias. `carta` ni siquiera es un programa. Y `desborda` es el bueno:
+dice que ocupa 9.223.372.036.854.775.807 bytes, el número más grande que cabe. Si
+FalOS sumara algo a ese número para calcular cuántas páginas hacen falta, la cuenta
+se saldría, y Fal pararía el sistema entero. Un archivo tumbaría el núcleo sin
+ejecutar ni una instrucción. Por eso primero se compara con el tope y solo después
+se hace ninguna cuenta.
+
+**La seguridad.** Hay un detalle que no se ve. La cabecera llega por una página que
+FalOS comparte con el programa del disco, y ese programa no es de fiar: podría
+cambiar los números justo después de que FalOS los mire. Por eso FalOS los copia una
+vez y ya solo usa su copia. Es un fallo con nombre propio, se lee en un momento y se
+usa en otro, y lo que lo evita es una línea aburrida.
+
+Al programa de la pantalla se le da lo justo: los puertos para encender los gráficos
+y la imagen. No toca el bus PCI, que le daría poder sobre todos los aparatos: esa
+dirección la busca el núcleo al arrancar y se la deja puesta. Y la página con el
+texto que hay que pintar la tiene de solo lectura.
+
+Después de cargar y cerrar programas y de rechazar los cinco archivos, FalOS sigue
+usando la misma memoria prestada que al arrancar: 760 KB.
+
+**Lo que costó.** La pantalla salió negra, y el programa que la pinta se reiniciaba
+cientos de veces sin decir por qué. Era la misma trampa del día 2: en Fal las
+mayúsculas no importan, así que `SUBIDAS` y `subidas` eran la misma variable. Una
+variable nueva tapaba la constante, y el programa reventaba al primer pintado. FalOS
+lo relanzaba, y reventaba otra vez.
+
+Luego el aviso rojo. Si el núcleo se para con los gráficos puestos, tiene que volver al
+modo de texto para contarlo, o verías una pantalla congelada. Apagar los gráficos
+no basta: al encenderlos, la tarjeta había cambiado una docena de registros y
+no los devuelve. Además, la letra del modo de texto vive en la misma memoria que
+la imagen, y pintar encima la borraba. Por eso FalOS deja libres las primeras 70
+filas de esa memoria.
+
+Fal también ha crecido hoy: sabe hablar de 16 y de 32 bits con los aparatos, copiar
+memoria de golpe sin saltarse las comprobaciones, meter un archivo en un programa
+y compilar programas desde otro programa de Fal, que es lo que hace `haz_disco`.
+
 ## Día 5: el teclado sale del núcleo, y si se cuelga, vuelve
 
 ![FalOS lanza otro teclado después de que el suyo se cuelgue](capturas/dia-5.png)

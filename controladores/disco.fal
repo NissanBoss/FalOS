@@ -4,7 +4,7 @@ AVISO_ROMPE es 0 menos 3
 SIN_RESPUESTA es 0 menos 100
 
 ORDEN_LISTA es 1
-ORDEN_ABRE es 2
+ORDEN_TROZO es 16
 
 NO_HAY_DISCO es 0 menos 1
 NO_ES_MIO es 0 menos 2
@@ -238,6 +238,7 @@ funcion lista
     saca con ", "
     saca_numero con (cociente con total_sectores y 2)
     saca con " KB\n\n"
+    en_fila es 0
     mientras queda_entrada
         si lee_linea
             saca con "    "
@@ -245,18 +246,37 @@ funcion lista
                 saca_letra con (elemento 1024 mas i de mesa)
             fin
             hueco es nombre_largo
-            mientras hueco es menor que 20
+            mientras hueco es menor que 16
+                saca_letra con 32
+                hueco es hueco mas 1
+            fin
+            hueco es cifras_de con campo_bytes
+            mientras hueco es menor que 7
                 saca_letra con 32
                 hueco es hueco mas 1
             fin
             saca_numero con campo_bytes
-            saca con " bytes\n"
+            saca con " B"
         si no
-            saca con "    una entrada dañada, que me salto\n"
+            saca con "    una entrada dañada, que me salto"
+        fin
+        en_fila es en_fila mas 1
+        si (en_fila resto 2) es 0
+            saca con "\n"
         fin
         salta_hasta_fin_de_linea
     fin
+    si (en_fila resto 2) es 1
+        saca con "\n"
+    fin
     devuelve salida
+fin
+
+funcion cifras_de con n
+    si n es mayor que 9
+        devuelve (cifras_de con (cociente con n y 10)) mas 1
+    fin
+    devuelve 1
 fin
 
 funcion mismo_nombre con pedido y largo_pedido
@@ -271,7 +291,7 @@ funcion mismo_nombre con pedido y largo_pedido
     devuelve verdadero
 fin
 
-funcion abre_archivo
+funcion abre_archivo con trozo
     largo_pedido es 0
     mientras largo_pedido es menor que LARGO_NOMBRE y (elemento largo_pedido mas 1 de buzon) no es igual a 0
         largo_pedido es largo_pedido mas 1
@@ -284,7 +304,7 @@ funcion abre_archivo
     mientras queda_entrada
         si lee_linea
             si mismo_nombre con 0 y largo_pedido
-                devuelve trae_archivo
+                devuelve trae_archivo con trozo
             fin
         fin
         salta_hasta_fin_de_linea
@@ -292,15 +312,19 @@ funcion abre_archivo
     devuelve NO_ESTA
 fin
 
-funcion trae_archivo
-    bytes es campo_bytes
+funcion trae_archivo con trozo
+    desde es trozo por TOPE_ARCHIVO
+    si desde es mayor o igual que campo_bytes
+        devuelve 0
+    fin
+    bytes es campo_bytes menos desde
     si bytes es mayor que TOPE_ARCHIVO
         bytes es TOPE_ARCHIVO
     fin
     sectores es cociente con bytes mas 511 y 512
     s es 0
     mientras s es menor que sectores
-        si no (lee_sector con campo_sector mas s y buzon y s por 512)
+        si no (lee_sector con campo_sector mas (cociente con desde y 512) mas s y buzon y s por 512)
             devuelve NO_SE_LEE
         fin
         s es s mas 1
@@ -319,7 +343,7 @@ mientras verdadero
         pon_en_puerto con 100 y 254
     si no si aviso es ORDEN_LISTA
         respuesta es lista
-    si no si aviso es ORDEN_ABRE
-        respuesta es abre_archivo
+    si no si aviso es mayor o igual que ORDEN_TROZO
+        respuesta es abre_archivo con aviso menos ORDEN_TROZO
     fin
 fin

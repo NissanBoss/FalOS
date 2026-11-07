@@ -1,23 +1,9 @@
 SECTOR es 512
-CARPETA es "disco"
+TEXTOS es "disco"
+PROGRAMAS es "programas"
 DESTINO es "disco.img"
-ESPACIO es 2048
-UN_BYTE es " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~\n\t"
-DOS_BYTES es "áéíóúüñÁÉÍÓÚÜÑ¿¡«»ºªç"
-
-funcion bytes_de con texto
-    n es 0
-    para cada letra en texto
-        si contiene con UN_BYTE y letra
-            n es n mas 1
-        si no si contiene con DOS_BYTES y letra
-            n es n mas 2
-        si no
-            falla "Esta letra no sé medirla: " mas letra
-        fin
-    fin
-    devuelve n
-fin
+TEMPORAL es "disco.tmp"
+ESPACIO es 8192
 
 funcion relleno con cuantos
     trozo es ""
@@ -27,27 +13,76 @@ funcion relleno con cuantos
     devuelve trozo
 fin
 
+funcion palabra_en con bytes y sitio y valor
+    resto_valor es valor
+    para cada i desde 0 hasta 7
+        elemento sitio mas i de bytes es resto_valor resto 256
+        resto_valor es abajo de (resto_valor entre 256)
+    fin
+fin
+
 siguiente es 1
 indice es "FALDISCO\n"
-contenido es ""
-para cada nombre en archivos de CARPETA
-    texto es lee de (CARPETA mas "/" mas nombre)
-    medida es bytes_de con texto
+
+funcion mete con nombre y bytes
+    comparte siguiente y indice
+    medida es largo de bytes
     indice es indice mas nombre mas " " mas siguiente mas " " mas medida mas "\n"
+    anexa_bytes con TEMPORAL y bytes
     sobra es medida resto SECTOR
     si sobra no es igual a 0
-        texto es texto mas relleno con SECTOR menos sobra
+        anexa con TEMPORAL y relleno con SECTOR menos sobra
         medida es medida mas SECTOR menos sobra
     fin
-    contenido es contenido mas texto
     siguiente es siguiente mas medida entre SECTOR
 fin
+
+funcion copia_de con original
+    otra es lista vacia
+    para cada b en original
+        agrega b a otra
+    fin
+    devuelve otra
+fin
+
+graba con TEMPORAL y ""
+para cada nombre en archivos de TEXTOS
+    mete con nombre y (lee_bytes de (TEXTOS mas "/" mas nombre))
+fin
+para cada nombre en archivos de PROGRAMAS
+    bytes es compila_programa de (PROGRAMAS mas "/" mas nombre)
+    mete con (reemplaza de nombre con ".fal" y ".prg") y bytes
+fin
+
+modelo es compila_programa de (PROGRAMAS mas "/cuenta.fal")
+
+gigante es copia_de con modelo
+palabra_en con gigante y 25 y 1099511627776
+mete con "gigante.prg" y gigante
+
+desborda es copia_de con modelo
+palabra_en con desborda y 17 y 9223372036854775807
+mete con "desborda.prg" y desborda
+
+fuera es copia_de con modelo
+palabra_en con fuera y 9 y 1048576
+mete con "fuera.prg" y fuera
+
+corto es lista vacia
+para cada i desde 1 hasta 5000
+    agrega elemento i de modelo a corto
+fin
+mete con "corto.prg" y corto
+mete con "carta.prg" y (lee_bytes de (TEXTOS mas "/carta.txt"))
+
 indice es indice mas "\n"
 si largo de indice es mayor que SECTOR
     falla "No caben tantos archivos en el indice del disco."
 fin
 indice es indice mas relleno con SECTOR menos largo de indice
-graba con DESTINO y indice mas contenido
+graba con DESTINO y indice
+anexa_bytes con DESTINO y (lee_bytes de TEMPORAL)
+borra de TEMPORAL
 para cada s desde siguiente hasta ESPACIO
     anexa con DESTINO y relleno con SECTOR
 fin

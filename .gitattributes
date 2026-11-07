@@ -1,3 +1,4 @@
 * text=auto
 *.fal text eol=lf
 disco/* text eol=lf
+controladores/*.txt text eol=lf

@@ -34,6 +34,7 @@ jobs:
       - name: Arrancar
         run: |
           timeout 20 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
             -serial file:serie.txt -no-reboot || true
           cat serie.txt
           if grep -q "  X  " serie.txt; then
@@ -61,6 +62,7 @@ jobs:
             sleep 4
             echo quit
           } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
             -serial file:programas.txt -monitor stdio -no-reboot > /dev/null
           cat programas.txt
           if grep -q "  X  " programas.txt; then
@@ -93,6 +95,7 @@ jobs:
             sleep 1
             echo quit
           } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
             -serial file:permisos.txt -monitor stdio -no-reboot > /dev/null
           cat permisos.txt
           if grep -q "  X  " permisos.txt; then
@@ -223,6 +226,7 @@ jobs:
             sleep 1
             echo quit
           } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
             -serial file:antes.txt -monitor stdio -no-reboot > /dev/null
           cat antes.txt
           if grep -q "  X  " antes.txt; then
@@ -230,3 +234,77 @@ jobs:
             exit 1
           fi
           grep -q "larga cerrado con" antes.txt
+
+      - name: Archivos del disco que mienten
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza gigante"
+            teclea "lanza desborda"
+            teclea "lanza fuera"
+            teclea "lanza corto"
+            teclea "lanza carta"
+            sleep 3
+            teclea "lanza cuenta"
+            sleep 2
+            teclea "para 1"
+            sleep 1
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:mentiras.txt -monitor stdio -no-reboot > /dev/null
+          cat mentiras.txt
+          if grep -q "  X  " mentiras.txt; then
+            echo "Un archivo ha tumbado a FalOS"
+            exit 1
+          fi
+          test "$(grep -c "^rechazado: " mentiras.txt)" = 5
+          grep -q "cuenta cerrado con" mentiras.txt
+
+      - name: La pantalla se cuelga y vuelve
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            echo "screendump antes.ppm"
+            sleep 1
+            teclea "cuelga pantalla"
+            sleep 3
+            teclea "rompe pantalla"
+            sleep 2
+            teclea "ayuda"
+            sleep 2
+            echo "screendump despues.ppm"
+            sleep 1
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:graficos.txt -monitor stdio -no-reboot > /dev/null
+          cat graficos.txt
+          if grep -q "  X  " graficos.txt; then
+            echo "La pantalla ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "pantalla reiniciado, y van 2" graficos.txt
+          grep -q "pantalla cerrado por la excepción 13" graficos.txt
+          python3 - <<'FIN'
+          for nombre in ("antes.ppm", "despues.ppm"):
+              datos = open(nombre, "rb").read()
+              cabecera = datos.split(b"\n", 3)
+              assert cabecera[1] == b"960 600", cabecera[1]
+              colores = {cabecera[3][i:i + 3] for i in range(0, len(cabecera[3]), 3)}
+              assert len(colores) > 3, nombre
+          FIN

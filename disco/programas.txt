@@ -1,0 +1,20 @@
+  cuenta      cuenta los segundos, uno a uno
+  primos      busca números primos sin parar
+  caja        guarda un secreto y contesta si le preguntan
+  curioso     quiere saber el secreto de la caja
+
+  apaga       intenta apagar el ordenador
+  espia       intenta leer la memoria de FalOS
+  bucle       no suelta el procesador nunca
+  ladron      prueba miles de llaves a ver si alguna abre algo
+  fisgon      quiere leer lo que escribes en el teclado
+  impostor    quiere escribir órdenes haciéndose pasar por ti
+  larga       escribe una línea que no cabe
+
+  gigante     dice que necesita un terabyte de memoria
+  desborda    dice que ocupa un número que no cabe en ninguna cuenta
+  fuera       quiere empezar a correr dentro del núcleo
+  corto       está a medias
+  carta       ni siquiera es un programa
+
+  Todos salen del disco, corren en el anillo 3 y nacen sin permisos.

@@ -1,0 +1,265 @@
+ESPERA es 8
+CEDE es 2
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+
+INDICE es 462
+DATOS es 463
+REG_ANCHO es 1
+REG_ALTO es 2
+REG_BITS es 3
+REG_ENCENDIDO es 4
+REG_ANCHO_VIRTUAL es 6
+REG_ALTO_VIRTUAL es 7
+REG_DESPLAZADO es 9
+ENCENDIDO_SIN_BORRAR es 193
+
+ANCHO es 80
+ALTO es 25
+ARRIBA es 2
+ABAJO es 21
+LETRA_ANCHO es 12
+LETRA_ALTO es 24
+CHICA_ANCHO es 6
+CHICA_ALTO es 12
+PIXELES es 288
+EN_ANCHO es 960
+EN_ALTO es 600
+SALTO_VGA es 70
+SIN_PINTAR es 65535
+CURSOR_EN es 1
+SUBIDAS es 2
+
+rejilla es region con 807399424 y 2000 y 2
+control es region con 807403424 y 8 y 8
+pintado es region con 807395328 y 2000 y 2
+tintas es region con 807399328 y 16 y 4
+letras es region con 807313408 y 73728
+chica es region con 807387136 y 72
+video es region con 809769472 y 576000 y 4
+letra_dibujada es incluye_archivo de "controladores/letra.txt"
+
+subidas_vistas es 0
+cursor_pintado es 0 menos 1
+
+funcion registro con cual y valor
+    pon_palabra con INDICE y cual
+    pon_palabra con DATOS y valor
+fin
+
+funcion enciende_graficos
+    registro con REG_ENCENDIDO y 0
+    registro con REG_ANCHO y EN_ANCHO
+    registro con REG_ALTO y EN_ALTO
+    registro con REG_BITS y 32
+    registro con REG_ENCENDIDO y ENCENDIDO_SIN_BORRAR
+    registro con REG_ANCHO_VIRTUAL y EN_ANCHO
+    registro con REG_ALTO_VIRTUAL y EN_ALTO mas SALTO_VGA
+    registro con REG_DESPLAZADO y SALTO_VGA
+fin
+
+funcion pon_tinta con i y rojo y verde y azul
+    elemento i mas 1 de tintas es rojo por 65536 mas verde por 256 mas azul
+fin
+
+funcion prepara_tintas
+    pon_tinta con 0 y 13 y 17 y 23
+    pon_tinta con 1 y 31 y 58 y 138
+    pon_tinta con 2 y 46 y 139 y 87
+    pon_tinta con 3 y 32 y 142 y 158
+    pon_tinta con 4 y 192 y 57 y 43
+    pon_tinta con 5 y 142 y 68 y 173
+    pon_tinta con 6 y 180 y 120 y 30
+    pon_tinta con 7 y 196 y 203 y 212
+    pon_tinta con 8 y 110 y 118 y 129
+    pon_tinta con 9 y 88 y 166 y 255
+    pon_tinta con 10 y 86 y 211 y 100
+    pon_tinta con 11 y 57 y 197 y 207
+    pon_tinta con 12 y 248 y 113 y 104
+    pon_tinta con 13 y 210 y 168 y 255
+    pon_tinta con 14 y 227 y 179 y 65
+    pon_tinta con 15 y 240 y 246 y 252
+fin
+
+funcion en_chica con x y y
+    columna es x
+    fila es y
+    si columna es menor que 0
+        columna es 0
+    si no si columna es mayor o igual que CHICA_ANCHO
+        columna es CHICA_ANCHO menos 1
+    fin
+    si fila es menor que 0
+        fila es 0
+    si no si fila es mayor o igual que CHICA_ALTO
+        fila es CHICA_ALTO menos 1
+    fin
+    devuelve elemento fila por CHICA_ANCHO mas columna mas 1 de chica
+fin
+
+funcion agranda con codigo
+    base es codigo por PIXELES
+    para cada y desde 0 hasta CHICA_ALTO menos 1
+        para cada x desde 0 hasta CHICA_ANCHO menos 1
+            b es en_chica con x y y menos 1
+            d es en_chica con x menos 1 y y
+            e es en_chica con x y y
+            f es en_chica con x mas 1 y y
+            h es en_chica con x y y mas 1
+            a1 es e
+            a2 es e
+            a3 es e
+            a4 es e
+            si b no es igual a h y d no es igual a f
+                si d es b
+                    a1 es d
+                fin
+                si b es f
+                    a2 es f
+                fin
+                si d es h
+                    a3 es d
+                fin
+                si h es f
+                    a4 es f
+                fin
+            fin
+            sitio es base mas y por 24 mas x por 2
+            elemento sitio mas 1 de letras es a1
+            elemento sitio mas 2 de letras es a2
+            elemento sitio mas 13 de letras es a3
+            elemento sitio mas 14 de letras es a4
+        fin
+    fin
+fin
+
+funcion prepara_letras
+    i es 1
+    total es largo de letra_dibujada
+    codigo es 0
+    renglon es 0
+    mientras i es menor o igual que total
+        b es elemento i de letra_dibujada
+        si b es 46 o b es 35
+            para cada c desde 1 hasta CHICA_ANCHO
+                si (elemento i mas c menos 1 de letra_dibujada) es 35
+                    elemento renglon por CHICA_ANCHO mas c de chica es 1
+                si no
+                    elemento renglon por CHICA_ANCHO mas c de chica es 0
+                fin
+            fin
+            i es i mas CHICA_ANCHO
+            renglon es renglon mas 1
+            si renglon es CHICA_ALTO
+                agranda con codigo
+                llama_al_sistema con CEDE
+            fin
+        si no si b es mayor o igual que 48 y b es menor o igual que 57
+            codigo es 0
+            mientras (elemento i de letra_dibujada) es mayor o igual que 48
+                codigo es codigo por 10 mas (elemento i de letra_dibujada) menos 48
+                i es i mas 1
+            fin
+            renglon es 0
+        si no
+            i es i mas 1
+        fin
+    fin
+fin
+
+funcion pinta_casilla con i y valor
+    colores es cociente con valor y 256
+    fondo es elemento (cociente con colores y 16) mas 1 de tintas
+    tinta es elemento (colores resto 16) mas 1 de tintas
+    sitio es (cociente con i menos 1 y ANCHO) por LETRA_ALTO por EN_ANCHO mas ((i menos 1) resto ANCHO) por LETRA_ANCHO
+    punto es (valor resto 256) por PIXELES
+    repite LETRA_ALTO veces
+        para cada x desde 1 hasta LETRA_ANCHO
+            si (elemento punto mas x de letras) es 0
+                elemento sitio mas x de video es fondo
+            si no
+                elemento sitio mas x de video es tinta
+            fin
+        fin
+        punto es punto mas LETRA_ANCHO
+        sitio es sitio mas EN_ANCHO
+    fin
+fin
+
+funcion borra_cursor
+    si cursor_pintado es mayor o igual que 0 y cursor_pintado es menor que ALTO por ANCHO
+        pinta_casilla con cursor_pintado mas 1 y (elemento cursor_pintado mas 1 de pintado)
+    fin
+fin
+
+funcion pinta_cursor
+    comparte cursor_pintado
+    cursor_pintado es elemento CURSOR_EN de control
+    si cursor_pintado es mayor o igual que 0 y cursor_pintado es menor que ALTO por ANCHO
+        tinta es elemento 16 de tintas
+        sitio es (cociente con cursor_pintado y ANCHO) por LETRA_ALTO por EN_ANCHO mas (cursor_pintado resto ANCHO) por LETRA_ANCHO
+        sitio es sitio mas 22 por EN_ANCHO
+        repite 2 veces
+            para cada x desde 1 hasta LETRA_ANCHO
+                elemento sitio mas x de video es tinta
+            fin
+            sitio es sitio mas EN_ANCHO
+        fin
+    fin
+fin
+
+funcion sube_lo_pintado
+    comparte subidas_vistas
+    ahora es elemento SUBIDAS de control
+    cuantas es ahora menos subidas_vistas
+    subidas_vistas es ahora
+    filas es ABAJO menos ARRIBA mas 1
+    si cuantas es mayor que 0 y cuantas es menor que filas
+        por_fila es LETRA_ALTO por EN_ANCHO
+        copia_region con video y por_fila mas 1 y video y (1 mas cuantas) por por_fila mas 1 y (filas menos cuantas) por por_fila
+        copia_region con pintado y ANCHO mas 1 y pintado y (1 mas cuantas) por ANCHO mas 1 y (filas menos cuantas) por ANCHO
+    fin
+fin
+
+funcion pinta_lo_nuevo
+    i es 1
+    mientras i es menor o igual que ALTO por ANCHO
+        valor es elemento i de rejilla
+        si valor no es igual a (elemento i de pintado)
+            elemento i de pintado es valor
+            pinta_casilla con i y valor
+        fin
+        si (i resto ANCHO) es 0
+            llama_al_sistema con CEDE
+        fin
+        i es i mas 1
+    fin
+fin
+
+funcion pinta_todo
+    borra_cursor
+    sube_lo_pintado
+    pinta_lo_nuevo
+    pinta_cursor
+fin
+
+para cada i desde 1 hasta ALTO por ANCHO
+    elemento i de pintado es SIN_PINTAR
+fin
+prepara_tintas
+prepara_letras
+enciende_graficos
+subidas_vistas es elemento SUBIDAS de control
+pinta_todo
+
+mientras verdadero
+    aviso es llama_al_sistema con ESPERA y SIN_RESPUESTA
+    si aviso es AVISO_CUELGA
+        mientras verdadero
+        fin
+    si no si aviso es AVISO_ROMPE
+        pon_en_puerto con 100 y 254
+    fin
+    pinta_todo
+fin

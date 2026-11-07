@@ -25,6 +25,11 @@ columna es 1
 color es GRIS
 
 a_medias es 0
+hay_graficos es falso
+pantalla_sucia es falso
+control es nada
+CURSOR_EN es 1
+SUBIDAS es 2
 
 funcion pon_color con letra y fondo
     comparte color
@@ -51,6 +56,13 @@ funcion mueve_cursor
     pon_en_puerto con 981 y (sitio resto 256)
     pon_en_puerto con 980 y 14
     pon_en_puerto con 981 y (cociente con sitio y 256)
+    elemento CURSOR_EN de control es sitio
+    ensucia
+fin
+
+funcion ensucia
+    comparte pantalla_sucia
+    pantalla_sucia es verdadero
 fin
 
 funcion pon_letra con codigo
@@ -77,12 +89,11 @@ funcion baja
 fin
 
 funcion sube_todo
-    para cada i desde ANCHO mas 1 hasta ANCHO por (ABAJO menos 1)
-        elemento i de pantalla es elemento i mas ANCHO de pantalla
-    fin
+    copia_region con pantalla y ANCHO mas 1 y pantalla y ANCHO por 2 mas 1 y ANCHO por (ABAJO menos 2)
     para cada i desde ANCHO por (ABAJO menos 1) mas 1 hasta ANCHO por ABAJO
         elemento i de pantalla es color por 256 mas 32
     fin
+    elemento SUBIDAS de control es (elemento SUBIDAS de control) mas 1
 fin
 
 funcion pon_byte con b
@@ -119,14 +130,18 @@ funcion en_437 con primero y segundo
             devuelve 154
         si no si segundo es 137
             devuelve 144
+        si no si segundo es 167
+            devuelve 135
+        si no si segundo es 135
+            devuelve 128
         si no si segundo es 129
-            devuelve 65
+            devuelve mayuscula_con_tilde con 65 y 181
         si no si segundo es 141
-            devuelve 73
+            devuelve mayuscula_con_tilde con 73 y 214
         si no si segundo es 147
-            devuelve 79
+            devuelve mayuscula_con_tilde con 79 y 224
         si no si segundo es 154
-            devuelve 85
+            devuelve mayuscula_con_tilde con 85 y 233
         fin
     si no si primero es 194
         si segundo es 191
@@ -144,6 +159,13 @@ funcion en_437 con primero y segundo
         fin
     fin
     devuelve 63
+fin
+
+funcion mayuscula_con_tilde con en_texto y en_mi_letra
+    si hay_graficos
+        devuelve en_mi_letra
+    fin
+    devuelve en_texto
 fin
 
 funcion pinta con t
@@ -347,9 +369,50 @@ fin
 reparte_memoria
 protege_memoria
 
+rejilla es pide_pagina
+control es region con rejilla mas ANCHO por ALTO por 2 y 8 y 8
+memoria_de_video es 0
+PCI_DIRECCION es 3320
+PCI_DATOS es 3324
+PCI_ACTIVO es 2147483648
+TARJETA_QEMU es 286331444
+BAR_0 es 16
+GRAFICOS_INDICE es 462
+GRAFICOS_DATOS es 463
+VERSION_MINIMA es 45248
+VERSION_MAXIMA es 45253
+
+funcion lee_pci con ranura y registro
+    pon_doble con PCI_DIRECCION y PCI_ACTIVO mas ranura por 2048 mas registro
+    devuelve lee_doble de PCI_DATOS
+fin
+
+funcion busca_graficos
+    comparte hay_graficos y memoria_de_video y pantalla
+    pon_palabra con GRAFICOS_INDICE y 0
+    version es lee_palabra de GRAFICOS_DATOS
+    si version es menor que VERSION_MINIMA o version es mayor que VERSION_MAXIMA
+        devuelve nada
+    fin
+    para cada ranura desde 0 hasta 31
+        si (lee_pci con ranura y 0) es TARJETA_QEMU
+            base es lee_pci con ranura y BAR_0
+            memoria_de_video es base menos base resto 16
+            si (base resto 8) es 0 y memoria_de_video es mayor que 0 y (memoria_de_video resto DOS_MEGAS) es 0
+                hay_graficos es verdadero
+                pantalla es region con rejilla y ANCHO por ALTO y 2
+            fin
+            devuelve nada
+        fin
+    fin
+fin
+
+busca_graficos
+
 LARGO_ORDEN es 70
 INICIO es 3
-orden es region con pide_pagina y LARGO_ORDEN
+orden_en es pide_pagina
+orden es region con orden_en y LARGO_ORDEN
 escritas es 0
 pos es 0
 
@@ -390,8 +453,12 @@ USUARIO es 4
 MAGIA es 20071938299543878
 DONDE_VAN es 805306368
 TOPE_PROGRAMA es 1048576
+LARGO_CABECERA es 32
 SITIO_MESA es 511
 SITIO_BUZON es 512
+SITIO_TALLER es 490
+PAGINAS_TALLER es 20
+SITIO_VIDEO es 387
 BANDERAS es 514
 SEGMENTO_CODIGO es 27
 SEGMENTO_DATOS es 35
@@ -421,7 +488,8 @@ MAX_TAREAS es 4
 CONSOLA es 5
 TAREA_TECLADO es 6
 TAREA_DISCO es 7
-ULTIMA_TAREA es 7
+TAREA_PANTALLA es 8
+ULTIMA_TAREA es 8
 SIN_USAR es 0
 EN_MARCHA es 1
 DORMIDA es 2
@@ -438,13 +506,14 @@ SE_COLGO es 0 menos 3
 DE_INICIO es 14
 
 AVISO_TECLA es 1
+AVISO_PINTA es 1
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
 SIN_RESPUESTA es 0 menos 100
 PACIENCIA es 100
 
 ORDEN_LISTA es 1
-ORDEN_ABRE es 2
+ORDEN_TROZO es 16
 NO_HAY_DISCO es 0 menos 1
 NO_ES_MIO es 0 menos 2
 NO_ESTA es 0 menos 3
@@ -454,8 +523,12 @@ TOPE_BUZON es 4096
 
 BYTE_TECLADO es 13
 BYTE_DISCO es 63
+BYTE_GRAFICOS es 58
+BYTE_GRAFICOS_ALTO es 59
 SOLO_EL_96 es 254
 LOS_OCHO es 0
+INDICE_Y_DATOS es 63
+EL_DE_DETRAS es 254
 CERRADOS es 255
 
 estados_tarea es region con pide_pagina y 512 y 8
@@ -465,7 +538,9 @@ pilas es region con pide_pagina y 512 y 8
 hora_de_despertar es region con pide_pagina y 512 y 8
 listas_de_paginas es region con pide_pagina y 512 y 8
 paginas_usadas es region con pide_pagina y 512 y 8
-programa_de es region con pide_pagina y 512 y 8
+nombres_en es pide_pagina
+nombres es region con nombres_en y 4096
+nombre_mide es region con pide_pagina y 512 y 8
 programa_tamano es region con pide_pagina y 512 y 8
 tiempo_de es region con pide_pagina y 512 y 8
 columna_de es region con pide_pagina y 512 y 8
@@ -497,109 +572,53 @@ peticion_abierta es falso
 disco_listo es falso
 resultado_disco es 0
 tecla_sin_leer es falso
+primera_de_codigo es 0
 puertos es region con mapa_de_puertos y 8192
 
 elemento CONSOLA de estados_tarea es EN_MARCHA
 elemento CONSOLA de raices es raiz_nucleo
 
-CUANTOS_PROGRAMAS es 11
-EL_TECLADO es 12
-EL_DISCO es 13
-cuenta_imagen es incluye_programa de "programas/cuenta.fal"
-primos_imagen es incluye_programa de "programas/primos.fal"
-apaga_imagen es incluye_programa de "programas/apaga.fal"
-espia_imagen es incluye_programa de "programas/espia.fal"
-bucle_imagen es incluye_programa de "programas/bucle.fal"
-caja_imagen es incluye_programa de "programas/caja.fal"
-curioso_imagen es incluye_programa de "programas/curioso.fal"
-ladron_imagen es incluye_programa de "programas/ladron.fal"
-fisgon_imagen es incluye_programa de "programas/fisgon.fal"
-impostor_imagen es incluye_programa de "programas/impostor.fal"
-larga_imagen es incluye_programa de "programas/larga.fal"
-teclado_imagen es incluye_programa de "programas/teclado.fal"
-disco_imagen es incluye_programa de "programas/disco.fal"
+teclado_imagen es incluye_programa de "controladores/teclado.fal"
+disco_imagen es incluye_programa de "controladores/disco.fal"
+pantalla_imagen es incluye_programa de "controladores/pantalla.fal"
 
-funcion imagen_de con n
-    si n es 1
-        devuelve cuenta_imagen
-    si no si n es 2
-        devuelve primos_imagen
-    si no si n es 3
-        devuelve apaga_imagen
-    si no si n es 4
-        devuelve espia_imagen
-    si no si n es 5
-        devuelve bucle_imagen
-    si no si n es 6
-        devuelve caja_imagen
-    si no si n es 7
-        devuelve curioso_imagen
-    si no si n es 8
-        devuelve ladron_imagen
-    si no si n es 9
-        devuelve fisgon_imagen
-    si no si n es 10
-        devuelve impostor_imagen
-    si no si n es 11
-        devuelve larga_imagen
-    si no si n es EL_TECLADO
+funcion imagen_de con t
+    si t es TAREA_TECLADO
         devuelve teclado_imagen
+    si no si t es TAREA_DISCO
+        devuelve disco_imagen
     fin
-    devuelve disco_imagen
+    devuelve pantalla_imagen
 fin
 
-funcion nombre_de con n
-    si n es 1
-        devuelve "cuenta"
-    si no si n es 2
-        devuelve "primos"
-    si no si n es 3
-        devuelve "apaga"
-    si no si n es 4
-        devuelve "espia"
-    si no si n es 5
-        devuelve "bucle"
-    si no si n es 6
-        devuelve "caja"
-    si no si n es 7
-        devuelve "curioso"
-    si no si n es 8
-        devuelve "ladron"
-    si no si n es 9
-        devuelve "fisgon"
-    si no si n es 10
-        devuelve "impostor"
-    si no si n es 11
-        devuelve "larga"
-    si no si n es EL_TECLADO
+funcion nombre_de con t
+    si t es TAREA_TECLADO
         devuelve "teclado"
+    si no si t es TAREA_DISCO
+        devuelve "disco"
+    si no si t es TAREA_PANTALLA
+        devuelve "pantalla"
     fin
-    devuelve "disco"
+    devuelve region con nombres_en mas (t menos 1) por 32 y (elemento t de nombre_mide)
 fin
 
-funcion que_hace con n
-    si n es 1
-        devuelve "cuenta los segundos, uno a uno"
-    si no si n es 2
-        devuelve "busca números primos sin parar"
-    si no si n es 3
-        devuelve "intenta apagar el ordenador"
-    si no si n es 4
-        devuelve "intenta leer la memoria de FalOS"
-    si no si n es 5
-        devuelve "no suelta el procesador nunca"
-    si no si n es 6
-        devuelve "guarda un secreto y contesta si le preguntan"
-    si no si n es 7
-        devuelve "quiere saber el secreto de la caja"
-    si no si n es 8
-        devuelve "prueba miles de llaves a ver si alguna abre algo"
-    si no si n es 9
-        devuelve "quiere leer lo que escribes en el teclado"
-    si no si n es 10
-        devuelve "quiere escribir órdenes haciéndose pasar por ti"
+funcion apunta_nombre con t y nombre
+    cuantas es largo de nombre
+    si cuantas es mayor que 32
+        cuantas es 32
     fin
-    devuelve "escribe una línea que no cabe"
+    para cada i desde 1 hasta cuantas
+        elemento (t menos 1) por 32 mas i de nombres es elemento i de nombre
+    fin
+    elemento t de nombre_mide es cuantas
+fin
+
+funcion al_serie con t
+    para cada b en t
+        mientras ((lee_puerto de 1021) resto 64) es menor que 32
+        fin
+        pon_en_puerto con 1016 y b
+    fin
 fin
 
 funcion color_de con t
@@ -620,6 +639,7 @@ funcion renglon_de con t
 fin
 
 funcion limpia_renglon con t
+    ensucia
     base es renglon_de con t
     para cada c desde 1 hasta ANCHO
         elemento base mas c de pantalla es GRIS por 256 mas 32
@@ -627,6 +647,7 @@ funcion limpia_renglon con t
 fin
 
 funcion pon_en_renglon con t y c y letra y tinta
+    ensucia
     elemento (renglon_de con t) mas c de pantalla es tinta por 256 mas letra
 fin
 
@@ -640,7 +661,7 @@ funcion etiqueta_renglon con t
     fin
     limpia_renglon con t
     pon_en_renglon con t y 2 y 48 mas t y GRIS_OSCURO
-    nombre es nombre_de con (elemento t de programa_de)
+    nombre es nombre_de con t
     para cada i desde 1 hasta largo de nombre
         pon_en_renglon con t y 3 mas i y (elemento i de nombre) y (color_de con t)
     fin
@@ -700,10 +721,15 @@ fin
 funcion abre_puertos_de con t
     elemento BYTE_TECLADO de puertos es CERRADOS
     elemento BYTE_DISCO de puertos es CERRADOS
+    elemento BYTE_GRAFICOS de puertos es CERRADOS
+    elemento BYTE_GRAFICOS_ALTO de puertos es CERRADOS
     si t es TAREA_TECLADO
         elemento BYTE_TECLADO de puertos es SOLO_EL_96
     si no si t es TAREA_DISCO
         elemento BYTE_DISCO de puertos es LOS_OCHO
+    si no si t es TAREA_PANTALLA
+        elemento BYTE_GRAFICOS de puertos es INDICE_Y_DATOS
+        elemento BYTE_GRAFICOS_ALTO de puertos es EL_DE_DETRAS
     fin
 fin
 
@@ -898,6 +924,9 @@ funcion al_llamar
             letra_de_programa con a
         fin
     si no si numero es CEDE
+        si es_controlador con actual
+            elemento actual de despertada_en es tics
+        fin
         cambia_de_tarea
     si no si numero es PIDE_TICS
         elemento EN_RAX de marco es tics
@@ -958,7 +987,7 @@ funcion vigila con t
 fin
 
 funcion al_tic
-    comparte tics y tics_dormido
+    comparte tics y tics_dormido y pantalla_sucia
     tics es tics mas 1
     elemento actual de tiempo_de es (elemento actual de tiempo_de) mas 1
     si actual es CONSOLA y esperando
@@ -967,6 +996,11 @@ funcion al_tic
     pon_en_puerto con CONTROLADOR y YA_ESTA
     vigila con TAREA_TECLADO
     vigila con TAREA_DISCO
+    vigila con TAREA_PANTALLA
+    si pantalla_sucia y hay_graficos y (elemento TAREA_PANTALLA de avisos) es 0
+        pantalla_sucia es falso
+        avisa_a con TAREA_PANTALLA y AVISO_PINTA
+    fin
     cambia_de_tarea
 fin
 
@@ -1257,8 +1291,8 @@ fin
 funcion ayuda
     pinta_linea con "  ayuda  limpia  hora  colores  encendido  memoria  reinicia"
     pinta_linea con ""
-    pinta_linea con "  programas      los programas que llevo dentro"
-    pinta_linea con "  lanza X        pone a correr el programa X"
+    pinta_linea con "  programas      los programas que hay en el disco"
+    pinta_linea con "  lanza X        los carga del disco y los pone a correr"
     pinta_linea con "  tareas         lo que está corriendo ahora"
     pinta_linea con "  para N         cierra la tarea N"
     pinta_linea con ""
@@ -1269,7 +1303,7 @@ funcion ayuda
     pinta_linea con "  disco          lo que hay en el disco"
     pinta_linea con "  lee X          enseña un archivo del disco"
     pinta_linea con ""
-    pinta_linea con "  cuelga X       cuelga a propósito el teclado o el disco"
+    pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
     pinta_linea con ""
 fin
@@ -1509,17 +1543,13 @@ funcion reinicia
 fin
 
 funcion programas
-    para cada n desde 1 hasta CUANTOS_PROGRAMAS
-        pinta con "  "
-        pon_color con BLANCO y NEGRO
-        pinta con (nombre_de con n)
-        pon_color con GRIS y NEGRO
-        hasta_columna con 13
-        pinta_linea con (que_hace con n)
+    respuesta es pide_archivo con "programas.txt" y "" y 0
+    si respuesta es menor que 0 o respuesta es mayor que TOPE_BUZON
+        fallo_de_disco con respuesta
+    si no
+        pinta_buzon con respuesta
+        pinta_linea con ""
     fin
-    pinta_linea con ""
-    pinta_linea con "  Todos corren en el anillo 3 y nacen sin permisos. Prueba: lanza fisgon"
-    pinta_linea con ""
 fin
 
 funcion hueco_libre
@@ -1552,9 +1582,8 @@ funcion copia_directorio con destino
     fin
 fin
 
-funcion monta_programa con t y imagen
-    archivo es elemento 3 de imagen
-    total es elemento 4 de imagen
+funcion monta_programa con t y archivo y total
+    comparte primera_de_codigo
     raiz es pagina_de_tarea con t
     nivel_3 es pagina_de_tarea con t
     nivel_2 es pagina_de_tarea con t
@@ -1569,24 +1598,28 @@ funcion monta_programa con t y imagen
     elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
     si es_controlador con t
         mesa es pagina_de_tarea con t
+        elemento SITIO_MESA de entradas es mesa mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+    fin
+    si t es TAREA_PANTALLA
+        elemento SITIO_BUZON de entradas es rejilla mas PRESENTE mas USUARIO mas prohibe_ejecutar
+        para cada p desde 1 hasta PAGINAS_TALLER
+            taller es pagina_de_tarea con t
+            elemento SITIO_TALLER mas p de entradas es taller mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+        fin
+        elemento SITIO_VIDEO de directorio es memoria_de_video mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+        elemento SITIO_VIDEO mas 1 de directorio es memoria_de_video mas DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+    si no si es_controlador con t
         buzon es pagina_de_tarea con t
         elemento t de buzones es buzon
-        elemento SITIO_MESA de entradas es mesa mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
         elemento SITIO_BUZON de entradas es buzon mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
     fin
-    de_codigo es cociente con (archivo mas PAGINA menos 1) y PAGINA
-    en_total es cociente con (total mas PAGINA menos 1) y PAGINA
+    primera_de_codigo es (elemento t de paginas_usadas) mas 1
+    de_codigo es paginas_de con archivo
+    en_total es paginas_de con total
     para cada p desde 1 hasta en_total
         trozo es pagina_de_tarea con t
         si p es menor o igual que de_codigo
             elemento p de entradas es trozo mas PRESENTE mas USUARIO
-            hoja es region con trozo y 512 y 8
-            para cada i desde 1 hasta 512
-                sitio es (p menos 1) por 512 mas i
-                si sitio es menor o igual que largo de imagen
-                    elemento i de hoja es elemento sitio de imagen
-                fin
-            fin
         si no
             elemento p de entradas es trozo mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
         fin
@@ -1594,28 +1627,16 @@ funcion monta_programa con t y imagen
     devuelve raiz
 fin
 
-funcion se_puede_cargar con n
-    imagen es imagen_de con n
-    devuelve (elemento 1 de imagen) es MAGIA y (elemento 4 de imagen) es menor o igual que TOPE_PROGRAMA
+funcion paginas_de con bytes
+    devuelve cociente con (bytes mas PAGINA menos 1) y PAGINA
 fin
 
-funcion lanza_programa con n
-    t es hueco_libre
-    si no (se_puede_cargar con n)
-        pinta_linea con "  Eso no es un programa que yo pueda cargar."
-        pinta_linea con ""
-        devuelve nada
-    fin
-    si t es 0
-        pinta_linea con "  Ya hay cuatro programas corriendo. Cierra uno con: para N"
-        pinta_linea con ""
-        devuelve nada
-    fin
-    prepara_tarea con t y n
+funcion pagina_de_codigo con t y p
+    lista es region con (elemento t de listas_de_paginas) y 512 y 8
+    devuelve elemento primera_de_codigo mas p menos 1 de lista
 fin
 
-funcion prepara_tarea con t y n
-    imagen es imagen_de con n
+funcion reserva_tarea con t y archivo y total y entrada
     elemento t de avisos es 0
     si t es TAREA_TECLADO y tecla_sin_leer
         elemento t de avisos es AVISO_TECLA
@@ -1623,8 +1644,7 @@ funcion prepara_tarea con t y n
     elemento t de despertada_en es tics
     elemento t de listas_de_paginas es pide_pagina
     elemento t de paginas_usadas es 0
-    elemento t de programa_de es n
-    elemento t de programa_tamano es elemento 3 de imagen
+    elemento t de programa_tamano es archivo
     elemento t de tiempo_de es 0
     elemento t de columna_de es DE_INICIO
     elemento t de medias_de es 0
@@ -1633,30 +1653,146 @@ funcion prepara_tarea con t y n
     elemento t de hablando_con es 0
     elemento t de mensajes_de es 0
     elemento t de rechazos_de es 0
-    elemento t de raices es monta_programa con t y imagen
+    elemento t de raices es monta_programa con t y archivo y total
     pila es pagina_de_tarea con t
     elemento t de pilas es pila mas PAGINA
     marco es region con pila mas PAGINA menos TAMANO_MARCO y 20 y 8
-    elemento EN_RIP de marco es elemento 2 de imagen
+    elemento EN_RIP de marco es entrada
     elemento EN_CS de marco es SEGMENTO_CODIGO
     elemento EN_BANDERAS de marco es BANDERAS
     elemento EN_SS de marco es SEGMENTO_DATOS
     elemento t de contextos es pila mas PAGINA menos TAMANO_MARCO
+fin
+
+funcion estrena_tarea con t
     etiqueta_renglon con t
     elemento t de estados_tarea es EN_MARCHA
 fin
 
-funcion lanza
-    para cada n desde 1 hasta CUANTOS_PROGRAMAS
-        si resto_es con 7 y (nombre_de con n)
-            lanza_programa con n
-            devuelve nada
+funcion lanza_controlador con t
+    imagen es imagen_de con t
+    reserva_tarea con t y (elemento 3 de imagen) y (elemento 4 de imagen) y (elemento 2 de imagen)
+    para cada p desde 1 hasta paginas_de con (elemento 3 de imagen)
+        hoja es region con (pagina_de_codigo con t y p) y 512 y 8
+        desde es (p menos 1) por 512
+        cuantas es (largo de imagen) menos desde
+        si cuantas es mayor que 512
+            cuantas es 512
         fin
+        copia_region con hoja y 1 y imagen y desde mas 1 y cuantas
     fin
+    estrena_tarea con t
+fin
+
+funcion trozo_de_orden con primera
+    si primera es mayor que escritas
+        devuelve ""
+    fin
+    devuelve region con orden_en mas primera menos 1 y escritas menos primera mas 1
+fin
+
+funcion rechaza_programa con nombre y motivo
     pon_color con ROJO_CLARO y NEGRO
-    pinta_linea con "  No llevo ningún programa con ese nombre. Mira: programas"
+    pinta con "  No cargo "
+    pinta con nombre
+    pinta con ": "
+    pon_color con BLANCO y NEGRO
+    pinta_linea con motivo
     pon_color con GRIS y NEGRO
     pinta_linea con ""
+    al_serie con "rechazado: "
+    al_serie con nombre
+    escribe ""
+fin
+
+funcion mentira_de con firma y entrada y archivo y total
+    si firma no es igual a MAGIA
+        devuelve "no es un programa."
+    fin
+    si archivo es menor que LARGO_CABECERA o archivo es mayor que TOPE_PROGRAMA
+        devuelve "dice que ocupa algo imposible."
+    fin
+    si total es menor que archivo o total es mayor que TOPE_PROGRAMA
+        devuelve "pide más memoria de la que doy."
+    fin
+    si entrada es menor que DONDE_VAN mas LARGO_CABECERA o entrada es mayor o igual que DONDE_VAN mas archivo
+        devuelve "quiere empezar fuera de sí mismo."
+    fin
+    devuelve nada
+fin
+
+funcion trae_programa con t y nombre y archivo y primero
+    para cada p desde 1 hasta paginas_de con archivo
+        desde es (p menos 1) por PAGINA
+        esperados es archivo menos desde
+        si esperados es mayor que PAGINA
+            esperados es PAGINA
+        fin
+        respuesta es primero
+        si p es mayor que 1
+            respuesta es pide_archivo con nombre y ".prg" y p menos 1
+        fin
+        si respuesta no es igual a esperados
+            devuelve falso
+        fin
+        buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+        hoja es region con (pagina_de_codigo con t y p) y PAGINA
+        copia_region con hoja y 1 y buzon y 1 y esperados
+    fin
+    devuelve verdadero
+fin
+
+funcion lanza
+    nombre es trozo_de_orden con 7
+    t es hueco_libre
+    si t es 0
+        pinta_linea con "  Ya hay cuatro programas corriendo. Cierra uno con: para N"
+        pinta_linea con ""
+        devuelve nada
+    fin
+    primero es pide_archivo con nombre y ".prg" y 0
+    si primero es NO_ESTA
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No hay ningún programa con ese nombre. Mira: programas"
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+    si no si primero es menor que 0 o primero es mayor que TOPE_BUZON
+        fallo_de_disco con primero
+    si no si primero es menor que LARGO_CABECERA
+        rechaza_programa con nombre y "no es un programa."
+    si no
+        cabecera es region con (elemento TAREA_DISCO de buzones) y 4 y 8
+        firma es elemento 1 de cabecera
+        entrada es elemento 2 de cabecera
+        archivo es elemento 3 de cabecera
+        total es elemento 4 de cabecera
+        motivo es mentira_de con firma y entrada y archivo y total
+        si motivo no es igual a nada
+            rechaza_programa con nombre y motivo
+        si no
+            carga_programa con t y nombre y archivo y total y entrada y primero
+        fin
+    fin
+fin
+
+funcion carga_programa con t y nombre y archivo y total y entrada y primero
+    apunta_nombre con t y nombre
+    reserva_tarea con t y archivo y total y entrada
+    si trae_programa con t y nombre y archivo y primero
+        estrena_tarea con t
+        pinta con "  "
+        pinta con nombre
+        pinta con ": "
+        pon_color con BLANCO y NEGRO
+        pinta_numero con (cociente con archivo y 1024)
+        pinta con " KB"
+        pon_color con GRIS y NEGRO
+        pinta_linea con " leídos del disco. Nace sin permisos, en su propia caja."
+        pinta_linea con ""
+    si no
+        suelta_tarea con t
+        rechaza_programa con nombre y "es más corto de lo que dice."
+    fin
 fin
 
 funcion numero_entre con primera y ultima
@@ -1710,7 +1846,7 @@ funcion linea_de_tarea con t
     pon_color con (color_de con t) y NEGRO
     pinta_numero con t
     pinta con "  "
-    pinta con (nombre_de con (elemento t de programa_de))
+    pinta con (nombre_de con t)
     pon_color con GRIS y NEGRO
     hasta_columna con 15
     pinta con (nombre_estado con t)
@@ -1739,6 +1875,9 @@ funcion tareas
     fin
     linea_de_tarea con TAREA_TECLADO
     linea_de_tarea con TAREA_DISCO
+    si hay_graficos
+        linea_de_tarea con TAREA_PANTALLA
+    fin
     pinta_linea con ""
 fin
 
@@ -1747,7 +1886,7 @@ funcion cabecera_de_tarea con t
     pon_color con (color_de con t) y NEGRO
     pinta_numero con t
     pinta con "  "
-    pinta con (nombre_de con (elemento t de programa_de))
+    pinta con (nombre_de con t)
     pon_color con GRIS y NEGRO
     hasta_columna con 15
 fin
@@ -1769,7 +1908,7 @@ funcion permisos
                     fin
                     ninguna es falso
                     pon_color con (color_de con destino) y NEGRO
-                    pinta con (nombre_de con (elemento destino de programa_de))
+                    pinta con (nombre_de con destino)
                     pon_color con GRIS y NEGRO
                 fin
             fin
@@ -1790,6 +1929,10 @@ funcion permisos
     pinta_linea con "solo el puerto 96, para leer las teclas"
     cabecera_de_tarea con TAREA_DISCO
     pinta_linea con "solo los puertos del 496 al 503, los del disco"
+    si hay_graficos
+        cabecera_de_tarea con TAREA_PANTALLA
+        pinta_linea con "solo la imagen, y lee lo que hay que pintar sin poder cambiarlo"
+    fin
     pinta_linea con ""
 fin
 
@@ -1871,9 +2014,9 @@ funcion permite
     activa_interrupciones
     pon_color con VERDE_CLARO y NEGRO
     pinta con "  "
-    pinta con (nombre_de con (elemento primer_numero de programa_de))
+    pinta con (nombre_de con primer_numero)
     pinta con " ya puede hablar con "
-    pinta_linea con (nombre_de con (elemento segundo_numero de programa_de))
+    pinta_linea con (nombre_de con segundo_numero)
     pon_color con GRIS y NEGRO
     pinta_linea con ""
 fin
@@ -1893,12 +2036,12 @@ funcion prohibe
     elemento (sitio_de_llave con primer_numero y llave) de llave_a es 0
     pon_color con ROJO_CLARO y NEGRO
     pinta con "  "
-    pinta con (nombre_de con (elemento primer_numero de programa_de))
+    pinta con (nombre_de con primer_numero)
     pinta con " ya no puede hablar con "
-    pinta_linea con (nombre_de con (elemento segundo_numero de programa_de))
+    pinta_linea con (nombre_de con segundo_numero)
     pon_color con GRIS y NEGRO
     pinta_linea con ""
-    escribe (nombre_de con (elemento primer_numero de programa_de)) sin salto
+    al_serie con (nombre_de con primer_numero)
     escribe " pierde el permiso tras " sin salto
     escribe (elemento primer_numero de mensajes_de) sin salto
     escribe " preguntas"
@@ -2003,7 +2146,7 @@ fin
 
 funcion cuenta_el_final con t
     causa es elemento t de causas
-    nombre es nombre_de con (elemento t de programa_de)
+    nombre es nombre_de con t
     si causa es SE_COLGO
         pon_color con ROJO_CLARO y NEGRO
         pinta con "  "
@@ -2027,7 +2170,7 @@ funcion cuenta_el_final con t
         pinta con "  He cerrado "
         pinta con nombre
         pinta_linea con "."
-        escribe nombre sin salto
+        al_serie con nombre
         escribe " cerrado con " sin salto
         escribe (elemento t de mensajes_de) sin salto
         escribe " preguntas y " sin salto
@@ -2052,7 +2195,7 @@ funcion cuenta_el_final con t
             pon_color con VERDE_CLARO y NEGRO
             pinta_linea con "  Lo he cerrado. Todo lo demás sigue en marcha."
         fin
-        escribe nombre sin salto
+        al_serie con nombre
         escribe " cerrado por la excepción " sin salto
         escribe causa
     fin
@@ -2075,9 +2218,8 @@ funcion suelta_tarea con t
 fin
 
 funcion vuelve_a_lanzar con t
-    n es elemento t de programa_de
     elemento t de reinicios_de es (elemento t de reinicios_de) mas 1
-    prepara_tarea con t y n
+    lanza_controlador con t
     pon_color con VERDE_CLARO y NEGRO
     tardado es (tics menos (elemento t de cerrada_en)) por 10
     pinta con "  He lanzado otro en "
@@ -2088,7 +2230,7 @@ funcion vuelve_a_lanzar con t
     fin
     pinta_linea con " ms. Todo lo demás sigue en marcha."
     pon_color con GRIS y NEGRO
-    escribe (nombre_de con n) sin salto
+    al_serie con (nombre_de con t)
     escribe " reiniciado, y van " sin salto
     escribe (elemento t de reinicios_de)
 fin
@@ -2178,16 +2320,24 @@ funcion orden_disco
     fin
 fin
 
-funcion lee_archivo
+funcion pide_archivo con nombre y cola y trozo
     recoge_tareas con falso
     buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
-    i es 1
-    mientras i mas 4 es menor o igual que escritas
-        elemento i de buzon es elemento i mas 4 de orden
+    i es 0
+    para cada b en nombre
         i es i mas 1
+        elemento i de buzon es b
     fin
-    elemento i de buzon es 0
-    respuesta es pide_al_disco con ORDEN_ABRE
+    para cada b en cola
+        i es i mas 1
+        elemento i de buzon es b
+    fin
+    elemento i mas 1 de buzon es 0
+    devuelve pide_al_disco con ORDEN_TROZO mas trozo
+fin
+
+funcion lee_archivo
+    respuesta es pide_archivo con (trozo_de_orden con 5) y "" y 0
     si respuesta es menor que 0 o respuesta es mayor que TOPE_BUZON
         fallo_de_disco con respuesta
     si no
@@ -2206,10 +2356,12 @@ funcion estropea con primera y aviso
         objetivo es TAREA_TECLADO
     si no si resto_es con primera y "disco"
         objetivo es TAREA_DISCO
+    si no si hay_graficos y resto_es con primera y "pantalla"
+        objetivo es TAREA_PANTALLA
     fin
     si objetivo es 0
         pon_color con ROJO_CLARO y NEGRO
-        pinta_linea con "  Solo sé hacerlo con el teclado o con el disco."
+        pinta_linea con "  Solo sé hacerlo con el teclado, el disco o la pantalla."
         pon_color con GRIS y NEGRO
         pinta_linea con ""
         devuelve nada
@@ -2228,7 +2380,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 5"
+    pinta con "día 6"
     pon_color con GRIS y NEGRO
 fin
 
@@ -2241,13 +2393,18 @@ funcion portada
     pinta_linea con "Hola. Soy FalOS, un sistema operativo escrito en Fal."
     pon_color con GRIS y NEGRO
     pinta_linea con ""
-    pinta_linea con "  Arranqué en modo de 64 bits, y esto que lees lo he pintado yo,"
-    pinta_linea con "  casilla a casilla, en la memoria de la pantalla."
+    si hay_graficos
+        pinta_linea con "  Arranqué en modo de 64 bits. La letra que lees la he dibujado yo,"
+        pinta_linea con "  píxel a píxel, y la pinta un programa sin permisos."
+    si no
+        pinta_linea con "  Arranqué en modo de 64 bits. Esta tarjeta no me deja pintar píxeles,"
+        pinta_linea con "  así que esto va en modo de texto, casilla a casilla."
+    fin
     pinta_linea con ""
-    pinta_linea con "  Hago varias cosas a la vez. Los programas nacen sin permisos, solo"
-    pinta_linea con "  hablan entre ellos si tú les dejas, y si intentan algo más, los cierro."
-    pinta_linea con "  El teclado y el disco ya no van dentro de mí: son programas, y si se"
-    pinta_linea con "  cuelgan, lanzo otros."
+    pinta_linea con "  Hago varias cosas a la vez. Los programas salen del disco y nacen sin"
+    pinta_linea con "  permisos, solo hablan entre ellos si tú les dejas, y si intentan algo"
+    pinta_linea con "  más, los cierro. El teclado, el disco y la pantalla ya no van dentro"
+    pinta_linea con "  de mí: son programas, y si se cuelgan, lanzo otros."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -2259,8 +2416,11 @@ para cada t desde 1 hasta MAX_TAREAS
     limpia_renglon con t
 fin
 portada
-prepara_tarea con TAREA_TECLADO y EL_TECLADO
-prepara_tarea con TAREA_DISCO y EL_DISCO
+si hay_graficos
+    lanza_controlador con TAREA_PANTALLA
+fin
+lanza_controlador con TAREA_TECLADO
+lanza_controlador con TAREA_DISCO
 prepara_interrupciones
 indicador
 escribe "pantalla lista"
