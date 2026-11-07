@@ -71,6 +71,15 @@ no los devuelve. Además, la letra del modo de texto vive en la misma memoria qu
 la imagen, y pintar encima la borraba. Por eso FalOS deja libres las primeras 70
 filas de esa memoria.
 
+Y lo mejor del día lo encontró la prueba automática, no yo. En mi ordenador todo iba
+bien. En GitHub, con tres `bucle` gastando procesador, `lanza larga` fallaba y el
+disco se reiniciaba dos veces. Esos programas no hacían nada prohibido, solo gastar
+su turno. Pero el disco se quedaba con un cuarto del procesador, tardaba más de un
+segundo en contestar, y el vigilante lo daba por colgado. Un programa sin ningún
+permiso podía dejar a FalOS sin disco. El vigilante miraba el reloj de la pared. Ahora
+solo cuenta el tiempo en que el controlador pudo contestar y no lo hizo: si no le han
+dado turno, no está colgado.
+
 Fal también ha crecido hoy: sabe hablar de 16 y de 32 bits con los aparatos, copiar
 memoria de golpe sin saltarse las comprobaciones, meter un archivo en un programa
 y compilar programas desde otro programa de Fal, que es lo que hace `haz_disco`.

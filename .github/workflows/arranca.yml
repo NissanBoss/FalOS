@@ -234,6 +234,10 @@ jobs:
             exit 1
           fi
           grep -q "larga cerrado con" antes.txt
+          if grep -q "reiniciado" antes.txt; then
+            echo "Un programa que solo gasta procesador ha tumbado un controlador"
+            exit 1
+          fi
 
       - name: Archivos del disco que mienten
         run: |

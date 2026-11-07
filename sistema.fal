@@ -519,6 +519,7 @@ NO_ES_MIO es 0 menos 2
 NO_ESTA es 0 menos 3
 NO_SE_LEE es 0 menos 4
 SIN_CONTROLADOR es 0 menos 9
+MAS_CORTO es 1
 TOPE_BUZON es 4096
 
 BYTE_TECLADO es 13
@@ -561,7 +562,7 @@ mensajes_de es region con pide_pagina y 512 y 8
 rechazos_de es region con pide_pagina y 512 y 8
 buzones es region con pide_pagina y 512 y 8
 avisos es region con pide_pagina y 512 y 8
-despertada_en es region con pide_pagina y 512 y 8
+paciencia_gastada es region con pide_pagina y 512 y 8
 cerrada_en es region con pide_pagina y 512 y 8
 reinicios_de es region con pide_pagina y 512 y 8
 
@@ -756,7 +757,7 @@ fin
 
 funcion avisa_a con t y aviso
     si (elemento t de estados_tarea) es EN_ESPERA
-        elemento t de despertada_en es tics
+        elemento t de paciencia_gastada es 0
         despierta_con con t y aviso
     si no
         elemento t de avisos es aviso
@@ -881,7 +882,7 @@ funcion aguarda_aviso con respuesta
     aviso es elemento yo de avisos
     si aviso no es igual a 0
         elemento yo de avisos es 0
-        elemento yo de despertada_en es tics
+        elemento yo de paciencia_gastada es 0
         devuelve aviso
     fin
     si yo es TAREA_TECLADO
@@ -925,7 +926,7 @@ funcion al_llamar
         fin
     si no si numero es CEDE
         si es_controlador con actual
-            elemento actual de despertada_en es tics
+            elemento actual de paciencia_gastada es 0
         fin
         cambia_de_tarea
     si no si numero es PIDE_TICS
@@ -981,7 +982,11 @@ funcion vigila con t
     si estado es SIN_USAR o estado es CERRADA o estado es EN_ESPERA
         devuelve nada
     fin
-    si tics menos (elemento t de despertada_en) es mayor que PACIENCIA
+    si estado es EN_MARCHA y t no es igual a actual
+        devuelve nada
+    fin
+    elemento t de paciencia_gastada es (elemento t de paciencia_gastada) mas 1
+    si (elemento t de paciencia_gastada) es mayor que PACIENCIA
         cierra_tarea con t y SE_COLGO
     fin
 fin
@@ -1641,7 +1646,7 @@ funcion reserva_tarea con t y archivo y total y entrada
     si t es TAREA_TECLADO y tecla_sin_leer
         elemento t de avisos es AVISO_TECLA
     fin
-    elemento t de despertada_en es tics
+    elemento t de paciencia_gastada es 0
     elemento t de listas_de_paginas es pide_pagina
     elemento t de paginas_usadas es 0
     elemento t de programa_tamano es archivo
@@ -1732,14 +1737,17 @@ funcion trae_programa con t y nombre y archivo y primero
         si p es mayor que 1
             respuesta es pide_archivo con nombre y ".prg" y p menos 1
         fin
+        si respuesta es menor que 0
+            devuelve respuesta
+        fin
         si respuesta no es igual a esperados
-            devuelve falso
+            devuelve MAS_CORTO
         fin
         buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
         hoja es region con (pagina_de_codigo con t y p) y PAGINA
         copia_region con hoja y 1 y buzon y 1 y esperados
     fin
-    devuelve verdadero
+    devuelve 0
 fin
 
 funcion lanza
@@ -1778,7 +1786,8 @@ fin
 funcion carga_programa con t y nombre y archivo y total y entrada y primero
     apunta_nombre con t y nombre
     reserva_tarea con t y archivo y total y entrada
-    si trae_programa con t y nombre y archivo y primero
+    traido es trae_programa con t y nombre y archivo y primero
+    si traido es 0
         estrena_tarea con t
         pinta con "  "
         pinta con nombre
@@ -1789,9 +1798,12 @@ funcion carga_programa con t y nombre y archivo y total y entrada y primero
         pon_color con GRIS y NEGRO
         pinta_linea con " leídos del disco. Nace sin permisos, en su propia caja."
         pinta_linea con ""
-    si no
+    si no si traido es MAS_CORTO
         suelta_tarea con t
         rechaza_programa con nombre y "es más corto de lo que dice."
+    si no
+        suelta_tarea con t
+        fallo_de_disco con traido
     fin
 fin
 

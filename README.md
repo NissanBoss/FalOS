@@ -158,8 +158,13 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   otro sistema.
 - **Un controlador que se cae siempre se relanza siempre.** No hay espera ni
   tope, y la pantalla se llena.
-- **Un cuelgue tarda 1 s en notarse.** Las teclas que caben en la cola del
-  aparato llegan después. Las que no, se pierden.
+- **Un cuelgue tarda 1 s en notarse, o más.** Solo cuenta el tiempo en que el
+  controlador pudo contestar y no lo hizo, para que un programa que acapare el
+  procesador no lo haga parecer colgado. Con el procesador lleno son varios
+  segundos de reloj. Las teclas que caben en la cola del aparato llegan después.
+  Las que no, se pierden.
+- **No hay prioridades.** Tres programas que gasten todo lo que les dan dejan a
+  los controladores con un cuarto del procesador, y todo va más lento.
 - **Las capacidades solo cubren hablar con otro programa.** La línea de la
   pantalla, el procesador, la memoria y los puertos se reparten sin ellas. Y las
   das tú desde la consola: un programa no le puede pasar una a otro.
