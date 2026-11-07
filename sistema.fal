@@ -1566,17 +1566,17 @@ funcion hueco_libre
     devuelve 0
 fin
 
-funcion apunta_pagina con t y pagina
+funcion apunta_pagina con t y nueva
     lista es region con (elemento t de listas_de_paginas) y 512 y 8
     cuantas es (elemento t de paginas_usadas) mas 1
     elemento t de paginas_usadas es cuantas
-    elemento cuantas de lista es pagina
+    elemento cuantas de lista es nueva
 fin
 
 funcion pagina_de_tarea con t
-    pagina es pide_pagina
-    apunta_pagina con t y pagina
-    devuelve pagina
+    nueva es pide_pagina
+    apunta_pagina con t y nueva
+    devuelve nueva
 fin
 
 funcion copia_directorio con destino

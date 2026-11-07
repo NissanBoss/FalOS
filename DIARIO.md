@@ -64,6 +64,13 @@ mayúsculas no importan, así que `SUBIDAS` y `subidas` eran la misma variable. 
 variable nueva tapaba la constante, y el programa reventaba al primer pintado. FalOS
 lo relanzaba, y reventaba otra vez.
 
+A la tercera vez, el problema ya no es mío, es del lenguaje: antes de esta fueron
+`MARCO` y `HISTORIAL`. Así que Fal ahora avisa cuando una variable pisa una constante
+escrita con otras mayúsculas. Con el código del día 2 caza `HISTORIAL`, y si vuelvo a
+meter `subidas`, lo caza también. Y en el FalOS de hoy encontró otro: `pagina` pisaba
+`PAGINA` en `sistema.fal`. Esta vez no rompía nada, por suerte. La prueba automática
+ahora falla si sale ese aviso.
+
 Luego el aviso rojo. Si el núcleo se para con los gráficos puestos, tiene que volver al
 modo de texto para contarlo, o verías una pantalla congelada. Apagar los gráficos
 no basta: al encenderlos, la tarjeta había cambiado una docena de registros y

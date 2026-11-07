@@ -28,8 +28,13 @@ jobs:
 
       - name: Compilar FalOS y su disco
         run: |
-          fal --nucleo sistema.fal
-          fal haz_disco.fal
+          fal --nucleo sistema.fal 2> avisos.txt
+          fal haz_disco.fal 2>> avisos.txt
+          cat avisos.txt
+          if grep -q "^  !" avisos.txt; then
+            echo "Una variable pisa una constante"
+            exit 1
+          fi
 
       - name: Arrancar
         run: |
