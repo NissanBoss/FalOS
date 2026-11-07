@@ -8,7 +8,7 @@ Un día, un paso. Lo más nuevo, arriba.
 
 **Lo que hay.** Se acabó la pantalla de 1981. FalOS ya pinta píxeles: 960 por 600,
 con 32 bits por píxel, y una letra que no viene de ningún sitio. Cada carácter
-está dibujado a mano en [un archivo de texto](controladores/letra.txt), con puntos
+está dibujado en [un archivo de texto](controladores/letra.txt), con puntos
 y almohadillas, en una rejilla de 6 por 12. Son 119. Al arrancar, FalOS los agranda
 al doble y redondea las esquinas.
 
