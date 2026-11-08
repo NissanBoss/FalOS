@@ -317,3 +317,60 @@ jobs:
               colores = {cabecera[3][i:i + 3] for i in range(0, len(cabecera[3]), 3)}
               assert len(colores) > 3, nombre
           FIN
+
+      - name: Ventanas y raton
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza bucle"
+            teclea "lanza disfraz"
+            teclea "lanza cuenta"
+            teclea "lanza larga"
+            sleep 3
+            echo "screendump ventanas.ppm"
+            sleep 1
+            echo "mouse_move 354 -48"
+            sleep 0.5
+            echo "mouse_button 1"
+            sleep 0.3
+            echo "mouse_button 0"
+            sleep 1
+            echo "mouse_move 72 -192"
+            sleep 0.5
+            echo "mouse_button 1"
+            sleep 0.3
+            echo "mouse_button 0"
+            sleep 2
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:ventanas.txt -monitor stdio -no-reboot > /dev/null
+          cat ventanas.txt
+          if grep -q "  X  " ventanas.txt; then
+            echo "Las ventanas han tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "ratón listo" ventanas.txt
+          grep -q "cuenta cerrado con" ventanas.txt
+          grep -q "bucle cerrado con" ventanas.txt
+          python3 - <<'FIN'
+          datos = open("ventanas.ppm", "rb").read()
+          cabecera = datos.split(b"\n", 3)
+          pixeles = cabecera[3]
+          cuantos = {}
+          for i in range(0, len(pixeles), 3):
+              p = pixeles[i:i + 3]
+              cuantos[p] = cuantos.get(p, 0) + 1
+          for nombre, color in [("verde", (86, 211, 100)), ("amarillo", (227, 179, 65)),
+                                ("lila", (210, 168, 255)), ("cian", (57, 197, 207))]:
+              hay = cuantos.get(bytes(color), 0)
+              print(nombre, hay)
+              assert hay > 3000, nombre
+          FIN

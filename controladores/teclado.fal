@@ -1,5 +1,8 @@
 ESPERA es 8
 ENTREGA es 9
+ENTREGA_RATON es 10
+AVISO_TECLA es 1
+AVISO_RATON es 2
 DATOS es 96
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
@@ -23,6 +26,9 @@ bloq_mayus es falso
 tilde es 0
 altgr es falso
 prefijo es falso
+recibidos es 0
+primero es 0
+segundo es 0
 
 funcion manda con c
     si c no es igual a 0
@@ -212,6 +218,32 @@ funcion con_tilde con c
     devuelve c
 fin
 
+funcion del_raton con byte
+    comparte recibidos y primero y segundo
+    si recibidos es 0
+        si ((cociente con byte y 8) resto 2) es 1
+            primero es byte
+            recibidos es 1
+        fin
+    si no si recibidos es 1
+        segundo es byte
+        recibidos es 2
+    si no
+        recibidos es 0
+        si primero es menor que 64
+            dx es segundo
+            si ((cociente con primero y 16) resto 2) es 1
+                dx es dx menos 256
+            fin
+            dy es byte
+            si ((cociente con primero y 32) resto 2) es 1
+                dy es dy menos 256
+            fin
+            llama_al_sistema con ENTREGA_RATON y (dx mas 256) y (((dy mas 256) por 8) mas (primero resto 8))
+        fin
+    fin
+fin
+
 aviso es llama_al_sistema con ESPERA y SIN_RESPUESTA
 mientras verdadero
     si aviso es AVISO_CUELGA
@@ -219,8 +251,10 @@ mientras verdadero
         fin
     si no si aviso es AVISO_ROMPE
         pon_en_puerto con 100 y 254
-    si no si aviso es 1
+    si no si aviso es AVISO_TECLA
         atiende con (lee_puerto de DATOS)
+    si no si aviso es AVISO_RATON
+        del_raton con (lee_puerto de DATOS)
     fin
     aviso es llama_al_sistema con ESPERA y SIN_RESPUESTA
 fin

@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS en modo gráfico, con la letra que dibuja un programa sin permisos](capturas/dia-6.png)
+![FalOS con cuatro programas, cada uno en su ventana del color de su caja](capturas/dia-7.png)
 
 ## Por qué
 
@@ -86,6 +86,19 @@ lanza corto
 lanza carta
 ```
 
+Cada programa sale en su ventana, con el borde y el título del color de su
+caja, como en [Qubes OS](https://www.qubes-os.org). Ese borde lo pinta el
+núcleo: un programa solo le manda letras, y no puede salir de su rectángulo ni
+cambiar su título. Con el ratón, las ventanas se arrastran por el título, se
+traen delante con un clic y se cierran con la x, que cierra también el programa.
+`disfraz` dice que es FalOS y te pide la contraseña, pero su ventana dice quién es:
+
+```
+lanza cuenta
+lanza primos
+lanza disfraz
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -102,7 +115,7 @@ permisos
 
 El teclado, el disco y la pantalla ya no van dentro del núcleo. Son programas
 del anillo 3, y el procesador solo les deja tocar lo suyo: `teclado`, el puerto
-96; `disco`, del 496 al 503; y `pantalla`, los puertos de la tarjeta gráfica y su
+96, por el que llega también el ratón; `disco`, del 496 al 503; y `pantalla`, los puertos de la tarjeta gráfica y su
 imagen, y lee lo que hay que pintar sin poder cambiarlo. Si uno se cuelga o se
 rompe, FalOS lo nota, lo cierra y lanza otro sin que caiga nada más. Se puede
 probar:
@@ -124,7 +137,8 @@ esperar órdenes sin reventar, lanza `apaga` y `espia` y mira que los dos acaban
 cerrados y el sistema sigue. Da un permiso, lo quita y mira que `ladron` no ha
 abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
 todo vuelve. Le da archivos que mienten sobre lo que son, y le conecta discos
-hechos para romperlo.
+hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
+cierra dos con el ratón.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -134,25 +148,36 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay red ni ventanas ni ratón, y el disco solo se
-  lee: no se puede escribir un programa dentro de FalOS. Es el día 6.
+- **Casi todo, de momento.** No hay red, y el disco solo se lee: no se puede
+  escribir un programa dentro de FalOS. Es el día 7.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 2.400 líneas,
-  más que ayer, porque ahora también carga programas.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 2.850
+  líneas, más que ayer, porque ahora también lleva las ventanas.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
 - **La cabecera se mira, el código no.** Un programa que no miente sobre su forma
   se carga aunque sea malo. Hace lo que quiera dentro de su caja.
 - **El programa de la pantalla ve todo lo que se pinta, y puede pintar mentiras.**
-  No puede cambiar lo que escribe el núcleo, pero sí enseñarte otra cosa. Aún no
-  hay nada en la pantalla de lo que te puedas fiar del todo.
+  No puede cambiar lo que escribe el núcleo, pero sí enseñarte otra cosa. Eso
+  vale también para los bordes: el color lo decide el núcleo, pero lo pinta él.
+  Los bordes te protegen de los programas, no de ese programa. Aún no hay nada
+  en la pantalla de lo que te puedas fiar del todo.
+- **Las ventanas son de letras.** Una ventana es un rectángulo de 34 por 6
+  casillas, y un programa solo puede escribir texto en ella. No hay dibujos ni
+  tamaños distintos, y caben cuatro.
+- **El teclado siempre va a la consola.** Los programas no leen teclas, así que
+  la ventana que está delante no recibe lo que escribes.
+- **Solo ratón PS/2.** Es el que trae QEMU. Al hacer clic en su ventana, QEMU se
+  queda con el ratón, y lo suelta con la combinación que pone en su título. Ni
+  USB ni pantallas táctiles.
 - **Los gráficos son los de la tarjeta de QEMU.** Con otra tarjeta, FalOS se queda
   en modo de texto. En un portátil de verdad haría falta otro camino.
-- **La letra tiene 119 caracteres.** El español y poco más.
-- **El programa del teclado ve todo lo que escribes.** Está en su caja y no
-  puede hacer nada más, pero si alguien lo cambiara por otro, lo leería todo.
+- **La letra tiene 125 caracteres.** El español, las líneas de las cajas y poco más.
+- **El programa del teclado ve todo lo que escribes**, y ahora también cómo
+  mueves el ratón. Está en su caja y no puede hacer nada más, pero si alguien lo
+  cambiara por otro, lo leería todo.
 - **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
   de ahora, y el formato es uno de texto propio: ni FAT, ni nada que escriba
   otro sistema.
@@ -203,8 +228,8 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   idea de seguridad de memoria. Está mucho más avanzado; FalOS se construye
   desde cero y a la vista, para que se entienda cada paso.
 - [Qubes OS](https://www.qubes-os.org) aísla con máquinas virtuales sobre Xen
-  y Linux. FalOS busca ese aislamiento en el diseño del propio núcleo, sin
-  máquinas virtuales.
+  y Linux, y de él salen los bordes de colores. FalOS busca ese aislamiento en
+  el diseño del propio núcleo, sin máquinas virtuales.
 
 ## Licencia
 

@@ -17,7 +17,7 @@ BLANCO es 15
 
 ANCHO es 80
 ALTO es 25
-ABAJO es 21
+ABAJO es 25
 pantalla es region con 753664 y ANCHO por ALTO y 2
 
 fila es 1
@@ -30,6 +30,9 @@ pantalla_sucia es falso
 control es nada
 CURSOR_EN es 1
 SUBIDAS es 2
+DONDE_RATON_X es 3
+DONDE_RATON_Y es 4
+cursor_sitio es 0
 
 funcion pon_color con letra y fondo
     comparte color
@@ -51,12 +54,8 @@ funcion limpia
 fin
 
 funcion mueve_cursor
-    sitio es (fila menos 1) por ANCHO mas columna menos 1
-    pon_en_puerto con 980 y 15
-    pon_en_puerto con 981 y (sitio resto 256)
-    pon_en_puerto con 980 y 14
-    pon_en_puerto con 981 y (cociente con sitio y 256)
-    elemento CURSOR_EN de control es sitio
+    comparte cursor_sitio
+    cursor_sitio es (fila menos 1) por ANCHO mas columna menos 1
     ensucia
 fin
 
@@ -371,6 +370,10 @@ protege_memoria
 
 rejilla es pide_pagina
 control es region con rejilla mas ANCHO por ALTO por 2 y 8 y 8
+elemento DONDE_RATON_X de control es 0 menos 1
+lo_que_se_ve es pantalla
+pantalla es region con pide_pagina y ANCHO por ALTO y 2
+copia_region con pantalla y 1 y lo_que_se_ve y 1 y ANCHO por ALTO
 memoria_de_video es 0
 PCI_DIRECCION es 3320
 PCI_DATOS es 3324
@@ -388,7 +391,7 @@ funcion lee_pci con ranura y registro
 fin
 
 funcion busca_graficos
-    comparte hay_graficos y memoria_de_video y pantalla
+    comparte hay_graficos y memoria_de_video y lo_que_se_ve
     pon_palabra con GRAFICOS_INDICE y 0
     version es lee_palabra de GRAFICOS_DATOS
     si version es menor que VERSION_MINIMA o version es mayor que VERSION_MAXIMA
@@ -400,7 +403,7 @@ funcion busca_graficos
             memoria_de_video es base menos base resto 16
             si (base resto 8) es 0 y memoria_de_video es mayor que 0 y (memoria_de_video resto DOS_MEGAS) es 0
                 hay_graficos es verdadero
-                pantalla es region con rejilla y ANCHO por ALTO y 2
+                lo_que_se_ve es region con rejilla y ANCHO por ALTO y 2
             fin
             devuelve nada
         fin
@@ -408,6 +411,20 @@ funcion busca_graficos
 fin
 
 busca_graficos
+
+funcion sin_parpadeo
+    basura es lee_puerto de 986
+    pon_en_puerto con 960 y 48
+    ajustes es lee_puerto de 961
+    si ((cociente con ajustes y 8) resto 2) es 1
+        ajustes es ajustes menos 8
+    fin
+    pon_en_puerto con 960 y ajustes
+fin
+
+si no hay_graficos
+    sin_parpadeo
+fin
 
 LARGO_ORDEN es 70
 INICIO es 3
@@ -430,8 +447,12 @@ RELOJ es 64
 RELOJ_ORDEN es 67
 TICS_POR_SEGUNDO es 100
 CAPACIDAD es 64
-TODAS_ABIERTAS es 252
-SIN_TECLADO es 254
+TODAS_ABIERTAS es 248
+SIN_TECLADO es 250
+ESCLAVO_ABIERTO es 239
+ESCLAVO_CERRADO es 255
+ESTADO_8042 es 100
+DATOS_8042 es 96
 
 TECLA_INTRO es 256
 TECLA_BORRA es 257
@@ -483,6 +504,7 @@ ESCUCHA es 6
 CONTESTA es 7
 ESPERA_AVISO es 8
 ENTREGA_TECLA es 9
+ENTREGA_RATON es 10
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -503,9 +525,9 @@ LLAVES es 4
 SALIO es 0 menos 1
 LA_PARARON es 0 menos 2
 SE_COLGO es 0 menos 3
-DE_INICIO es 14
 
 AVISO_TECLA es 1
+AVISO_RATON es 2
 AVISO_PINTA es 1
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
@@ -573,6 +595,8 @@ peticion_abierta es falso
 disco_listo es falso
 resultado_disco es 0
 tecla_sin_leer es falso
+raton_sin_leer es falso
+hay_raton es falso
 primera_de_codigo es 0
 puertos es region con mapa_de_puertos y 8192
 
@@ -635,37 +659,127 @@ funcion color_de con t
     devuelve AZUL_CLARO
 fin
 
-funcion renglon_de con t
-    devuelve (ABAJO mas t menos 1) por ANCHO
-fin
+TEXTO_ANCHO es 34
+TEXTO_ALTO es 6
+VENTANA_ANCHO es TEXTO_ANCHO mas 2
+VENTANA_ALTO es TEXTO_ALTO mas 2
+SIN_VENTANA es 0
+VENTANA_VIVA es 1
+VENTANA_ACABADA es 2
+EN_ANCHO es 960
+EN_ALTO es 600
+LETRA_ANCHO es 12
+LETRA_ALTO es 24
 
-funcion limpia_renglon con t
-    ensucia
-    base es renglon_de con t
-    para cada c desde 1 hasta ANCHO
-        elemento base mas c de pantalla es GRIS por 256 mas 32
-    fin
-fin
+ventana_de es region con pide_pagina y 512 y 8
+ventana_x es region con pide_pagina y 512 y 8
+ventana_y es region con pide_pagina y 512 y 8
+fila_de_ventana es region con pide_pagina y 512 y 8
+textos es region con pide_pagina y 2048 y 2
+encima es region con pide_pagina y 512 y 8
+puestas es 0
 
-funcion pon_en_renglon con t y c y letra y tinta
-    ensucia
-    elemento (renglon_de con t) mas c de pantalla es tinta por 256 mas letra
-fin
+raton_x es cociente con EN_ANCHO y 2
+raton_y es cociente con EN_ALTO y 2
+raton_visto es falso
+botones_antes es 0
+agarrada es 0
+agarre es 0
 
 funcion es_controlador con t
     devuelve t es mayor que CONSOLA
 fin
 
-funcion etiqueta_renglon con t
-    si es_controlador con t
-        devuelve nada
+funcion entre_limites con valor y minimo y maximo
+    si valor es menor que minimo
+        devuelve minimo
+    si no si valor es mayor que maximo
+        devuelve maximo
     fin
-    limpia_renglon con t
-    pon_en_renglon con t y 2 y 48 mas t y GRIS_OSCURO
-    nombre es nombre_de con t
-    para cada i desde 1 hasta largo de nombre
-        pon_en_renglon con t y 3 mas i y (elemento i de nombre) y (color_de con t)
+    devuelve valor
+fin
+
+funcion casilla_de_texto con t y renglon y c
+    devuelve (t menos 1) por TEXTO_ANCHO por TEXTO_ALTO mas (renglon menos 1) por TEXTO_ANCHO mas c
+fin
+
+funcion saca_de_encima con t
+    comparte puestas
+    i es 1
+    quedan es 0
+    mientras i es menor o igual que puestas
+        otra es elemento i de encima
+        si otra no es igual a t
+            quedan es quedan mas 1
+            elemento quedan de encima es otra
+        fin
+        i es i mas 1
     fin
+    puestas es quedan
+fin
+
+funcion sube_ventana con t
+    comparte puestas
+    saca_de_encima con t
+    elemento puestas mas 1 de encima es t
+    puestas es puestas mas 1
+    ensucia
+fin
+
+funcion abre_ventana con t
+    primera es (t menos 1) por TEXTO_ANCHO por TEXTO_ALTO
+    para cada i desde 1 hasta TEXTO_ANCHO por TEXTO_ALTO
+        elemento primera mas i de textos es GRIS por 256 mas 32
+    fin
+    elemento t de columna_de es 1
+    elemento t de fila_de_ventana es 1
+    elemento t de ventana_x es ANCHO menos VENTANA_ANCHO menos (t menos 1) por 3 menos 1
+    elemento t de ventana_y es 3 mas (t menos 1) por 4
+    elemento t de ventana_de es VENTANA_VIVA
+    sube_ventana con t
+fin
+
+funcion acaba_ventana con t
+    si (elemento t de ventana_de) es VENTANA_VIVA
+        elemento t de ventana_de es VENTANA_ACABADA
+        ensucia
+    fin
+fin
+
+funcion quita_ventana con t
+    comparte agarrada
+    elemento t de ventana_de es SIN_VENTANA
+    saca_de_encima con t
+    si agarrada es t
+        agarrada es 0
+    fin
+    ensucia
+fin
+
+funcion salto_en_ventana con t
+    elemento t de columna_de es 1
+    renglon es elemento t de fila_de_ventana
+    si renglon es menor que TEXTO_ALTO
+        elemento t de fila_de_ventana es renglon mas 1
+    si no
+        primera es (t menos 1) por TEXTO_ANCHO por TEXTO_ALTO
+        copia_region con textos y primera mas 1 y textos y primera mas TEXTO_ANCHO mas 1 y TEXTO_ANCHO por (TEXTO_ALTO menos 1)
+        para cada c desde 1 hasta TEXTO_ANCHO
+            elemento primera mas (TEXTO_ALTO menos 1) por TEXTO_ANCHO mas c de textos es GRIS por 256 mas 32
+        fin
+    fin
+    ensucia
+fin
+
+funcion pon_en_ventana con t y letra
+    c es elemento t de columna_de
+    si c es mayor que TEXTO_ANCHO
+        salto_en_ventana con t
+        c es 1
+    fin
+    elemento (casilla_de_texto con t y (elemento t de fila_de_ventana) y c) de textos es BLANCO por 256 mas letra
+    elemento t de columna_de es c mas 1
+    ensucia
 fin
 
 funcion letra_de_programa con b
@@ -675,12 +789,7 @@ funcion letra_de_programa con b
     fin
     medias es elemento t de medias_de
     si b es 10
-        c es elemento t de columna_de
-        mientras c es menor o igual que ANCHO
-            pon_en_renglon con t y c y 32 y GRIS
-            c es c mas 1
-        fin
-        elemento t de columna_de es DE_INICIO
+        salto_en_ventana con t
         elemento t de medias_de es 0
     si no si b es mayor o igual que 192
         elemento t de medias_de es b
@@ -690,12 +799,194 @@ funcion letra_de_programa con b
             letra es en_437 con medias y b
             elemento t de medias_de es 0
         fin
-        c es elemento t de columna_de
-        si c es menor o igual que ANCHO
-            pon_en_renglon con t y c y letra y BLANCO
-            elemento t de columna_de es c mas 1
-        fin
+        pon_en_ventana con t y letra
     fin
+fin
+
+funcion pon_en_vista con renglon y c y valor
+    si renglon es mayor o igual que 1 y renglon es menor o igual que ALTO y c es mayor o igual que 1 y c es menor o igual que ANCHO
+        elemento (renglon menos 1) por ANCHO mas c de lo_que_se_ve es valor
+    fin
+fin
+
+funcion pon_texto_en_vista con renglon y c y texto y tinta
+    i es 1
+    mientras i es menor o igual que largo de texto
+        pon_en_vista con renglon y c mas i menos 1 y tinta mas (elemento i de texto)
+        i es i mas 1
+    fin
+fin
+
+funcion pinta_ventana con t
+    estado es elemento t de ventana_de
+    si estado es SIN_VENTANA
+        devuelve nada
+    fin
+    vx es elemento t de ventana_x
+    vy es elemento t de ventana_y
+    tinta es color_de con t
+    si estado es VENTANA_ACABADA
+        tinta es GRIS_OSCURO
+    fin
+    titulo es tinta por 16 por 256
+    linea es tinta por 256
+    para cada c desde 0 hasta VENTANA_ANCHO menos 1
+        pon_en_vista con vy y vx mas c y titulo mas 32
+    fin
+    pon_en_vista con vy y vx mas 1 y titulo mas 48 mas t
+    nombre es nombre_de con t
+    cuantas es largo de nombre
+    si cuantas es mayor que 16
+        cuantas es 16
+    fin
+    i es 1
+    mientras i es menor o igual que cuantas
+        pon_en_vista con vy y vx mas 2 mas i y titulo mas (elemento i de nombre)
+        i es i mas 1
+    fin
+    si estado es VENTANA_ACABADA
+        pon_texto_en_vista con vy y vx mas 4 mas cuantas y "ya no corre" y titulo
+    fin
+    boton es (ROJO por 16 mas BLANCO) por 256
+    pon_en_vista con vy y vx mas VENTANA_ANCHO menos 4 y boton mas 32
+    pon_en_vista con vy y vx mas VENTANA_ANCHO menos 3 y boton mas 120
+    pon_en_vista con vy y vx mas VENTANA_ANCHO menos 2 y boton mas 32
+    primera es (t menos 1) por TEXTO_ANCHO por TEXTO_ALTO
+    para cada renglon desde 1 hasta TEXTO_ALTO
+        pon_en_vista con vy mas renglon y vx y linea mas 179
+        para cada c desde 1 hasta TEXTO_ANCHO
+            pon_en_vista con vy mas renglon y vx mas c y (elemento primera mas (renglon menos 1) por TEXTO_ANCHO mas c de textos)
+        fin
+        pon_en_vista con vy mas renglon y vx mas VENTANA_ANCHO menos 1 y linea mas 179
+    fin
+    pie es vy mas VENTANA_ALTO menos 1
+    pon_en_vista con pie y vx y linea mas 192
+    para cada c desde 1 hasta VENTANA_ANCHO menos 2
+        pon_en_vista con pie y vx mas c y linea mas 196
+    fin
+    pon_en_vista con pie y vx mas VENTANA_ANCHO menos 1 y linea mas 217
+fin
+
+funcion dentro_de_ventana con t y renglon y c
+    si (elemento t de ventana_de) es SIN_VENTANA
+        devuelve falso
+    fin
+    vx es elemento t de ventana_x
+    vy es elemento t de ventana_y
+    devuelve c es mayor o igual que vx y c es menor que vx mas VENTANA_ANCHO y renglon es mayor o igual que vy y renglon es menor que vy mas VENTANA_ALTO
+fin
+
+funcion ventana_en con renglon y c
+    i es puestas
+    mientras i es mayor o igual que 1
+        t es elemento i de encima
+        si dentro_de_ventana con t y renglon y c
+            devuelve t
+        fin
+        i es i menos 1
+    fin
+    devuelve 0
+fin
+
+funcion compone
+    copia_region con lo_que_se_ve y 1 y pantalla y 1 y ANCHO por ALTO
+    i es 1
+    mientras i es menor o igual que puestas
+        pinta_ventana con (elemento i de encima)
+        i es i mas 1
+    fin
+    sitio es cursor_sitio
+    renglon es (cociente con sitio y ANCHO) mas 1
+    c es (sitio resto ANCHO) mas 1
+    si (ventana_en con renglon y c) no es igual a 0
+        sitio es ANCHO por ALTO
+    fin
+    si hay_graficos
+        elemento CURSOR_EN de control es sitio
+        si raton_visto
+            elemento DONDE_RATON_X de control es raton_x
+            elemento DONDE_RATON_Y de control es raton_y
+        fin
+        devuelve nada
+    fin
+    pon_en_puerto con 980 y 15
+    pon_en_puerto con 981 y (sitio resto 256)
+    pon_en_puerto con 980 y 14
+    pon_en_puerto con 981 y (cociente con sitio y 256)
+    si raton_visto
+        casilla es (cociente con raton_y y LETRA_ALTO) por ANCHO mas (cociente con raton_x y LETRA_ANCHO) mas 1
+        valor es elemento casilla de lo_que_se_ve
+        atributo es cociente con valor y 256
+        al_reves es (atributo resto 16) por 16 mas (cociente con atributo y 16)
+        elemento casilla de lo_que_se_ve es al_reves por 256 mas (valor resto 256)
+    fin
+fin
+
+funcion cierra_desde_la_ventana con t
+    quita_ventana con t
+    estado es elemento t de estados_tarea
+    si estado no es igual a SIN_USAR y estado no es igual a CERRADA
+        cierra_tarea con t y LA_PARARON
+    fin
+fin
+
+funcion pulsa_en con renglon y c
+    comparte agarrada y agarre
+    t es ventana_en con renglon y c
+    si t es 0
+        devuelve nada
+    fin
+    vx es elemento t de ventana_x
+    si renglon es (elemento t de ventana_y) y c es mayor o igual que vx mas VENTANA_ANCHO menos 4 y c es menor o igual que vx mas VENTANA_ANCHO menos 2
+        cierra_desde_la_ventana con t
+        devuelve nada
+    fin
+    sube_ventana con t
+    si renglon es (elemento t de ventana_y)
+        agarrada es t
+        agarre es c menos vx
+    fin
+fin
+
+funcion arrastra_a con renglon y c
+    comparte agarrada
+    t es agarrada
+    si (elemento t de ventana_de) es SIN_VENTANA
+        agarrada es 0
+        devuelve nada
+    fin
+    elemento t de ventana_x es entre_limites con (c menos agarre) y 1 y (ANCHO menos VENTANA_ANCHO mas 1)
+    elemento t de ventana_y es entre_limites con renglon y 2 y (ALTO menos VENTANA_ALTO mas 1)
+fin
+
+funcion recibe_raton con a y b
+    comparte raton_x y raton_y y raton_visto y botones_antes y agarrada
+    si actual no es igual a TAREA_TECLADO
+        devuelve rechaza_a_actual
+    fin
+    si a es menor que 0 o a es mayor que 511 o b es menor que 0 o b es mayor que 4095
+        devuelve RECHAZADA
+    fin
+    dx es a menos 256
+    dy es (cociente con b y 8) menos 256
+    botones es b resto 8
+    raton_x es entre_limites con (raton_x mas dx) y 0 y (EN_ANCHO menos 1)
+    raton_y es entre_limites con (raton_y menos dy) y 0 y (EN_ALTO menos 1)
+    raton_visto es verdadero
+    renglon es (cociente con raton_y y LETRA_ALTO) mas 1
+    c es (cociente con raton_x y LETRA_ANCHO) mas 1
+    pulsado es (botones resto 2) es 1
+    lo_estaba es (botones_antes resto 2) es 1
+    botones_antes es botones
+    si pulsado y no lo_estaba
+        pulsa_en con renglon y c
+    si no si pulsado y agarrada no es igual a 0
+        arrastra_a con renglon y c
+    si no si no pulsado
+        agarrada es 0
+    fin
+    ensucia
+    devuelve 0
 fin
 
 funcion se_puede_correr con t
@@ -869,7 +1160,7 @@ funcion rechaza_a_actual
 fin
 
 funcion aguarda_aviso con respuesta
-    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer
+    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer y raton_sin_leer
     yo es actual
     si no (es_controlador con yo)
         devuelve rechaza_a_actual
@@ -887,7 +1178,8 @@ funcion aguarda_aviso con respuesta
     fin
     si yo es TAREA_TECLADO
         tecla_sin_leer es falso
-        pon_en_puerto con CONTROLADOR_DATOS y TODAS_ABIERTAS
+        raton_sin_leer es falso
+        abre_entrada
     fin
     elemento yo de estados_tarea es EN_ESPERA
     cambia_de_tarea
@@ -946,6 +1238,8 @@ funcion al_llamar
         elemento EN_RAX de marco es aguarda_aviso con a
     si no si numero es ENTREGA_TECLA
         elemento EN_RAX de marco es recibe_tecla con a
+    si no si numero es ENTREGA_RATON
+        elemento EN_RAX de marco es recibe_raton con a y (elemento EN_RSI de marco)
     si no
         elemento EN_RAX de marco es 0 menos 1
     fin
@@ -968,13 +1262,102 @@ funcion al_fallar con numero y codigo y direccion
     cambia_de_tarea
 fin
 
+funcion abre_entrada
+    pon_en_puerto con CONTROLADOR_DATOS y TODAS_ABIERTAS
+    pon_en_puerto con ESCLAVO_DATOS y ESCLAVO_ABIERTO
+fin
+
+funcion cierra_entrada
+    pon_en_puerto con CONTROLADOR_DATOS y SIN_TECLADO
+    pon_en_puerto con ESCLAVO_DATOS y ESCLAVO_CERRADO
+fin
+
 funcion al_pulsar
     comparte tecla_sin_leer
     tecla_sin_leer es verdadero
-    pon_en_puerto con CONTROLADOR_DATOS y SIN_TECLADO
+    cierra_entrada
     pon_en_puerto con CONTROLADOR y YA_ESTA
     avisa_a con TAREA_TECLADO y AVISO_TECLA
     cambia_de_tarea
+fin
+
+funcion al_mover
+    comparte raton_sin_leer
+    raton_sin_leer es verdadero
+    cierra_entrada
+    pon_en_puerto con ESCLAVO y YA_ESTA
+    pon_en_puerto con CONTROLADOR y YA_ESTA
+    avisa_a con TAREA_TECLADO y AVISO_RATON
+    cambia_de_tarea
+fin
+
+funcion al_falso_del_esclavo
+    pon_en_puerto con CONTROLADOR y YA_ESTA
+fin
+
+funcion puede_escribir_8042
+    para cada vuelta desde 1 hasta 100000
+        si ((lee_puerto de ESTADO_8042) resto 4) es menor que 2
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion hay_byte_8042
+    para cada vuelta desde 1 hasta 100000
+        si ((lee_puerto de ESTADO_8042) resto 2) es 1
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion orden_8042 con valor
+    si puede_escribir_8042
+        pon_en_puerto con ESTADO_8042 y valor
+    fin
+fin
+
+funcion dato_8042 con valor
+    si puede_escribir_8042
+        pon_en_puerto con DATOS_8042 y valor
+    fin
+fin
+
+funcion manda_al_raton con valor
+    orden_8042 con 212
+    dato_8042 con valor
+    si hay_byte_8042
+        devuelve (lee_puerto de DATOS_8042) es 250
+    fin
+    devuelve falso
+fin
+
+funcion prepara_raton
+    comparte hay_raton
+    repite 16 veces
+        si ((lee_puerto de ESTADO_8042) resto 2) es 1
+            basura es lee_puerto de DATOS_8042
+        fin
+    fin
+    orden_8042 con 168
+    orden_8042 con 32
+    si no hay_byte_8042
+        devuelve nada
+    fin
+    ajustes es lee_puerto de DATOS_8042
+    si ((cociente con ajustes y 2) resto 2) es 0
+        ajustes es ajustes mas 2
+    fin
+    si ((cociente con ajustes y 32) resto 2) es 1
+        ajustes es ajustes menos 32
+    fin
+    orden_8042 con 96
+    dato_8042 con ajustes
+    por_defecto es manda_al_raton con 246
+    activado es manda_al_raton con 244
+    hay_raton es por_defecto y activado
 fin
 
 funcion vigila con t
@@ -1002,8 +1385,12 @@ funcion al_tic
     vigila con TAREA_TECLADO
     vigila con TAREA_DISCO
     vigila con TAREA_PANTALLA
-    si pantalla_sucia y hay_graficos y (elemento TAREA_PANTALLA de avisos) es 0
+    si pantalla_sucia y no hay_graficos
         pantalla_sucia es falso
+        compone
+    si no si pantalla_sucia y (elemento TAREA_PANTALLA de avisos) es 0
+        pantalla_sucia es falso
+        compone
         avisa_a con TAREA_PANTALLA y AVISO_PINTA
     fin
     cambia_de_tarea
@@ -1062,14 +1449,15 @@ funcion prepara_interrupciones
     pon_en_puerto con ESCLAVO_DATOS y 2
     pon_en_puerto con CONTROLADOR_DATOS y 1
     pon_en_puerto con ESCLAVO_DATOS y 1
-    pon_en_puerto con CONTROLADOR_DATOS y TODAS_ABIERTAS
-    pon_en_puerto con ESCLAVO_DATOS y 255
+    abre_entrada
     divisor es cociente con 1193182 y TICS_POR_SEGUNDO
     pon_en_puerto con RELOJ_ORDEN y 54
     pon_en_puerto con RELOJ y (divisor resto 256)
     pon_en_puerto con RELOJ y (cociente con divisor y 256)
     atiende_interrupcion con 32 y al_tic
     atiende_interrupcion con 33 y al_pulsar
+    atiende_interrupcion con 44 y al_mover
+    atiende_interrupcion con 47 y al_falso_del_esclavo
     atiende_llamadas con al_llamar
     atiende_fallos con al_fallar
     activa_interrupciones
@@ -1310,6 +1698,9 @@ funcion ayuda
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
+    pinta_linea con ""
+    pinta_linea con "  Con el ratón, una ventana se mueve arrastrando su título, y se"
+    pinta_linea con "  cierra con la x roja."
     pinta_linea con ""
 fin
 
@@ -1645,13 +2036,15 @@ funcion reserva_tarea con t y archivo y total y entrada
     elemento t de avisos es 0
     si t es TAREA_TECLADO y tecla_sin_leer
         elemento t de avisos es AVISO_TECLA
+    si no si t es TAREA_TECLADO y raton_sin_leer
+        elemento t de avisos es AVISO_RATON
     fin
     elemento t de paciencia_gastada es 0
     elemento t de listas_de_paginas es pide_pagina
     elemento t de paginas_usadas es 0
     elemento t de programa_tamano es archivo
     elemento t de tiempo_de es 0
-    elemento t de columna_de es DE_INICIO
+    elemento t de columna_de es 1
     elemento t de medias_de es 0
     elemento t de generaciones es (elemento t de generaciones) mas 1
     elemento t de atendiendo_a es 0
@@ -1670,7 +2063,9 @@ funcion reserva_tarea con t y archivo y total y entrada
 fin
 
 funcion estrena_tarea con t
-    etiqueta_renglon con t
+    si no (es_controlador con t)
+        abre_ventana con t
+    fin
     elemento t de estados_tarea es EN_MARCHA
 fin
 
@@ -1832,6 +2227,7 @@ funcion para_tarea
     si no
         desactiva_interrupciones
         cierra_tarea con t y LA_PARARON
+        quita_ventana con t
         activa_interrupciones
         recoge_tareas con falso
     fin
@@ -2145,13 +2541,18 @@ funcion cuenta_pagina con t
 fin
 
 funcion ultima_linea con t
-    base es renglon_de con t
-    final es ANCHO
-    mientras final es mayor que DE_INICIO y ((elemento base mas final de pantalla) resto 256) es 32
+    renglon es elemento t de fila_de_ventana
+    si (elemento t de columna_de) es 1 y renglon es mayor que 1
+        renglon es renglon menos 1
+    fin
+    final es TEXTO_ANCHO
+    mientras final es mayor que 0 y ((elemento (casilla_de_texto con t y renglon y final) de textos) resto 256) es 32
         final es final menos 1
     fin
-    para cada c desde DE_INICIO hasta final
-        pon_letra con ((elemento base mas c de pantalla) resto 256)
+    c es 1
+    mientras c es menor o igual que final
+        pon_letra con ((elemento (casilla_de_texto con t y renglon y c) de textos) resto 256)
+        c es c mas 1
     fin
     mueve_cursor
 fin
@@ -2221,7 +2622,7 @@ funcion suelta_tarea con t
     fin
     suelta_pagina con (elemento t de listas_de_paginas)
     si no (es_controlador con t)
-        limpia_renglon con t
+        acaba_ventana con t
     fin
     para cada llave desde 1 hasta LLAVES
         elemento (sitio_de_llave con t y llave) de llave_a es 0
@@ -2392,7 +2793,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 6"
+    pinta con "día 7"
     pon_color con GRIS y NEGRO
 fin
 
@@ -2417,6 +2818,9 @@ funcion portada
     pinta_linea con "  permisos, solo hablan entre ellos si tú les dejas, y si intentan algo"
     pinta_linea con "  más, los cierro. El teclado, el disco y la pantalla ya no van dentro"
     pinta_linea con "  de mí: son programas, y si se cuelgan, lanzo otros."
+    pinta_linea con ""
+    pinta_linea con "  Cada programa sale en su ventana, y el borde lo pinto yo, del color"
+    pinta_linea con "  de su caja. Él no puede tocarlo."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -2424,15 +2828,17 @@ funcion portada
 fin
 
 escribe "FalOS arrancado"
-para cada t desde 1 hasta MAX_TAREAS
-    limpia_renglon con t
-fin
 portada
+compone
 si hay_graficos
     lanza_controlador con TAREA_PANTALLA
 fin
 lanza_controlador con TAREA_TECLADO
 lanza_controlador con TAREA_DISCO
+prepara_raton
+si hay_raton
+    escribe "ratón listo"
+fin
 prepara_interrupciones
 indicador
 escribe "pantalla lista"

@@ -10,6 +10,7 @@
   fisgon      quiere leer lo que escribes en el teclado
   impostor    quiere escribir órdenes haciéndose pasar por ti
   larga       escribe una línea que no cabe
+  disfraz     se hace pasar por FalOS y te pide la contraseña
 
   gigante     dice que necesita un terabyte de memoria
   desborda    dice que ocupa un número que no cabe en ninguna cuenta

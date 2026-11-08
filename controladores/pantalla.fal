@@ -18,7 +18,7 @@ ENCENDIDO_SIN_BORRAR es 193
 ANCHO es 80
 ALTO es 25
 ARRIBA es 2
-ABAJO es 21
+ABAJO es 25
 LETRA_ANCHO es 12
 LETRA_ALTO es 24
 CHICA_ANCHO es 6
@@ -30,6 +30,11 @@ SALTO_VGA es 70
 SIN_PINTAR es 65535
 CURSOR_EN es 1
 SUBIDAS es 2
+DONDE_RATON_X es 3
+DONDE_RATON_Y es 4
+FLECHA_ANCHO es 12
+FLECHA_ALTO es 19
+FLECHA es "N...........NN..........NBN.........NBBN........NBBBN.......NBBBBN......NBBBBBN.....NBBBBBBN....NBBBBBBBN...NBBBBBBBBN..NBBBBBBBBBN.NBBBBBNNNNNNNBBNBBN.....NBN.NBBN....NN..NBBN....N....NBBN........NBBN.........NBBN........NNN..."
 
 rejilla es region con 807399424 y 2000 y 2
 control es region con 807403424 y 8 y 8
@@ -42,6 +47,8 @@ letra_dibujada es incluye_archivo de "controladores/letra.txt"
 
 subidas_vistas es 0
 cursor_pintado es 0 menos 1
+flecha_x es 0 menos 1
+flecha_y es 0
 
 funcion registro con cual y valor
     pon_palabra con INDICE y cual
@@ -237,11 +244,67 @@ funcion pinta_lo_nuevo
     fin
 fin
 
+funcion borra_flecha
+    si flecha_x es menor que 0
+        devuelve nada
+    fin
+    primera es cociente con flecha_x y LETRA_ANCHO
+    ultima es cociente con (flecha_x mas FLECHA_ANCHO menos 1) y LETRA_ANCHO
+    si ultima es mayor o igual que ANCHO
+        ultima es ANCHO menos 1
+    fin
+    arriba_del_todo es cociente con flecha_y y LETRA_ALTO
+    abajo_del_todo es cociente con (flecha_y mas FLECHA_ALTO menos 1) y LETRA_ALTO
+    si abajo_del_todo es mayor o igual que ALTO
+        abajo_del_todo es ALTO menos 1
+    fin
+    f es arriba_del_todo
+    mientras f es menor o igual que abajo_del_todo
+        c es primera
+        mientras c es menor o igual que ultima
+            i es f por ANCHO mas c mas 1
+            valor es elemento i de pintado
+            si valor no es igual a SIN_PINTAR
+                pinta_casilla con i y valor
+            fin
+            c es c mas 1
+        fin
+        f es f mas 1
+    fin
+fin
+
+funcion pinta_flecha
+    comparte flecha_x y flecha_y
+    flecha_x es elemento DONDE_RATON_X de control
+    flecha_y es elemento DONDE_RATON_Y de control
+    si flecha_x es menor que 0 o flecha_x es mayor o igual que EN_ANCHO o flecha_y es menor que 0 o flecha_y es mayor o igual que EN_ALTO
+        flecha_x es 0 menos 1
+        devuelve nada
+    fin
+    oscuro es elemento 1 de tintas
+    claro es elemento 16 de tintas
+    para cada fy desde 0 hasta FLECHA_ALTO menos 1
+        para cada fx desde 0 hasta FLECHA_ANCHO menos 1
+            punto es elemento fy por FLECHA_ANCHO mas fx mas 1 de FLECHA
+            si flecha_y mas fy es menor que EN_ALTO y flecha_x mas fx es menor que EN_ANCHO
+                sitio es (flecha_y mas fy) por EN_ANCHO mas flecha_x mas fx mas 1
+                si punto es 78
+                    elemento sitio de video es oscuro
+                si no si punto es 66
+                    elemento sitio de video es claro
+                fin
+            fin
+        fin
+    fin
+fin
+
 funcion pinta_todo
+    borra_flecha
     borra_cursor
     sube_lo_pintado
     pinta_lo_nuevo
     pinta_cursor
+    pinta_flecha
 fin
 
 para cada i desde 1 hasta ALTO por ANCHO

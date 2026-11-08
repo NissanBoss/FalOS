@@ -2,6 +2,63 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 7: cada programa en su ventana, del color de su caja, y ratón
+
+![FalOS con cuatro programas, cada uno en su ventana](capturas/dia-7.png)
+
+**Lo que hay.** Cada programa sale ya en su propia ventana, con el borde y el
+título del color de su caja: verde el 1, amarillo el 2, lila el 3 y cian el 4. Las
+ventanas se mueven arrastrando el título con el ratón, se traen delante con un clic
+y se cierran con la x roja, que cierra también el programa. Cuando un programa
+termina o FalOS lo cierra, su ventana se queda en gris, para que se pueda leer lo
+último que dijo.
+
+![Una ventana arrastrada abajo y otra cerrada con el ratón](capturas/dia-7-raton.png)
+
+**Lo que se aprende.** La idea es de [Qubes OS](https://www.qubes-os.org). Allí
+cada ventana lleva el color de la máquina virtual de la que sale, y ese borde no lo
+pinta el programa: lo pinta el sistema. Si una ventana roja te pide la contraseña
+del banco, sabes que no es tu banco, aunque se le parezca en todo.
+
+En FalOS pasa lo mismo. Un programa solo puede mandarle letras al núcleo, y el
+núcleo las pone dentro de su ventana. El borde, el título y el número los pinta el
+núcleo, y el programa no tiene forma de salir de su rectángulo. `disfraz` lo
+intenta: dice que es FalOS y que tu sesión ha caducado. Pero su ventana dice
+`disfraz`.
+
+![disfraz se hace pasar por FalOS, pero su ventana dice quién es](capturas/dia-7-disfraz.png)
+
+**La seguridad.** El ratón y el teclado llegan por el mismo chip, el 8042, y los
+dos por el puerto 96. Ese chip tiene otro puerto, el 100, y con él se puede
+reiniciar el ordenador. Por eso el programa del teclado no lo tiene: el ratón lo
+enciende el núcleo al arrancar, y cuando llega un byte, el núcleo sabe por la
+interrupción si viene del teclado o del ratón, y se lo dice al programa. Así el
+programa del teclado sigue con un solo puerto, y entiende los dos.
+
+Lo que ese programa entrega es cuánto se ha movido el ratón y qué botones lleva
+pulsados, nada más. Dónde está la flecha, qué ventana hay debajo y qué significa un
+clic lo decide el núcleo. Si el programa se cuelga, FalOS lanza otro y el ratón
+sigue funcionando.
+
+Y hay un límite que conviene decir. Quien enseña los bordes es el programa de la
+pantalla, que tampoco es de fiar: el núcleo decide los colores, pero lo pinta él.
+Los bordes te protegen de los programas, todavía no de ese.
+
+En modo de texto, sin gráficos, también hay ventanas: los bordes son los caracteres
+de caja de siempre y la flecha es una casilla con los colores al revés.
+
+![Las mismas ventanas en modo de texto](capturas/dia-7-texto.png)
+
+**Lo que costó.** Lo que dio guerra fueron los nombres. El compilador paró dos
+veces: `ventana_acabada` era una función y
+`VENTANA_ACABADA` una constante, y en Fal las mayúsculas no importan, así que eran
+el mismo nombre. Esta vez lo dijo el compilador antes de arrancar, y no una
+pantalla en negro.
+
+La letra tampoco tenía las líneas para dibujar cajas, y hubo que añadirle seis
+caracteres. Y en modo de texto, un fondo de color claro parpadea, porque así lo
+decidieron los PC de los ochenta: FalOS apaga ese parpadeo al arrancar.
+
 ## Día 6: los programas salen del disco, y FalOS dibuja su propia letra
 
 ![FalOS en modo gráfico](capturas/dia-6.png)

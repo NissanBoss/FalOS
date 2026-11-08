@@ -1,0 +1,8 @@
+escribe "FalOS"
+escribe ""
+escribe "Tu sesión ha caducado. Escribe tu"
+escribe "contraseña para seguir:"
+escribe "> " sin salto
+mientras verdadero
+    llama_al_sistema con 4 y 6000
+fin
