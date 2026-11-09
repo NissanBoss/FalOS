@@ -17,6 +17,7 @@ TECLA_FIN es 261
 TECLA_SUPRIME es 262
 TECLA_ARRIBA es 263
 TECLA_ABAJO es 264
+TECLA_ESCAPE es 265
 
 TECLAS es "~~1234567890'~~~qwertyuiop~+~~asdfghjkl~~~~~zxcvbnm,.-~*~ "
 TECLAS_MAYUS es "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
@@ -65,6 +66,8 @@ funcion atiende con codigo
         manda con TECLA_INTRO
     si no si codigo es 14
         manda con TECLA_BORRA
+    si no si codigo es 1
+        manda con TECLA_ESCAPE
     si no si altgr
         si codigo es menor que 128
             teclea con (con_altgr con codigo)

@@ -1,0 +1,320 @@
+PIDE_TICS es 3
+DUERME es 4
+LEE_TECLA es 11
+PIDE_VENTANA es 12
+PON_CASILLA es 13
+
+TECLA_INTRO es 256
+TECLA_IZQUIERDA es 258
+TECLA_DERECHA es 259
+TECLA_ARRIBA es 263
+TECLA_ABAJO es 264
+
+CELDAS es 28
+COLUMNAS es CELDAS por 2
+RENGLONES es 17
+PRIMER_RENGLON es 3
+CAPACIDAD es 600
+MESA es 807395328
+
+GRIS es 7
+GRIS_OSCURO es 8
+VERDE_CLARO es 10
+ROJO_CLARO es 12
+AMARILLO es 14
+BLANCO es 15
+
+BLOQUE es 219
+RAYA es 196
+
+cuerpo es region con MESA y CAPACIDAD y 2
+ocupado es region con MESA mas 2048 y CELDAS por RENGLONES y 1
+
+semilla es 1
+puntos es 0
+mejor es 0
+primero es 1
+mide es 0
+hacia es TECLA_DERECHA
+comida es 0
+
+funcion descansa con centesimas
+    llama_al_sistema con DUERME y centesimas
+fin
+
+funcion pon con renglon y columna y tinta y letra
+    llama_al_sistema con PON_CASILLA y renglon por 256 mas columna y tinta por 256 mas letra
+fin
+
+funcion renglon_de con p
+    devuelve (cociente con (p menos 1) y CELDAS) mas 1
+fin
+
+funcion celda_de con p
+    devuelve ((p menos 1) resto CELDAS) mas 1
+fin
+
+funcion pon_en con p y tinta y letra
+    renglon es renglon_de con p
+    columna es (celda_de con p) por 2
+    pon con renglon y columna menos 1 y tinta y letra
+    pon con renglon y columna y tinta y letra
+fin
+
+funcion texto_en con renglon y columna y texto y tinta
+    c es columna
+    para cada letra en texto
+        pon con renglon y c y tinta y letra
+        c es c mas 1
+    fin
+    devuelve c
+fin
+
+funcion numero_en con renglon y columna y n y tinta
+    cifras es 1
+    tope es 10
+    mientras tope es menor o igual que n
+        cifras es cifras mas 1
+        tope es tope por 10
+    fin
+    resto_n es n
+    c es columna mas cifras menos 1
+    repite cifras veces
+        pon con renglon y c y tinta y 48 mas (resto_n resto 10)
+        resto_n es cociente con resto_n y 10
+        c es c menos 1
+    fin
+    pon con renglon y columna mas cifras y tinta y 32
+fin
+
+funcion azar con hasta
+    comparte semilla
+    semilla es (semilla por 75 mas 74) resto 65537
+    devuelve (semilla resto hasta) mas 1
+fin
+
+funcion marcador
+    texto_en con 1 y 2 y "puntos" y GRIS
+    numero_en con 1 y 9 y puntos y BLANCO
+    texto_en con 1 y COLUMNAS menos 10 y "mejor" y GRIS
+    numero_en con 1 y COLUMNAS menos 4 y mejor y AMARILLO
+fin
+
+funcion limpia_campo
+    para cada p desde 1 hasta CELDAS por RENGLONES
+        elemento p de ocupado es 0
+    fin
+    para cada renglon desde PRIMER_RENGLON hasta RENGLONES
+        para cada columna desde 1 hasta COLUMNAS
+            pon con renglon y columna y GRIS y 32
+        fin
+    fin
+fin
+
+funcion sitio_del con i
+    devuelve ((primero mas i menos 2) resto CAPACIDAD) mas 1
+fin
+
+funcion cabeza
+    devuelve elemento (sitio_del con mide) de cuerpo
+fin
+
+funcion crece_hasta con p
+    comparte mide
+    si mide es mayor que 0
+        pon_en con cabeza y VERDE_CLARO y BLOQUE
+    fin
+    mide es mide mas 1
+    elemento (sitio_del con mide) de cuerpo es p
+    elemento p de ocupado es 1
+    pon_en con p y AMARILLO y BLOQUE
+fin
+
+funcion encoge
+    comparte primero y mide
+    p es elemento primero de cuerpo
+    elemento p de ocupado es 0
+    pon_en con p y GRIS y 32
+    primero es (primero resto CAPACIDAD) mas 1
+    mide es mide menos 1
+fin
+
+funcion pon_comida
+    comparte comida
+    desde es (PRIMER_RENGLON menos 1) por CELDAS
+    campo es CELDAS por RENGLONES menos desde
+    p es desde mas (azar con campo)
+    vueltas es 0
+    mientras (elemento p de ocupado) es 1 y vueltas es menor que campo
+        p es p mas 1
+        si p es mayor que CELDAS por RENGLONES
+            p es desde mas 1
+        fin
+        vueltas es vueltas mas 1
+    fin
+    comida es p
+    pon_en con p y ROJO_CLARO y BLOQUE
+fin
+
+funcion siguiente_casilla
+    p es cabeza
+    renglon es renglon_de con p
+    columna es celda_de con p
+    si hacia es TECLA_ARRIBA
+        renglon es renglon menos 1
+    si no si hacia es TECLA_ABAJO
+        renglon es renglon mas 1
+    si no si hacia es TECLA_IZQUIERDA
+        columna es columna menos 1
+    si no
+        columna es columna mas 1
+    fin
+    si renglon es menor que PRIMER_RENGLON o renglon es mayor que RENGLONES
+        devuelve 0
+    fin
+    si columna es menor que 1 o columna es mayor que CELDAS
+        devuelve 0
+    fin
+    devuelve (renglon menos 1) por CELDAS mas columna
+fin
+
+funcion direccion_de con tecla
+    si tecla es 119 o tecla es 87
+        devuelve TECLA_ARRIBA
+    si no si tecla es 115 o tecla es 83
+        devuelve TECLA_ABAJO
+    si no si tecla es 97 o tecla es 65
+        devuelve TECLA_IZQUIERDA
+    si no si tecla es 100 o tecla es 68
+        devuelve TECLA_DERECHA
+    si no si tecla es TECLA_ARRIBA o tecla es TECLA_ABAJO o tecla es TECLA_IZQUIERDA o tecla es TECLA_DERECHA
+        devuelve tecla
+    fin
+    devuelve 0
+fin
+
+funcion contraria con d
+    si d es TECLA_ARRIBA
+        devuelve TECLA_ABAJO
+    si no si d es TECLA_ABAJO
+        devuelve TECLA_ARRIBA
+    si no si d es TECLA_IZQUIERDA
+        devuelve TECLA_DERECHA
+    fin
+    devuelve TECLA_IZQUIERDA
+fin
+
+funcion gira
+    comparte hacia
+    tecla es llama_al_sistema con LEE_TECLA
+    mientras tecla es mayor que 0
+        d es direccion_de con tecla
+        si d no es igual a 0 y d no es igual a hacia y d no es igual a (contraria con hacia)
+            hacia es d
+            devuelve nada
+        fin
+        tecla es llama_al_sistema con LEE_TECLA
+    fin
+fin
+
+funcion espera_flecha
+    comparte hacia
+    mientras verdadero
+        tecla es llama_al_sistema con LEE_TECLA
+        d es direccion_de con tecla
+        si d no es igual a 0 y d no es igual a TECLA_IZQUIERDA
+            hacia es d
+            devuelve nada
+        fin
+        descansa con 5
+    fin
+fin
+
+funcion espera_intro
+    mientras verdadero
+        si (llama_al_sistema con LEE_TECLA) es TECLA_INTRO
+            devuelve nada
+        fin
+        descansa con 5
+    fin
+fin
+
+funcion prepara_partida
+    comparte puntos y primero y mide y hacia
+    puntos es 0
+    primero es 1
+    mide es 0
+    hacia es TECLA_DERECHA
+    limpia_campo
+    marcador
+    centro es cociente con (PRIMER_RENGLON mas RENGLONES) y 2
+    medio es (centro menos 1) por CELDAS
+    crece_hasta con medio mas 6
+    crece_hasta con medio mas 7
+    crece_hasta con medio mas 8
+    pon_comida
+    texto_en con 13 y 17 y "dame el teclado y pulsa" y BLANCO
+    texto_en con 14 y 17 y "una flecha para empezar" y BLANCO
+    espera_flecha
+    texto_en con 13 y 17 y "                       " y GRIS
+    texto_en con 14 y 17 y "                       " y GRIS
+    si (elemento comida de ocupado) es 0
+        pon_en con comida y ROJO_CLARO y BLOQUE
+    fin
+fin
+
+funcion juega
+    comparte puntos
+    mientras verdadero
+        pausa es 12 menos (cociente con puntos y 3)
+        si pausa es menor que 5
+            pausa es 5
+        fin
+        descansa con pausa
+        gira
+        p es siguiente_casilla
+        si p es 0
+            devuelve nada
+        fin
+        si p es comida
+            si (elemento p de ocupado) es 1
+                devuelve nada
+            fin
+            crece_hasta con p
+            puntos es puntos mas 1
+            marcador
+            pon_comida
+        si no
+            encoge
+            si (elemento p de ocupado) es 1
+                devuelve nada
+            fin
+            crece_hasta con p
+        fin
+    fin
+fin
+
+funcion se_acabo
+    comparte mejor
+    si puntos es mayor que mejor
+        mejor es puntos
+    fin
+    marcador
+    pon_en con cabeza y ROJO_CLARO y BLOQUE
+    c es texto_en con 9 y 19 y " te has chocado: " y BLANCO
+    numero_en con 9 y c y puntos y AMARILLO
+    texto_en con 10 y 19 y " Intro para otra    " y BLANCO
+    espera_intro
+fin
+
+llama_al_sistema con PIDE_VENTANA y COLUMNAS y RENGLONES
+semilla es ((llama_al_sistema con PIDE_TICS) resto 65536) mas 1
+texto_en con 1 y 24 y "SERPIENTE" y VERDE_CLARO
+para cada raya_en desde 1 hasta COLUMNAS
+    pon con 2 y raya_en y GRIS_OSCURO y RAYA
+fin
+mientras verdadero
+    prepara_partida
+    juega
+    se_acabo
+fin

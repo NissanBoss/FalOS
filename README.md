@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS con cuatro programas, cada uno en su ventana del color de su caja](capturas/dia-7.png)
+![FalOS con una serpiente escrita en Fal, en su ventana, con el teclado](capturas/dia-8.png)
 
 ## Por qué
 
@@ -51,7 +51,7 @@ cada día está en el [diario](DIARIO.md).
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
-`programas`, `lanza`, `tareas`, `para`, `permisos`, `permite`, `prohibe`,
+`programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
@@ -99,6 +99,17 @@ lanza primos
 lanza disfraz
 ```
 
+Lo que escribes va a la consola, salvo que tú le des el teclado a un programa:
+con un clic en su ventana o con `teclado N`. Mientras lo tiene, su título lo
+dice, y Esc lo devuelve siempre a la consola, porque esa tecla no le llega a
+ningún programa. Un programa no puede pedir el teclado ni quitárselo a otro.
+En el disco hay un juego para probarlo, escrito en Fal: una serpiente que crece.
+
+```
+lanza serpiente
+teclado 1
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -138,7 +149,8 @@ cerrados y el sistema sigue. Da un permiso, lo quita y mira que `ladron` no ha
 abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
 todo vuelve. Le da archivos que mienten sobre lo que son, y le conecta discos
 hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
-cierra dos con el ratón.
+cierra dos con el ratón. Y juega a la serpiente con `disfraz` abierto al lado, y
+mira que a `disfraz` no le ha llegado ni una tecla.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -149,11 +161,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 ## Lo que no cubre
 
 - **Casi todo, de momento.** No hay red, y el disco solo se lee: no se puede
-  escribir un programa dentro de FalOS. Es el día 7.
+  escribir un programa dentro de FalOS. Es el día 8.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 2.850
-  líneas, más que ayer, porque ahora también lleva las ventanas.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.000
+  líneas, más que ayer, porque ahora también reparte el teclado.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -164,11 +176,13 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   vale también para los bordes: el color lo decide el núcleo, pero lo pinta él.
   Los bordes te protegen de los programas, no de ese programa. Aún no hay nada
   en la pantalla de lo que te puedas fiar del todo.
-- **Las ventanas son de letras.** Una ventana es un rectángulo de 34 por 6
-  casillas, y un programa solo puede escribir texto en ella. No hay dibujos ni
-  tamaños distintos, y caben cuatro.
-- **El teclado siempre va a la consola.** Los programas no leen teclas, así que
-  la ventana que está delante no recibe lo que escribes.
+- **Las ventanas son de letras.** Una ventana es un rectángulo de casillas, de 34
+  por 6 si el programa no pide otro, y como mucho de 60 por 18. Un programa pone
+  letras de colores en ellas, no píxeles, y caben cuatro.
+- **Dentro de su ventana, un programa pinta lo que quiera.** También una ventana
+  falsa, con el borde de otro color. La de verdad es la de fuera, la que lleva el
+  título, y esa es la que hay que mirar.
+- **Cada programa guarda 15 teclas.** Si no las lee, las siguientes se pierden.
 - **Solo ratón PS/2.** Es el que trae QEMU. Al hacer clic en su ventana, QEMU se
   queda con el ratón, y lo suelta con la combinación que pone en su título. Ni
   USB ni pantallas táctiles.

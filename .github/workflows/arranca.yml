@@ -374,3 +374,58 @@ jobs:
               print(nombre, hay)
               assert hay > 3000, nombre
           FIN
+
+      - name: Un juego, y el teclado solo para quien tu digas
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza disfraz"
+            teclea "lanza serpiente"
+            sleep 2
+            teclea "secreto"
+            sleep 1
+            teclea "teclado 2"
+            sleep 1
+            echo "sendkey up"
+            sleep 0.5
+            echo "sendkey right"
+            sleep 1
+            echo "screendump juego.ppm"
+            sleep 1
+            echo "sendkey esc"
+            sleep 0.5
+            teclea "para 2"
+            teclea "para 1"
+            sleep 1
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:juego.txt -monitor stdio -no-reboot > /dev/null
+          cat juego.txt
+          if grep -q "  X  " juego.txt; then
+            echo "El juego ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "disfraz recibió 0 teclas" juego.txt
+          grep -Eq "serpiente recibió [1-9]" juego.txt
+          grep -q "serpiente cerrado con" juego.txt
+          python3 - <<'FIN'
+          datos = open("juego.ppm", "rb").read()
+          pixeles = datos.split(b"\n", 3)[3]
+          cuantos = {}
+          for i in range(0, len(pixeles), 3):
+              p = pixeles[i:i + 3]
+              cuantos[p] = cuantos.get(p, 0) + 1
+          for nombre, color, minimo in [("la ventana", (227, 179, 65), 3000),
+                                        ("la comida", (248, 113, 104), 500)]:
+              hay = cuantos.get(bytes(color), 0)
+              print(nombre, hay)
+              assert hay > minimo, nombre
+          FIN

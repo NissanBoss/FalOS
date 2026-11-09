@@ -2,6 +2,73 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 8: un juego escrito en Fal, y el teclado es de quien tú digas
+
+![La serpiente, en su ventana, con el teclado](capturas/dia-8.png)
+
+**Lo que hay.** El primer juego de FalOS: una serpiente que crece cada vez que
+come. Es un programa de Fal como los demás, de [320 líneas](programas/serpiente.fal),
+que sale del disco, corre en el anillo 3 sin permisos y vive en su ventana.
+
+```
+lanza serpiente
+teclado 1
+```
+
+Para jugar, hay que darle el teclado: con un clic en su ventana o con
+`teclado N`. Mientras lo tiene, su título dice `tiene el teclado`, y lo que
+escribes le llega a él y a nadie más. Esc lo devuelve a la consola.
+
+Hasta ayer, los programas no podían leer teclas. Hoy pueden, y con eso vino lo
+demás que un juego necesita: pedir una ventana más grande, poner una letra de
+color en una casilla concreta y una página de memoria para apuntar dónde está
+cada trozo de la serpiente.
+
+**Lo que se aprende.** En [X11](https://es.wikipedia.org/wiki/X_Window_System), el
+sistema de ventanas que ha usado Linux durante décadas, cualquier programa con
+una ventana puede leer lo que escribes en las demás. No hace falta ningún
+permiso especial: basta con preguntar. Es una de las razones por las que existe
+Qubes, y por las que Linux se está pasando a Wayland.
+
+En FalOS, la tecla que pulsas la recibe el programa del teclado, se la da al
+núcleo, y el núcleo decide a quién va. Solo a uno: al que tú le has dado el
+teclado, o a la consola. Los demás no la ven, ni siquiera saben que has pulsado
+algo.
+
+**La seguridad.** Volvamos a `disfraz`, el que se hace pasar por FalOS y te pide
+la contraseña. Hoy sí intenta leer lo que escribes. Si lo lanzas y escribes tu
+contraseña en la consola, no le llega nada:
+
+![disfraz pide la contraseña, pero no recibe ninguna tecla](capturas/dia-8-disfraz.png)
+
+Lo que hace falta para que le llegue es que tú le des el teclado. Y entonces su
+título dice `disfraz tiene el teclado`, con el color de su caja. Eso lo pinta el
+núcleo, no él.
+
+Un programa no puede pedir el teclado, ni quitárselo a otro. Y Esc no le llega
+nunca a ningún programa: la atiende el núcleo antes que nadie. Es la misma idea
+que Ctrl+Alt+Supr en Windows, que por eso se pedía antes de escribir la
+contraseña: ningún programa puede capturar esa combinación, así que si la pulsas,
+quien te contesta es el sistema.
+
+Dentro de su ventana, un programa pinta lo que quiera, y el núcleo mira cada
+casilla que pide: que caiga dentro de su rectángulo, que el color exista, que la
+letra se pueda pintar. Lo que no puede es salirse, ni tocar el borde.
+
+**Lo que costó.** Cada letra de FalOS mide 12 por 24 píxeles, el doble de alta
+que de ancha. La primera serpiente estaba hecha de rectángulos altos y parecía
+un código de barras. Ahora cada casilla del juego son dos letras juntas, y sale
+cuadrada.
+
+Los programas no tienen listas: Fal sin sistema debajo no sabe pedir memoria
+mientras corre. Así que cada programa tiene ahora una página de trabajo, y ahí
+apunta la serpiente sus trozos. El juego sabe de memoria dónde está esa página,
+y si se saliera de ella, el procesador lo pararía.
+
+Y las mayúsculas, otra vez. `duerme` era una función y `DUERME` el número de la
+llamada para dormir, y `comida` y `COMIDA` también chocaban. Las dos las cazó el
+compilador antes de arrancar, gracias al aviso que se le añadió el día 6.
+
 ## Día 7: cada programa en su ventana, del color de su caja, y ratón
 
 ![FalOS con cuatro programas, cada uno en su ventana](capturas/dia-7.png)

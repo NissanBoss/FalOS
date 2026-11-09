@@ -4,5 +4,8 @@ escribe "Tu sesión ha caducado. Escribe tu"
 escribe "contraseña para seguir:"
 escribe "> " sin salto
 mientras verdadero
-    llama_al_sistema con 4 y 6000
+    si (llama_al_sistema con 11) es mayor que 0
+        escribe "*" sin salto
+    fin
+    llama_al_sistema con 4 y 10
 fin
