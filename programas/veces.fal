@@ -1,6 +1,7 @@
 GUARDA es 14
 LEE_GUARDADO es 15
 MESA es 807395328
+NEGADO es 0 menos 10
 
 recuerdo es region con MESA y 16
 
@@ -51,6 +52,8 @@ fin
 guardados es llama_al_sistema con GUARDA y 0 y (apunta con lanzado)
 si guardados es mayor que 0
     escribe "Lo apunto en veces.dat."
+si no si guardados es NEGADO
+    escribe "No me dejas apuntarlo."
 si no
     escribe "No he podido apuntarlo: " sin salto
     escribe guardados

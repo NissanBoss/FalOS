@@ -543,16 +543,26 @@ PACIENCIA es 100
 
 ORDEN_LISTA es 1
 ORDEN_GUARDA es 2
+ORDEN_OLVIDA es 3
 ORDEN_TROZO es 16
 NO_HAY_DISCO es 0 menos 1
 NO_ES_MIO es 0 menos 2
 NO_ESTA es 0 menos 3
 NO_SE_LEE es 0 menos 4
+DANADO es 0 menos 5
+NO_SE_ESCRIBE es 0 menos 6
+LLENO es 0 menos 7
+PROHIBIDO es 0 menos 8
+NEGADO es 0 menos 10
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
 TOPE_GUARDADO es 512
 NOMBRE_EN_DISCO es 32
+DISCO_SIN_PEDIR es 0
+DISCO_PEDIDO es 1
+DISCO_SI es 2
+DISCO_NO es 3
 
 BYTE_TECLADO es 13
 BYTE_DISCO es 63
@@ -606,6 +616,7 @@ mesas es region con pide_pagina y 512 y 8
 pedido_de es region con pide_pagina y 512 y 8
 desde_de es region con pide_pagina y 512 y 8
 cuantos_de es region con pide_pagina y 512 y 8
+permiso_disco es region con pide_pagina y 512 y 8
 
 actual es CONSOLA
 foco es CONSOLA
@@ -1847,6 +1858,12 @@ funcion ejecuta
         orden_disco
     si no si empieza_por con "lee "
         lee_archivo
+    si no si empieza_por con "olvida "
+        olvida
+    si no si empieza_por con "deja "
+        decide_guardar con 6 y DISCO_SI
+    si no si empieza_por con "niega "
+        decide_guardar con 7 y DISCO_NO
     si no si empieza_por con "cuelga "
         estropea con 8 y AVISO_CUELGA
     si no si empieza_por con "rompe "
@@ -1876,6 +1893,9 @@ funcion ayuda
     pinta_linea con ""
     pinta_linea con "  disco          lo que hay en el disco"
     pinta_linea con "  lee X          enseña un archivo del disco"
+    pinta_linea con "  deja N         deja que el programa N guarde en su archivo"
+    pinta_linea con "  niega N        no le deja guardar nada"
+    pinta_linea con "  olvida X       borra de verdad lo que guardó X"
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
@@ -2234,6 +2254,7 @@ funcion reserva_tarea con t y archivo y total y entrada
     elemento t de entran_de es 0
     elemento t de salen_de es 0
     elemento t de teclas_recibidas es 0
+    elemento t de permiso_disco es DISCO_SIN_PEDIR
     elemento t de raices es monta_programa con t y archivo y total
     pila es pagina_de_tarea con t
     elemento t de pilas es pila mas PAGINA
@@ -2452,6 +2473,8 @@ funcion nombre_estado con t
         devuelve "esperando"
     si no si e es EN_ESPERA
         devuelve "esperando trabajo"
+    si no si e es CON_EL_DISCO y (elemento t de permiso_disco) es DISCO_PEDIDO
+        devuelve "pide permiso"
     si no si e es CON_EL_DISCO
         devuelve "con el disco"
     si no si e es CERRADA
@@ -2469,13 +2492,13 @@ funcion linea_de_tarea con t
     pon_color con GRIS y NEGRO
     hasta_columna con 17
     pinta con (nombre_estado con t)
-    hasta_columna con 34
+    hasta_columna con 36
     pinta_numero con (cociente con (elemento t de tiempo_de) y TICS_POR_SEGUNDO)
     pinta con " s de procesador"
-    hasta_columna con 56
+    hasta_columna con 58
     pinta_tamano con (elemento t de paginas_usadas) mas 1
     si (elemento t de reinicios_de) es mayor que 0
-        hasta_columna con 66
+        hasta_columna con 68
         pinta_numero con (elemento t de reinicios_de)
         si (elemento t de reinicios_de) es 1
             pinta con " reinicio"
@@ -2933,6 +2956,14 @@ funcion fallo_de_disco con motivo
         pinta_linea con "  No hay ningún archivo con ese nombre. Mira: disco"
     si no si motivo es NO_SE_LEE
         pinta_linea con "  El disco no me deja leer ese trozo."
+    si no si motivo es DANADO
+        pinta_linea con "  No entiendo el índice de este disco, así que no lo toco."
+    si no si motivo es NO_SE_ESCRIBE
+        pinta_linea con "  El disco no me deja escribir."
+    si no si motivo es LLENO
+        pinta_linea con "  El índice del disco está lleno."
+    si no si motivo es PROHIBIDO
+        pinta_linea con "  Ese nombre no vale."
     si no
         pinta_linea con "  El programa del disco ha caído antes de contestar."
     fin
@@ -3013,20 +3044,119 @@ funcion atiende_encargos
     hay_encargos es falso
     para cada t desde 1 hasta MAX_TAREAS
         si (elemento t de estados_tarea) es CON_EL_DISCO
-            hecho es haz_encargo con t
-            al_serie con (nombre_de con t)
-            si (elemento t de pedido_de) es GUARDA
-                escribe " guardó en el disco: " sin salto
-            si no
-                escribe " leyó del disco: " sin salto
+            pedido es elemento t de pedido_de
+            permiso es elemento t de permiso_disco
+            si pedido es GUARDA y permiso es DISCO_SIN_PEDIR
+                elemento t de permiso_disco es DISCO_PEDIDO
+                pide_permiso_de con t
+            si no si pedido es LEE_GUARDADO o permiso es DISCO_SI
+                termina_encargo con t y (haz_encargo con t)
+            si no si permiso es DISCO_NO
+                termina_encargo con t y NEGADO
             fin
-            escribe hecho
-            desactiva_interrupciones
-            si (elemento t de estados_tarea) es CON_EL_DISCO
-                despierta_con con t y hecho
-            fin
-            activa_interrupciones
         fin
+    fin
+fin
+
+funcion termina_encargo con t y hecho
+    al_serie con (nombre_de con t)
+    si (elemento t de pedido_de) es GUARDA
+        escribe " guardó en el disco: " sin salto
+    si no
+        escribe " leyó del disco: " sin salto
+    fin
+    escribe hecho
+    desactiva_interrupciones
+    si (elemento t de estados_tarea) es CON_EL_DISCO
+        despierta_con con t y hecho
+    fin
+    activa_interrupciones
+fin
+
+funcion pide_permiso_de con t
+    comparte columna
+    base es (fila menos 1) por ANCHO
+    para cada c desde 1 hasta ANCHO
+        elemento base mas c de pantalla es color por 256 mas 32
+    fin
+    columna es 1
+    pon_color con (color_de con t) y NEGRO
+    pinta con "  "
+    pinta con (nombre_de con t)
+    pon_color con BLANCO y NEGRO
+    pinta con " quiere guardar "
+    pinta_numero con (elemento t de cuantos_de)
+    pinta con " bytes en el disco, en "
+    pinta con (nombre_de con t)
+    pinta_linea con ".dat."
+    pon_color con GRIS y NEGRO
+    pinta con "  Si le dejas: deja "
+    pinta_numero con t
+    pinta con ". Si no: niega "
+    pinta_numero con t
+    pinta_linea con ". Hasta que me contestes, espera."
+    pinta_linea con ""
+    al_serie con (nombre_de con t)
+    escribe " pide permiso para guardar"
+    indicador
+    redibuja
+fin
+
+funcion decide_guardar con primera y permiso
+    comparte hay_encargos
+    t es numero_entre con primera y escritas
+    bien es t es mayor o igual que 1 y t es menor o igual que MAX_TAREAS
+    si bien
+        bien es sigue_viva con t
+    fin
+    si no bien
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No hay ningún programa con ese número. Mira: tareas"
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    desactiva_interrupciones
+    elemento t de permiso_disco es permiso
+    hay_encargos es verdadero
+    activa_interrupciones
+    pinta con "  "
+    si permiso es DISCO_SI
+        pon_color con VERDE_CLARO y NEGRO
+        pinta con (nombre_de con t)
+        pinta_linea con " puede guardar en su archivo hasta que se cierre."
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta con (nombre_de con t)
+        pinta_linea con " no guardará nada en el disco."
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion olvida
+    nombre es trozo_de_orden con 8
+    nombre_al_buzon con nombre y ".dat"
+    respuesta es pide_al_disco con ORDEN_OLVIDA
+    si respuesta es NO_ESTA
+        pinta con "  "
+        pinta con nombre
+        pinta_linea con " no tiene nada guardado."
+        pinta_linea con ""
+    si no si respuesta es menor que 0
+        fallo_de_disco con respuesta
+    si no
+        pon_color con VERDE_CLARO y NEGRO
+        pinta con "  He borrado "
+        pinta con nombre
+        pinta con ".dat: "
+        pinta_numero con respuesta
+        pinta_linea con " bytes. Donde estaban, ahora solo hay ceros."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        al_serie con nombre
+        escribe " olvidado: " sin salto
+        escribe respuesta
     fin
 fin
 

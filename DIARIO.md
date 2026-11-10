@@ -2,6 +2,43 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 9, por la tarde: nada se guarda sin preguntarte
+
+![FalOS pregunta antes de dejar guardar a un programa, y olvida borra con ceros](capturas/dia-9-permiso.png)
+
+**Lo que hay.** Me aburría y me apeteció ir adelantando. Esta mañana un programa
+podía guardar en su archivo sin que tú lo supieras. Ahora no: la primera vez que
+lo intenta, FalOS te lo dice, con cuántos bytes y en qué archivo, y el programa
+se queda esperando hasta que contestes.
+
+```
+deja 1
+niega 1
+olvida veces
+```
+
+`deja` le da permiso hasta que se cierre, y `niega` se lo quita, también a
+mitad. Si le dices que no, la serpiente lo cuenta en la pantalla: "nuevo mejor,
+no me dejas guardarlo". Y `olvida X` borra lo que guardó X.
+
+**Lo que se aprende.** Borrar un archivo, en casi todos los sistemas, es quitarlo
+de la lista. Lo que había escrito se queda en el disco hasta que otro archivo
+caiga encima, y por eso existen los programas que recuperan fotos borradas. Con
+`olvida`, el programa del disco primero llena de ceros el sitio donde estaba, y
+después lo quita del índice. La prueba automática mira ese sector después, byte
+a byte, y tiene que estar a cero.
+
+**La seguridad.** El permiso lo das tú, desde la consola, y un programa no puede
+dárselo a sí mismo: no puede escribir órdenes, eso ya lo intentó `impostor` el
+día 5. Leer lo suyo no pide permiso, porque solo puede haberlo escrito si se lo
+diste antes.
+
+**Lo que costó.** La pregunta sale en la consola mientras quizá estás escribiendo
+otra orden. Se hace igual que cuando se cierra un programa: se limpia el renglón,
+se escribe el aviso, y lo que llevabas escrito vuelve debajo. Y de paso salió un
+fallo viejo: en `tareas`, "esperando trabajo" llegaba justo hasta la columna
+siguiente y se pegaba a los segundos.
+
 ## Día 9: FalOS escribe en el disco, y la serpiente se acuerda de tu récord
 
 ![La serpiente acaba de guardar el récord en el disco](capturas/dia-9.png)

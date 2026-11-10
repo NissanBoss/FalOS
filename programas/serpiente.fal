@@ -19,6 +19,7 @@ PRIMER_RENGLON es 3
 CAPACIDAD es 600
 MESA es 807395328
 GUARDADO es 3072
+NEGADO es 0 menos 10
 
 GRIS es 7
 GRIS_OSCURO es 8
@@ -335,8 +336,11 @@ funcion se_acabo
     si puntos es mayor que mejor
         mejor es puntos
         marcador
-        si (apunta_mejor) es mayor que 0
+        respuesta es apunta_mejor
+        si respuesta es mayor que 0
             texto_en con 12 y 11 y " nuevo mejor, guardado en el disco " y AMARILLO
+        si no si respuesta es NEGADO
+            texto_en con 12 y 11 y " nuevo mejor, no me dejas guardarlo " y GRIS
         si no
             texto_en con 12 y 11 y " nuevo mejor, pero no pude guardarlo " y ROJO_CLARO
         fin

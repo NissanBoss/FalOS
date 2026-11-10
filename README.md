@@ -120,10 +120,17 @@ Primero escribe los datos y luego el índice, así que un apagón a medias no de
 el índice señalando a medio archivo. `veces` es el ejemplo más corto: cuenta
 cuántas veces lo has lanzado.
 
+Y ningún programa guarda nada sin preguntarte. La primera vez que lo intenta,
+FalOS te dice cuántos bytes y en qué archivo, y el programa espera hasta que
+contestes. `olvida` borra lo que guardó un programa de verdad: llena de ceros el
+sitio donde estaba antes de quitarlo del índice.
+
 ```
 lanza veces
+deja 1
 disco
 lee veces.dat
+olvida veces
 ```
 
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
@@ -171,6 +178,8 @@ dos veces, mira que la segunda se acuerda, y le conecta tres discos para que se
 equivoque: uno con el índice roto, otro lleno, y otro en el que el archivo de
 `veces` cae encima de su propio programa. En los dos primeros comprueba que el
 disco sigue igual byte a byte, y en el tercero, que el programa sigue entero.
+Le niega el permiso y mira que no se ha guardado nada, y después de `olvida`,
+que donde estaba el archivo solo quedan ceros.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -219,8 +228,13 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **El índice del disco cabe en un sector.** Son 512 bytes, y hoy quedan unos 60
   libres: caben dos o tres archivos guardados más. Si no cabe, el programa recibe
   un error y el disco no se toca.
-- **Un archivo guardado no se borra, y su hueco no se reutiliza.** Si el sitio de
-  antes no vale, se escribe al final, y lo de antes se queda ahí, perdido.
+- **Un hueco del disco no se reutiliza.** Si el sitio de antes no vale, o se ha
+  borrado con `olvida`, lo siguiente se escribe al final.
+- **Los ceros de `olvida` valen en este disco.** En un SSD, el propio disco puede
+  guardar copias de un sector en otro sitio sin decírselo a nadie, y escribir
+  ceros encima no las alcanza. Ahí haría falta cifrar.
+- **El permiso para guardar dura lo que dura el programa.** Si lo cierras y lo
+  vuelves a lanzar, pregunta otra vez. No se apunta en ningún sitio.
 - **Escribir un sector no es atómico del todo.** Si se va la luz justo mientras
   se escribe el índice, el disco puede quedar sin índice. No hay diario ni copia.
 - **Un controlador que se cae siempre se relanza siempre.** No hay espera ni

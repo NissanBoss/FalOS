@@ -443,7 +443,9 @@ jobs:
             {
               sleep 4
               teclea "lanza veces"
-              sleep 3
+              sleep 2
+              teclea "$3"
+              sleep 2
               echo quit
             } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
               -drive file=$1,format=raw,if=ide \
@@ -454,11 +456,14 @@ jobs:
               exit 1
             fi
           }
-          lanza_veces disco.img veces1.txt
-          lanza_veces disco.img veces2.txt
+          lanza_veces disco.img veces1.txt "deja 1"
+          lanza_veces disco.img veces2.txt "deja 1"
+          lanza_veces disco.img veces3.txt "niega 1"
           grep -q "veces leyó del disco: -3" veces1.txt
+          grep -q "veces pide permiso para guardar" veces1.txt
           grep -q "veces guardó en el disco: 2" veces1.txt
           grep -q "veces leyó del disco: 2" veces2.txt
+          grep -q "veces guardó en el disco: -10" veces3.txt
           python3 - <<'FIN'
           imagen = open("disco.img", "rb").read()
           lineas = imagen[:512].split(b"\n\n")[0].split(b"\n")[1:]
@@ -488,7 +493,7 @@ jobs:
           disco("lleno.img", lleno)
           FIN
           for disco in pisa roto lleno; do
-            lanza_veces $disco.img $disco.txt
+            lanza_veces $disco.img $disco.txt "deja 1"
           done
           grep -q "veces guardó en el disco: 2" pisa.txt
           grep -q "veces guardó en el disco: -5" roto.txt
@@ -504,4 +509,16 @@ jobs:
           sector, medida = sitio[b"veces.dat"]
           assert sector != 1
           assert imagen[sector * 512:sector * 512 + medida] == b"1\n"
+          FIN
+          cp disco.img olvido.img
+          lanza_veces olvido.img olvido.txt "olvida veces"
+          grep -q "veces olvidado: 2" olvido.txt
+          python3 - <<'FIN'
+          antes = open("disco.img", "rb").read()
+          despues = open("olvido.img", "rb").read()
+          lineas = antes[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          sitio = {l.split()[0]: int(l.split()[1]) for l in lineas}
+          assert b"veces.dat" not in despues[:512]
+          sector = sitio[b"veces.dat"]
+          assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
           FIN
