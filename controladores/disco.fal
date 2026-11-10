@@ -4,6 +4,7 @@ AVISO_ROMPE es 0 menos 3
 SIN_RESPUESTA es 0 menos 100
 
 ORDEN_LISTA es 1
+ORDEN_GUARDA es 2
 ORDEN_TROZO es 16
 
 NO_HAY_DISCO es 0 menos 1
@@ -11,6 +12,9 @@ NO_ES_MIO es 0 menos 2
 NO_ESTA es 0 menos 3
 NO_SE_LEE es 0 menos 4
 DANADO es 0 menos 5
+NO_SE_ESCRIBE es 0 menos 6
+LLENO es 0 menos 7
+PROHIBIDO es 0 menos 8
 
 DATOS es 496
 CUENTA es 498
@@ -20,6 +24,8 @@ ALTO es 501
 UNIDAD es 502
 ESTADO es 503
 LEER es 32
+ESCRIBIR es 48
+VACIA_CACHE es 231
 QUIEN_ERES es 236
 
 MAGIA es "FALDISCO"
@@ -27,6 +33,7 @@ LARGO_NOMBRE es 32
 TOPE_SECTORES es 8
 TOPE_ARCHIVO es 4096
 PACIENCIA es 200000
+INDICE_NUEVO es 2560
 
 buzon es region con 807399424 y 4096
 mesa es region con 807395328 y 4096
@@ -37,6 +44,7 @@ salida es 0
 nombre_largo es 0
 campo_sector es 0
 campo_bytes es 0
+escrito es 0
 
 funcion bit_de con valor y cual
     devuelve ((cociente con valor y cual) resto 2) es 1
@@ -82,7 +90,23 @@ funcion identifica
     devuelve total_sectores es mayor que 0
 fin
 
-funcion lee_sector con numero y destino y desde
+funcion acaba_bien
+    para cada vuelta desde 1 hasta PACIENCIA
+        visto es lee_puerto de ESTADO
+        si visto es 0 o visto es 255
+            devuelve falso
+        fin
+        si no (bit_de con visto y 128)
+            si bit_de con visto y 1
+                devuelve falso
+            fin
+            devuelve no (bit_de con visto y 32)
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion apunta_a con numero y orden
     n es numero
     pon_en_puerto con UNIDAD y 224 mas (cociente con n y 16777216)
     pon_en_puerto con CUENTA y 1
@@ -91,7 +115,11 @@ funcion lee_sector con numero y destino y desde
     pon_en_puerto con MEDIO y n resto 256
     n es cociente con n y 256
     pon_en_puerto con ALTO y n resto 256
-    pon_en_puerto con ESTADO y LEER
+    pon_en_puerto con ESTADO y orden
+fin
+
+funcion lee_sector con numero y destino y desde
+    apunta_a con numero y LEER
     si no libre_y_con_datos
         devuelve falso
     fin
@@ -101,6 +129,21 @@ funcion lee_sector con numero y destino y desde
         elemento desde mas i por 2 de destino es cociente con palabra y 256
     fin
     devuelve verdadero
+fin
+
+funcion escribe_sector con numero y origen y desde
+    apunta_a con numero y ESCRIBIR
+    si no libre_y_con_datos
+        devuelve falso
+    fin
+    para cada i desde 1 hasta 256
+        pon_palabra con DATOS y (elemento desde mas i por 2 de origen) por 256 mas (elemento desde mas i por 2 menos 1 de origen)
+    fin
+    si no acaba_bien
+        devuelve falso
+    fin
+    pon_en_puerto con ESTADO y VACIA_CACHE
+    devuelve acaba_bien
 fin
 
 funcion saca_letra con b
@@ -291,12 +334,17 @@ funcion mismo_nombre con pedido y largo_pedido
     devuelve verdadero
 fin
 
-funcion abre_archivo con trozo
+funcion nombre_pedido
     largo_pedido es 0
     mientras largo_pedido es menor que LARGO_NOMBRE y (elemento largo_pedido mas 1 de buzon) no es igual a 0
         largo_pedido es largo_pedido mas 1
         elemento 2048 mas largo_pedido de mesa es elemento largo_pedido de buzon
     fin
+    devuelve largo_pedido
+fin
+
+funcion abre_archivo con trozo
+    largo_pedido es nombre_pedido
     total es abre_disco
     si total es menor que 0
         devuelve total
@@ -332,6 +380,144 @@ funcion trae_archivo con trozo
     devuelve bytes
 fin
 
+funcion ocupa con bytes
+    devuelve cociente con bytes mas 511 y 512
+fin
+
+funcion es_de_datos con largo_pedido
+    si largo_pedido es menor que 5 o (elemento largo_pedido mas 1 de buzon) no es igual a 0
+        devuelve falso
+    fin
+    para cada i desde 1 hasta largo_pedido
+        letra es elemento 2048 mas i de mesa
+        si letra es menor que 33 o letra es mayor que 126
+            devuelve falso
+        fin
+    fin
+    cola es ".dat"
+    para cada i desde 1 hasta 4
+        si (elemento 2048 mas largo_pedido menos 4 mas i de mesa) no es igual a (elemento i de cola)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion lo_pisa_otro con sitio y largo_pedido
+    comparte leido
+    leido es 10
+    mientras queda_entrada
+        si lee_linea
+            si no (mismo_nombre con 0 y largo_pedido)
+                si campo_sector es menor o igual que sitio y sitio es menor que campo_sector mas (ocupa con campo_bytes)
+                    devuelve verdadero
+                fin
+            fin
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    devuelve falso
+fin
+
+funcion apunta_letra con b
+    comparte escrito
+    escrito es escrito mas 1
+    si escrito es menor o igual que 512
+        elemento INDICE_NUEVO mas escrito de mesa es b
+    fin
+fin
+
+funcion apunta_numero con n
+    si n es mayor que 9
+        apunta_numero con (cociente con n y 10)
+    fin
+    apunta_letra con 48 mas n resto 10
+fin
+
+funcion guarda
+    comparte leido y escrito
+    largo_pedido es nombre_pedido
+    bytes es (elemento 41 de buzon) por 256 mas (elemento 42 de buzon)
+    si bytes es menor que 1 o bytes es mayor que 512 o no (es_de_datos con largo_pedido)
+        devuelve PROHIBIDO
+    fin
+    total es abre_disco
+    si total es menor que 0
+        devuelve total
+    fin
+    sitio es 0
+    libre es 1
+    mientras queda_entrada
+        si no lee_linea
+            devuelve DANADO
+        fin
+        si campo_sector mas (ocupa con campo_bytes) es mayor que libre
+            libre es campo_sector mas (ocupa con campo_bytes)
+        fin
+        si campo_bytes es mayor que 0 y (mismo_nombre con 0 y largo_pedido)
+            sitio es campo_sector
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    si sitio no es igual a 0 y (lo_pisa_otro con sitio y largo_pedido)
+        sitio es 0
+    fin
+    si sitio es 0
+        sitio es libre
+    fin
+    si sitio es mayor o igual que total_sectores
+        devuelve LLENO
+    fin
+    escrito es 0
+    saca_al_indice con MAGIA
+    apunta_letra con 10
+    leido es 10
+    mientras queda_entrada
+        empieza es leido
+        si lee_linea
+            si no (mismo_nombre con 0 y largo_pedido)
+                para cada i desde empieza hasta leido
+                    apunta_letra con (elemento i de mesa)
+                fin
+            fin
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    para cada i desde 1 hasta largo_pedido
+        apunta_letra con (elemento 2048 mas i de mesa)
+    fin
+    apunta_letra con 32
+    apunta_numero con sitio
+    apunta_letra con 32
+    apunta_numero con bytes
+    apunta_letra con 10
+    apunta_letra con 10
+    si escrito es mayor que 512
+        devuelve LLENO
+    fin
+    mientras escrito es menor que 512
+        apunta_letra con 32
+    fin
+    i es bytes mas 1
+    mientras i es menor o igual que 512
+        elemento 512 mas i de buzon es 0
+        i es i mas 1
+    fin
+    si no (escribe_sector con sitio y buzon y 512)
+        devuelve NO_SE_ESCRIBE
+    fin
+    si no (escribe_sector con 0 y mesa y INDICE_NUEVO)
+        devuelve NO_SE_ESCRIBE
+    fin
+    devuelve bytes
+fin
+
+funcion saca_al_indice con t
+    para cada b en t
+        apunta_letra con b
+    fin
+fin
+
 respuesta es SIN_RESPUESTA
 mientras verdadero
     aviso es llama_al_sistema con ESPERA y respuesta
@@ -343,6 +529,8 @@ mientras verdadero
         pon_en_puerto con 100 y 254
     si no si aviso es ORDEN_LISTA
         respuesta es lista
+    si no si aviso es ORDEN_GUARDA
+        respuesta es guarda
     si no si aviso es mayor o igual que ORDEN_TROZO
         respuesta es abre_archivo con aviso menos ORDEN_TROZO
     fin

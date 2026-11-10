@@ -2,6 +2,67 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 9: FalOS escribe en el disco, y la serpiente se acuerda de tu récord
+
+![La serpiente acaba de guardar el récord en el disco](capturas/dia-9.png)
+
+**Lo que hay.** Hasta ayer, el disco solo se leía. Hoy un programa puede guardar
+algo, y que siga ahí después de apagar. La serpiente lo usa para el récord:
+cuando lo superas, lo escribe en el disco, y la próxima vez que arranca FalOS,
+aunque sea desde cero, el marcador ya dice cuál era.
+
+![Después de apagar y volver a arrancar, la serpiente se acuerda](capturas/dia-9-vuelve.png)
+
+Hay dos llamadas nuevas: una para guardar hasta 512 bytes de la página de
+trabajo del programa, y otra para traerlos de vuelta. Y un programa nuevo,
+`veces`, que cuenta cuántas veces lo has lanzado. Es el ejemplo más corto que
+hay de las dos.
+
+```
+lanza veces
+disco
+lee veces.dat
+```
+
+**Lo que se aprende.** En Windows, en macOS y en Linux, un programa que abres
+puede escribir en casi cualquier archivo tuyo: tus fotos, tus documentos, los
+de otros programas. Por eso un ransomware puede cifrarte la carpeta entera sin
+pedir permiso a nadie. Android e iOS lo hicieron al revés: cada aplicación tiene
+su propio cajón, y lo de fuera hay que pedirlo.
+
+FalOS va por ahí, y más estrecho todavía. Un programa no elige dónde escribe.
+Pide guardar, y el núcleo pone el nombre: el del programa, con `.dat` detrás.
+`serpiente` escribe en `serpiente.dat` y no puede escribir en otro sitio, porque
+no hay forma de decírselo.
+
+**La seguridad.** El que escribe de verdad es el programa del disco, el mismo
+que ya leía, sin permisos y con sus ocho puertos. Y solo escribe archivos que
+acaban en `.dat`: ni el núcleo le puede pedir que pise un programa.
+
+Antes de escribir, lee el índice entero, y si no lo entiende, no toca nada. Si
+el sitio donde estaba el archivo cae encima de otro, lo escribe al final, en
+espacio libre. Si el índice está lleno, contesta con un error. Y escribe en
+orden: primero los datos y después el índice, para que un apagón entre medias
+no deje el índice señalando a algo escrito a medias.
+
+La prueba automática le conecta tres discos preparados para que se equivoque:
+uno con el índice roto, otro lleno, y otro en el que `veces.dat` dice estar
+justo encima de `veces.prg`, su propio programa. En los dos primeros comprueba
+que el disco sigue igual byte a byte. En el tercero, que el programa sigue
+entero y el número se ha guardado en otro sitio.
+
+**Lo que costó.** Un programa pide guardar desde dentro de una llamada al
+sistema, con las interrupciones cerradas. Y quien escribe es otro programa, que
+para hacerlo necesita que le toque el procesador. Si el núcleo esperase ahí
+dentro, esperaría para siempre. Así que no espera: deja al programa dormido,
+`con el disco` en la lista de `tareas`, y el trabajo lo hace la consola en
+cuanto está libre. Cuando acaba, despierta al programa con la respuesta.
+
+Y los nombres, otra vez. La llamada para traer lo guardado se iba a llamar
+`RECUPERA`, y el núcleo ya tenía una función `recupera`: la de la flecha de
+arriba, que trae la orden anterior. Y `NUEVO`, para el índice que se está
+montando, es una palabra de Fal. Las dos las paró el compilador.
+
 ## Día 8: un juego escrito en Fal, y el teclado es de quien tú digas
 
 ![La serpiente, en su ventana, con el teclado](capturas/dia-8.png)

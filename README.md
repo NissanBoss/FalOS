@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS con una serpiente escrita en Fal, en su ventana, con el teclado](capturas/dia-8.png)
+![FalOS con la serpiente, que acaba de guardar el récord en el disco](capturas/dia-9.png)
 
 ## Por qué
 
@@ -104,10 +104,26 @@ con un clic en su ventana o con `teclado N`. Mientras lo tiene, su título lo
 dice, y Esc lo devuelve siempre a la consola, porque esa tecla no le llega a
 ningún programa. Un programa no puede pedir el teclado ni quitárselo a otro.
 En el disco hay un juego para probarlo, escrito en Fal: una serpiente que crece.
+Guarda tu récord en el disco, y sigue ahí aunque apagues.
 
 ```
 lanza serpiente
 teclado 1
+```
+
+Un programa puede guardar hasta 512 bytes en el disco, pero solo en un archivo:
+el suyo. Lo pide con una llamada, y es el núcleo quien pone el nombre, con el
+del programa: `serpiente` escribe en `serpiente.dat` y en nada más. El que
+escribe de verdad es el programa del disco, y no pisa lo que no entiende: si el
+índice está roto, o el sitio de ese archivo cae encima de otro, no escribe ahí.
+Primero escribe los datos y luego el índice, así que un apagón a medias no deja
+el índice señalando a medio archivo. `veces` es el ejemplo más corto: cuenta
+cuántas veces lo has lanzado.
+
+```
+lanza veces
+disco
+lee veces.dat
 ```
 
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
@@ -149,8 +165,12 @@ cerrados y el sistema sigue. Da un permiso, lo quita y mira que `ladron` no ha
 abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
 todo vuelve. Le da archivos que mienten sobre lo que son, y le conecta discos
 hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
-cierra dos con el ratón. Y juega a la serpiente con `disfraz` abierto al lado, y
-mira que a `disfraz` no le ha llegado ni una tecla.
+cierra dos con el ratón. Juega a la serpiente con `disfraz` abierto al lado, y
+mira que a `disfraz` no le ha llegado ni una tecla. Y escribe en el disco: arranca
+dos veces, mira que la segunda se acuerda, y le conecta tres discos para que se
+equivoque: uno con el índice roto, otro lleno, y otro en el que el archivo de
+`veces` cae encima de su propio programa. En los dos primeros comprueba que el
+disco sigue igual byte a byte, y en el tercero, que el programa sigue entero.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -160,12 +180,13 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay red, y el disco solo se lee: no se puede
-  escribir un programa dentro de FalOS. Es el día 8.
+- **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
+  archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
+  FalOS. Es el día 9.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.000
-  líneas, más que ayer, porque ahora también reparte el teclado.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.100
+  líneas, más que ayer, porque ahora también lleva lo que se guarda al disco.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -195,6 +216,13 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
   de ahora, y el formato es uno de texto propio: ni FAT, ni nada que escriba
   otro sistema.
+- **El índice del disco cabe en un sector.** Son 512 bytes, y hoy quedan unos 60
+  libres: caben dos o tres archivos guardados más. Si no cabe, el programa recibe
+  un error y el disco no se toca.
+- **Un archivo guardado no se borra, y su hueco no se reutiliza.** Si el sitio de
+  antes no vale, se escribe al final, y lo de antes se queda ahí, perdido.
+- **Escribir un sector no es atómico del todo.** Si se va la luz justo mientras
+  se escribe el índice, el disco puede quedar sin índice. No hay diario ni copia.
 - **Un controlador que se cae siempre se relanza siempre.** No hay espera ni
   tope, y la pantalla se llena.
 - **Un cuelgue tarda 1 s en notarse, o más.** Solo cuenta el tiempo en que el

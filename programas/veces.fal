@@ -1,0 +1,60 @@
+GUARDA es 14
+LEE_GUARDADO es 15
+MESA es 807395328
+
+recuerdo es region con MESA y 16
+
+funcion descansa con centesimas
+    llama_al_sistema con 4 y centesimas
+fin
+
+funcion numero_guardado con cuantos
+    n es 0
+    i es 1
+    mientras i es menor o igual que cuantos y (elemento i de recuerdo) es mayor o igual que 48 y (elemento i de recuerdo) es menor o igual que 57 y n es menor que 100000000
+        n es n por 10 mas (elemento i de recuerdo) menos 48
+        i es i mas 1
+    fin
+    devuelve n
+fin
+
+funcion apunta con n
+    cifras es 1
+    tope es 10
+    mientras tope es menor o igual que n
+        cifras es cifras mas 1
+        tope es tope por 10
+    fin
+    queda es n
+    c es cifras
+    repite cifras veces
+        elemento c de recuerdo es 48 mas (queda resto 10)
+        queda es cociente con queda y 10
+        c es c menos 1
+    fin
+    elemento cifras mas 1 de recuerdo es 10
+    devuelve cifras mas 1
+fin
+
+leidos es llama_al_sistema con LEE_GUARDADO y 0 y 16
+lanzado es 1
+si leidos es mayor que 0
+    lanzado es (numero_guardado con leidos) mas 1
+fin
+escribe "Me has lanzado " sin salto
+escribe lanzado sin salto
+si lanzado es 1
+    escribe " vez."
+si no
+    escribe " veces."
+fin
+guardados es llama_al_sistema con GUARDA y 0 y (apunta con lanzado)
+si guardados es mayor que 0
+    escribe "Lo apunto en veces.dat."
+si no
+    escribe "No he podido apuntarlo: " sin salto
+    escribe guardados
+fin
+mientras verdadero
+    descansa con 1000
+fin

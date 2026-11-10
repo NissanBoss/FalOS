@@ -3,6 +3,8 @@ DUERME es 4
 LEE_TECLA es 11
 PIDE_VENTANA es 12
 PON_CASILLA es 13
+GUARDA es 14
+LEE_GUARDADO es 15
 
 TECLA_INTRO es 256
 TECLA_IZQUIERDA es 258
@@ -16,6 +18,7 @@ RENGLONES es 17
 PRIMER_RENGLON es 3
 CAPACIDAD es 600
 MESA es 807395328
+GUARDADO es 3072
 
 GRIS es 7
 GRIS_OSCURO es 8
@@ -29,6 +32,7 @@ RAYA es 196
 
 cuerpo es region con MESA y CAPACIDAD y 2
 ocupado es region con MESA mas 2048 y CELDAS por RENGLONES y 1
+recuerdo es region con MESA mas GUARDADO y 16
 
 semilla es 1
 puntos es 0
@@ -91,6 +95,34 @@ funcion azar con hasta
     comparte semilla
     semilla es (semilla por 75 mas 74) resto 65537
     devuelve (semilla resto hasta) mas 1
+fin
+
+funcion recuerda_mejor
+    comparte mejor
+    leidos es llama_al_sistema con LEE_GUARDADO y GUARDADO y 16
+    i es 1
+    mientras i es menor o igual que leidos y (elemento i de recuerdo) es mayor o igual que 48 y (elemento i de recuerdo) es menor o igual que 57 y mejor es menor que 100000
+        mejor es mejor por 10 mas (elemento i de recuerdo) menos 48
+        i es i mas 1
+    fin
+fin
+
+funcion apunta_mejor
+    cifras es 1
+    tope es 10
+    mientras tope es menor o igual que mejor
+        cifras es cifras mas 1
+        tope es tope por 10
+    fin
+    queda es mejor
+    c es cifras
+    repite cifras veces
+        elemento c de recuerdo es 48 mas (queda resto 10)
+        queda es cociente con queda y 10
+        c es c menos 1
+    fin
+    elemento cifras mas 1 de recuerdo es 10
+    devuelve llama_al_sistema con GUARDA y GUARDADO y cifras mas 1
 fin
 
 funcion marcador
@@ -296,18 +328,25 @@ fin
 
 funcion se_acabo
     comparte mejor
-    si puntos es mayor que mejor
-        mejor es puntos
-    fin
-    marcador
     pon_en con cabeza y ROJO_CLARO y BLOQUE
     c es texto_en con 9 y 19 y " te has chocado: " y BLANCO
     numero_en con 9 y c y puntos y AMARILLO
     texto_en con 10 y 19 y " Intro para otra    " y BLANCO
+    si puntos es mayor que mejor
+        mejor es puntos
+        marcador
+        si (apunta_mejor) es mayor que 0
+            texto_en con 12 y 11 y " nuevo mejor, guardado en el disco " y AMARILLO
+        si no
+            texto_en con 12 y 11 y " nuevo mejor, pero no pude guardarlo " y ROJO_CLARO
+        fin
+    fin
     espera_intro
+    texto_en con 12 y 11 y "                                     " y GRIS
 fin
 
 llama_al_sistema con PIDE_VENTANA y COLUMNAS y RENGLONES
+recuerda_mejor
 semilla es ((llama_al_sistema con PIDE_TICS) resto 65536) mas 1
 texto_en con 1 y 24 y "SERPIENTE" y VERDE_CLARO
 para cada raya_en desde 1 hasta COLUMNAS

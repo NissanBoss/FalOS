@@ -429,3 +429,79 @@ jobs:
               print(nombre, hay)
               assert hay > minimo, nombre
           FIN
+
+      - name: Escribir en el disco sin pisar nada
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          lanza_veces() {
+            {
+              sleep 4
+              teclea "lanza veces"
+              sleep 3
+              echo quit
+            } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+              -drive file=$1,format=raw,if=ide \
+              -serial file:$2 -monitor stdio -no-reboot > /dev/null
+            cat $2
+            if grep -q "  X  " $2; then
+              echo "Escribir en el disco ha tumbado a FalOS"
+              exit 1
+            fi
+          }
+          lanza_veces disco.img veces1.txt
+          lanza_veces disco.img veces2.txt
+          grep -q "veces leyó del disco: -3" veces1.txt
+          grep -q "veces guardó en el disco: 2" veces1.txt
+          grep -q "veces leyó del disco: 2" veces2.txt
+          python3 - <<'FIN'
+          imagen = open("disco.img", "rb").read()
+          lineas = imagen[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+          sector, medida = sitio[b"veces.dat"]
+          assert imagen[sector * 512:sector * 512 + medida] == b"2\n"
+          sector, medida = sitio[b"veces.prg"]
+          programa = imagen[sector * 512:sector * 512 + medida]
+          open("veces.prg", "wb").write(programa)
+          huecos = (medida + 511) // 512
+
+          def disco(nombre, lineas):
+              indice = b"FALDISCO\n" + b"".join(lineas) + b"\n"
+              assert len(indice) <= 512
+              datos = indice.ljust(512, b" ") + programa.ljust(huecos * 512, b"\0") + bytes(512 * 64)
+              open(nombre, "wb").write(datos)
+              open(nombre + ".antes", "wb").write(datos)
+
+          suyo = b"veces.prg 1 %d\n" % medida
+          disco("pisa.img", [suyo, b"veces.dat 1 2\n"])
+          disco("roto.img", [suyo, b"ra\x07ro.txt 1 5\n"])
+          lleno = [suyo]
+          mide = lambda: len(b"FALDISCO\n" + b"".join(lleno) + b"\n")
+          while mide() < 480:
+              lleno.append(b"relleno%02d.txt 1 5\n" % len(lleno))
+          lleno.append(b"r" * (500 - mide()) + b" 1 5\n")
+          disco("lleno.img", lleno)
+          FIN
+          for disco in pisa roto lleno; do
+            lanza_veces $disco.img $disco.txt
+          done
+          grep -q "veces guardó en el disco: 2" pisa.txt
+          grep -q "veces guardó en el disco: -5" roto.txt
+          grep -q "veces guardó en el disco: -7" lleno.txt
+          cmp roto.img roto.img.antes
+          cmp lleno.img lleno.img.antes
+          python3 - <<'FIN'
+          imagen = open("pisa.img", "rb").read()
+          programa = open("veces.prg", "rb").read()
+          assert imagen[512:512 + len(programa)] == programa
+          lineas = imagen[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+          sector, medida = sitio[b"veces.dat"]
+          assert sector != 1
+          assert imagen[sector * 512:sector * 512 + medida] == b"1\n"
+          FIN

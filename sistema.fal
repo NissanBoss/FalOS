@@ -509,6 +509,8 @@ ENTREGA_RATON es 10
 LEE_TECLA es 11
 PIDE_VENTANA es 12
 PON_CASILLA es 13
+GUARDA es 14
+LEE_GUARDADO es 15
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -524,6 +526,7 @@ ESCUCHANDO es 4
 PREGUNTANDO es 5
 ESPERA_RESPUESTA es 6
 EN_ESPERA es 7
+CON_EL_DISCO es 8
 RECHAZADA es 0 menos 1
 LLAVES es 4
 SALIO es 0 menos 1
@@ -539,6 +542,7 @@ SIN_RESPUESTA es 0 menos 100
 PACIENCIA es 100
 
 ORDEN_LISTA es 1
+ORDEN_GUARDA es 2
 ORDEN_TROZO es 16
 NO_HAY_DISCO es 0 menos 1
 NO_ES_MIO es 0 menos 2
@@ -547,6 +551,8 @@ NO_SE_LEE es 0 menos 4
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
+TOPE_GUARDADO es 512
+NOMBRE_EN_DISCO es 32
 
 BYTE_TECLADO es 13
 BYTE_DISCO es 63
@@ -596,11 +602,16 @@ teclas_de es region con pide_pagina y 512 y 8
 entran_de es region con pide_pagina y 512 y 8
 salen_de es region con pide_pagina y 512 y 8
 teclas_recibidas es region con pide_pagina y 512 y 8
+mesas es region con pide_pagina y 512 y 8
+pedido_de es region con pide_pagina y 512 y 8
+desde_de es region con pide_pagina y 512 y 8
+cuantos_de es region con pide_pagina y 512 y 8
 
 actual es CONSOLA
 foco es CONSOLA
 esperando es falso
 hay_cerradas es falso
+hay_encargos es falso
 peticion_abierta es falso
 disco_listo es falso
 resultado_disco es 0
@@ -1091,7 +1102,7 @@ fin
 
 funcion se_puede_correr con t
     si t es CONSOLA
-        devuelve no esperando o entra no es igual a sale o hay_cerradas o disco_listo
+        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_encargos o disco_listo
     fin
     si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
         elemento t de estados_tarea es EN_MARCHA
@@ -1341,6 +1352,24 @@ funcion da_tecla
     devuelve tecla
 fin
 
+funcion encarga con pedido y desde y cuantos
+    comparte hay_encargos
+    t es actual
+    si es_controlador con t
+        devuelve rechaza_a_actual
+    fin
+    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que TOPE_GUARDADO o desde mas cuantos es mayor que PAGINA
+        devuelve RECHAZADA
+    fin
+    elemento t de pedido_de es pedido
+    elemento t de desde_de es desde
+    elemento t de cuantos_de es cuantos
+    elemento t de estados_tarea es CON_EL_DISCO
+    hay_encargos es verdadero
+    cambia_de_tarea
+    devuelve 0
+fin
+
 funcion al_llamar
     marco es region con contexto y 20 y 8
     numero es elemento EN_RAX de marco
@@ -1384,6 +1413,8 @@ funcion al_llamar
         elemento EN_RAX de marco es cambia_tamano con a y (elemento EN_RSI de marco)
     si no si numero es PON_CASILLA
         elemento EN_RAX de marco es pon_en_casilla con a y (elemento EN_RSI de marco)
+    si no si numero es GUARDA o numero es LEE_GUARDADO
+        elemento EN_RAX de marco es encarga con numero y a y (elemento EN_RSI de marco)
     si no
         elemento EN_RAX de marco es 0 menos 1
     fin
@@ -1547,6 +1578,9 @@ funcion siguiente_tecla
         si hay_cerradas
             activa_interrupciones
             recoge_tareas con verdadero
+        si no si hay_encargos
+            activa_interrupciones
+            atiende_encargos
         si no
             esperando es verdadero
             espera_interrupcion
@@ -2140,6 +2174,7 @@ funcion monta_programa con t y archivo y total
     elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
     mesa es pagina_de_tarea con t
+    elemento t de mesas es mesa
     elemento SITIO_MESA de entradas es mesa mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
     si t es TAREA_PANTALLA
         elemento SITIO_BUZON de entradas es rejilla mas PRESENTE mas USUARIO mas prohibe_ejecutar
@@ -2417,6 +2452,8 @@ funcion nombre_estado con t
         devuelve "esperando"
     si no si e es EN_ESPERA
         devuelve "esperando trabajo"
+    si no si e es CON_EL_DISCO
+        devuelve "con el disco"
     si no si e es CERRADA
         devuelve "cerrándose"
     fin
@@ -2925,7 +2962,7 @@ funcion orden_disco
     fin
 fin
 
-funcion pide_archivo con nombre y cola y trozo
+funcion nombre_al_buzon con nombre y cola
     recoge_tareas con falso
     buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
     i es 0
@@ -2938,7 +2975,59 @@ funcion pide_archivo con nombre y cola y trozo
         elemento i de buzon es b
     fin
     elemento i mas 1 de buzon es 0
+    devuelve buzon
+fin
+
+funcion pide_archivo con nombre y cola y trozo
+    nombre_al_buzon con nombre y cola
     devuelve pide_al_disco con ORDEN_TROZO mas trozo
+fin
+
+funcion haz_encargo con t
+    nombre es nombre_de con t
+    cuantos es elemento t de cuantos_de
+    suya es region con (elemento t de mesas) mas (elemento t de desde_de) y cuantos
+    si largo de nombre mas 4 es mayor que NOMBRE_EN_DISCO
+        devuelve NO_ESTA
+    fin
+    si (elemento t de pedido_de) es LEE_GUARDADO
+        traido es pide_archivo con nombre y ".dat" y 0
+        si traido es mayor que cuantos
+            traido es cuantos
+        fin
+        si traido es mayor que 0
+            buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+            copia_region con suya y 1 y buzon y 1 y traido
+        fin
+        devuelve traido
+    fin
+    buzon es nombre_al_buzon con nombre y ".dat"
+    elemento 41 de buzon es cociente con cuantos y 256
+    elemento 42 de buzon es cuantos resto 256
+    copia_region con buzon y 513 y suya y 1 y cuantos
+    devuelve pide_al_disco con ORDEN_GUARDA
+fin
+
+funcion atiende_encargos
+    comparte hay_encargos
+    hay_encargos es falso
+    para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) es CON_EL_DISCO
+            hecho es haz_encargo con t
+            al_serie con (nombre_de con t)
+            si (elemento t de pedido_de) es GUARDA
+                escribe " guardó en el disco: " sin salto
+            si no
+                escribe " leyó del disco: " sin salto
+            fin
+            escribe hecho
+            desactiva_interrupciones
+            si (elemento t de estados_tarea) es CON_EL_DISCO
+                despierta_con con t y hecho
+            fin
+            activa_interrupciones
+        fin
+    fin
 fin
 
 funcion lee_archivo
@@ -2985,7 +3074,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 8"
+    pinta con "día 9"
     pon_color con GRIS y NEGRO
 fin
 
@@ -3015,7 +3104,8 @@ funcion portada
     pinta_linea con "  de su caja. Él no puede tocarlo. Y lo que escribes solo le llega"
     pinta_linea con "  al programa al que tú le das el teclado."
     pinta_linea con ""
-    pinta_linea con "  Hay un juego en el disco: lanza serpiente."
+    pinta_linea con "  Hay un juego en el disco: lanza serpiente. Y ya escribo en el disco,"
+    pinta_linea con "  así que tu récord se queda guardado aunque me apagues."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
