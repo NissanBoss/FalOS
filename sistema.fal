@@ -27,6 +27,9 @@ color es GRIS
 a_medias es 0
 hay_graficos es falso
 pantalla_sucia es falso
+aviso_disco_hasta es 0
+disco_lo_usa es 0
+disco_guardaba es falso
 control es nada
 CURSOR_EN es 1
 SUBIDAS es 2
@@ -308,6 +311,10 @@ funcion suelta_pagina con direccion
     fin
     si (elemento p de estados) no es igual a PRESTADA
         falla "Esa página no estaba prestada. Devolver dos veces la misma es un fallo, y lo paro aquí."
+    fin
+    hoja es region con direccion y 512 y 8
+    para cada i desde 1 hasta 512
+        elemento i de hoja es 0
     fin
     elemento p de estados es LIBRE
 fin
@@ -1012,6 +1019,7 @@ funcion compone
         pinta_ventana con (elemento i de encima)
         i es i mas 1
     fin
+    pinta_aviso_disco
     sitio es cursor_sitio
     renglon es (cociente con sitio y ANCHO) mas 1
     c es (sitio resto ANCHO) mas 1
@@ -1036,6 +1044,22 @@ funcion compone
         atributo es cociente con valor y 256
         al_reves es (atributo resto 16) por 16 mas (cociente con atributo y 16)
         elemento casilla de lo_que_se_ve es al_reves por 256 mas (valor resto 256)
+    fin
+fin
+
+funcion pinta_aviso_disco
+    si aviso_disco_hasta es 0 o disco_lo_usa es 0
+        devuelve nada
+    fin
+    marca es (AMARILLO por 16 mas NEGRO) por 256
+    pon_en_vista con 1 y 24 y (color_de con disco_lo_usa) por 16 por 256 mas 32
+    pon_en_vista con 1 y 25 y marca mas 32
+    nombre es nombre_de con disco_lo_usa
+    pon_texto_en_vista con 1 y 26 y nombre y marca
+    si disco_guardaba
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " escribe en el disco " y marca
+    si no
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " lee del disco " y marca
     fin
 fin
 
@@ -1561,8 +1585,12 @@ funcion vigila con t
 fin
 
 funcion al_tic
-    comparte tics y tics_dormido y pantalla_sucia
+    comparte tics y tics_dormido y pantalla_sucia y aviso_disco_hasta
     tics es tics mas 1
+    si aviso_disco_hasta no es igual a 0 y tics es mayor o igual que aviso_disco_hasta
+        aviso_disco_hasta es 0
+        pantalla_sucia es verdadero
+    fin
     elemento actual de tiempo_de es (elemento actual de tiempo_de) mas 1
     si actual es CONSOLA y esperando
         tics_dormido es tics_dormido mas 1
@@ -3059,7 +3087,14 @@ funcion atiende_encargos
 fin
 
 funcion termina_encargo con t y hecho
+    comparte aviso_disco_hasta y disco_lo_usa y disco_guardaba
     al_serie con (nombre_de con t)
+    si hecho es mayor o igual que 0
+        disco_lo_usa es t
+        disco_guardaba es (elemento t de pedido_de) es GUARDA
+        aviso_disco_hasta es tics mas 3 por TICS_POR_SEGUNDO
+        ensucia
+    fin
     si (elemento t de pedido_de) es GUARDA
         escribe " guardó en el disco: " sin salto
     si no
@@ -3204,7 +3239,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 9"
+    pinta con "día 10"
     pon_color con GRIS y NEGRO
 fin
 
@@ -3234,8 +3269,8 @@ funcion portada
     pinta_linea con "  de su caja. Él no puede tocarlo. Y lo que escribes solo le llega"
     pinta_linea con "  al programa al que tú le das el teclado."
     pinta_linea con ""
-    pinta_linea con "  Hay un juego en el disco: lanza serpiente. Y ya escribo en el disco,"
-    pinta_linea con "  así que tu récord se queda guardado aunque me apagues."
+    pinta_linea con "  Hay un juego en el disco (lanza serpiente) y un bloc de notas"
+    pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO

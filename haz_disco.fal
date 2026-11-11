@@ -1,4 +1,5 @@
 SECTOR es 512
+TOPE_INDICE es 1024
 TEXTOS es "disco"
 PROGRAMAS es "programas"
 DESTINO es "disco.img"
@@ -21,8 +22,8 @@ funcion palabra_en con bytes y sitio y valor
     fin
 fin
 
-siguiente es 1
-indice es "FALDISCO\n"
+siguiente es 2
+indice es "FALDISC2\n"
 
 funcion mete con nombre y bytes
     comparte siguiente y indice
@@ -76,10 +77,10 @@ mete con "corto.prg" y corto
 mete con "carta.prg" y (lee_bytes de (TEXTOS mas "/carta.txt"))
 
 indice es indice mas "\n"
-si largo de indice es mayor que SECTOR
+si largo de indice es mayor que TOPE_INDICE
     falla "No caben tantos archivos en el indice del disco."
 fin
-indice es indice mas relleno con SECTOR menos largo de indice
+indice es indice mas relleno con TOPE_INDICE menos largo de indice
 graba con DESTINO y indice
 anexa_bytes con DESTINO y (lee_bytes de TEMPORAL)
 borra de TEMPORAL

@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS con la serpiente, que acaba de guardar el récord en el disco](capturas/dia-9.png)
+![El bloc de notas de FalOS acaba de guardar, cifrado, y la barra dice quién escribe en el disco](capturas/dia-10.png)
 
 ## Por qué
 
@@ -56,7 +56,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
-siempre borradas. Monta sus propias tablas de páginas: su código es de solo
+siempre borradas, y que borra otra vez cuando un programa las devuelve. Monta sus propias tablas de páginas: su código es de solo
 lectura, los datos no se pueden ejecutar y la dirección 0 no existe, y eso
 lo hace cumplir el procesador.
 
@@ -133,6 +133,19 @@ lee veces.dat
 olvida veces
 ```
 
+`notas` es un bloc de notas que guarda cifrado con tu contraseña. El cifrado es
+ChaCha20, escrito en Fal, y la clave sale de la contraseña después de 20.000
+vueltas, para que probar contraseñas a ciegas cueste. Al disco solo llega ruido:
+`lee notas.dat` lo enseña. Y cada vez que un programa lee o escribe en el disco,
+el núcleo lo pinta en la barra de arriba, con el color de su caja, donde ninguna
+ventana lo puede tapar.
+
+```
+lanza notas
+teclado 1
+lee notas.dat
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -179,7 +192,10 @@ equivoque: uno con el índice roto, otro lleno, y otro en el que el archivo de
 `veces` cae encima de su propio programa. En los dos primeros comprueba que el
 disco sigue igual byte a byte, y en el tercero, que el programa sigue entero.
 Le niega el permiso y mira que no se ha guardado nada, y después de `olvida`,
-que donde estaba el archivo solo quedan ceros.
+que donde estaba el archivo solo quedan ceros. Escribe una nota con `notas`, la
+descifra con un ChaCha20 escrito aparte en Python, que antes pasa la prueba del
+RFC 8439, y comprueba que el texto no está en el disco y que una contraseña
+equivocada no abre nada.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -191,11 +207,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 - **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
   archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 9.
+  FalOS. Es el día 10.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.100
-  líneas, más que ayer, porque ahora también lleva lo que se guarda al disco.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.300
+  líneas, más que ayer, porque ahora también pinta quién usa el disco.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -225,11 +241,24 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
   de ahora, y el formato es uno de texto propio: ni FAT, ni nada que escriba
   otro sistema.
-- **El índice del disco cabe en un sector.** Son 512 bytes, y hoy quedan unos 60
-  libres: caben dos o tres archivos guardados más. Si no cabe, el programa recibe
-  un error y el disco no se toca.
+- **El índice del disco cabe en dos sectores.** Son 1.024 bytes, y hoy quedan
+  unos 480 libres. Si no cabe, el programa recibe un error y el disco no se toca.
 - **Un hueco del disco no se reutiliza.** Si el sitio de antes no vale, o se ha
   borrado con `olvida`, lo siguiente se escribe al final.
+- **El cifrado de `notas` no se ha revisado.** ChaCha20 está comprobado con los
+  números del RFC, pero la forma de sacar la clave de la contraseña es mía: 20.000
+  vueltas de ChaCha20, sin la memoria que pide [Argon2](https://www.rfc-editor.org/rfc/rfc9106),
+  así que con una tarjeta gráfica se prueban contraseñas mucho más deprisa. Una
+  contraseña corta se adivina igual.
+- **Cifrar no impide que cambien la nota.** No hay Poly1305 ni nada que la firme:
+  quien pueda tocar el disco no la lee, pero puede estropearla sin que `notas` se
+  dé cuenta.
+- **Lo que se ve en la ventana está sin cifrar.** El núcleo pone las letras de la
+  nota en la ventana y el programa de la pantalla las dibuja: los dos las ven.
+  Cifrar protege el disco, no la memoria.
+- **No hay azar de verdad.** Los números que hacen distinta cada clave salen del
+  reloj y de cuándo pulsas las teclas, no de un generador de azar del
+  procesador. Sirven para que no se repitan, no para ser secretos.
 - **Los ceros de `olvida` valen en este disco.** En un SSD, el propio disco puede
   guardar copias de un sector en otro sitio sin decírselo a nadie, y escribir
   ceros encima no las alcanza. Ahí haría falta cifrar.

@@ -2,6 +2,7 @@
   primos      busca números primos sin parar
   serpiente   un juego: dale el teclado con un clic o con teclado N
   veces       cuenta cuántas veces lo lanzas, y lo apunta en el disco
+  notas       un bloc de notas que guarda cifrado con tu contraseña
   caja        guarda un secreto y contesta si le preguntan
   curioso     quiere saber el secreto de la caja
 

@@ -168,17 +168,17 @@ jobs:
           }
           python3 - <<'FIN'
           sector = 512
-          indice = (b"FALDISCO\n"
-                    b"bien.txt 1 11\n"
-                    b"vacio.txt 1 0\n"
+          indice = (b"FALDISC2\n"
+                    b"bien.txt 2 11\n"
+                    b"vacio.txt 2 0\n"
                     b"lejos.txt 99999999 10\n"
-                    b"gigante.txt 1 999999999999999999999999999\n"
+                    b"gigante.txt 2 999999999999999999999999999\n"
                     b"negativo.txt -5 10\n"
-                    b"nombre_de_mas_de_treinta_y_dos_letras_seguidas.txt 1 5\n"
-                    b"ra\x07ro.txt 1 5\n"
-                    b"grande.txt 1 32256\n")
-          open("malo.img", "wb").write(indice.ljust(sector, b" ") + b"hola, malo\n".ljust(sector * 63, b"x"))
-          open("sin_salto.img", "wb").write(b"FALDISCO\n" + b"a" * (sector * 32 - 9))
+                    b"nombre_de_mas_de_treinta_y_dos_letras_seguidas.txt 2 5\n"
+                    b"ra\x07ro.txt 2 5\n"
+                    b"grande.txt 2 31744\n")
+          open("malo.img", "wb").write(indice.ljust(sector * 2, b" ") + b"hola, malo\n".ljust(sector * 62, b"x"))
+          open("sin_salto.img", "wb").write(b"FALDISC2\n" + b"a" * (sector * 32 - 9))
           open("ruido.img", "wb").write(bytes(range(256)) * 128)
           FIN
           for disco in malo sin_salto ruido; do
@@ -466,7 +466,7 @@ jobs:
           grep -q "veces guardó en el disco: -10" veces3.txt
           python3 - <<'FIN'
           imagen = open("disco.img", "rb").read()
-          lineas = imagen[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
           sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
           sector, medida = sitio[b"veces.dat"]
           assert imagen[sector * 512:sector * 512 + medida] == b"2\n"
@@ -476,20 +476,20 @@ jobs:
           huecos = (medida + 511) // 512
 
           def disco(nombre, lineas):
-              indice = b"FALDISCO\n" + b"".join(lineas) + b"\n"
-              assert len(indice) <= 512
-              datos = indice.ljust(512, b" ") + programa.ljust(huecos * 512, b"\0") + bytes(512 * 64)
+              indice = b"FALDISC2\n" + b"".join(lineas) + b"\n"
+              assert len(indice) <= 1024
+              datos = indice.ljust(1024, b" ") + programa.ljust(huecos * 512, b"\0") + bytes(512 * 64)
               open(nombre, "wb").write(datos)
               open(nombre + ".antes", "wb").write(datos)
 
-          suyo = b"veces.prg 1 %d\n" % medida
-          disco("pisa.img", [suyo, b"veces.dat 1 2\n"])
-          disco("roto.img", [suyo, b"ra\x07ro.txt 1 5\n"])
+          suyo = b"veces.prg 2 %d\n" % medida
+          disco("pisa.img", [suyo, b"veces.dat 2 2\n"])
+          disco("roto.img", [suyo, b"ra\x07ro.txt 2 5\n"])
           lleno = [suyo]
-          mide = lambda: len(b"FALDISCO\n" + b"".join(lleno) + b"\n")
-          while mide() < 480:
-              lleno.append(b"relleno%02d.txt 1 5\n" % len(lleno))
-          lleno.append(b"r" * (500 - mide()) + b" 1 5\n")
+          mide = lambda: len(b"FALDISC2\n" + b"".join(lleno) + b"\n")
+          while mide() < 985:
+              lleno.append(b"relleno%02d.txt 2 5\n" % len(lleno))
+          lleno.append(b"r" * (1010 - mide()) + b" 2 5\n")
           disco("lleno.img", lleno)
           FIN
           for disco in pisa roto lleno; do
@@ -503,11 +503,11 @@ jobs:
           python3 - <<'FIN'
           imagen = open("pisa.img", "rb").read()
           programa = open("veces.prg", "rb").read()
-          assert imagen[512:512 + len(programa)] == programa
-          lineas = imagen[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          assert imagen[1024:1024 + len(programa)] == programa
+          lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
           sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
           sector, medida = sitio[b"veces.dat"]
-          assert sector != 1
+          assert sector != 2
           assert imagen[sector * 512:sector * 512 + medida] == b"1\n"
           FIN
           cp disco.img olvido.img
@@ -516,9 +516,100 @@ jobs:
           python3 - <<'FIN'
           antes = open("disco.img", "rb").read()
           despues = open("olvido.img", "rb").read()
-          lineas = antes[:512].split(b"\n\n")[0].split(b"\n")[1:]
+          lineas = antes[:1024].split(b"\n\n")[0].split(b"\n")[1:]
           sitio = {l.split()[0]: int(l.split()[1]) for l in lineas}
-          assert b"veces.dat" not in despues[:512]
+          assert b"veces.dat" not in despues[:1024]
           sector = sitio[b"veces.dat"]
           assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
+          FIN
+
+      - name: Notas cifradas con tu contraseña
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          abre_notas() {
+            {
+              sleep 4
+              echo "sendkey ret"
+              sleep 1
+              teclea "lanza notas"
+              sleep 3
+              teclea "teclado 1"
+              sleep 1
+              for clave in $3; do
+                teclea "$clave"
+                sleep 1
+              done
+              sleep 40
+              teclea "$4"
+              echo "sendkey end"
+              sleep 3
+              echo "sendkey esc"
+              sleep 1
+              teclea "deja 1"
+              sleep 3
+              echo quit
+            } | timeout 120 qemu-system-x86_64 -kernel sistema.bin -display none \
+              -drive file=$1,format=raw,if=ide \
+              -serial file:$2 -monitor stdio -no-reboot > /dev/null
+            cat $2
+            if grep -q "  X  " $2; then
+              echo "Las notas han tumbado a FalOS"
+              exit 1
+            fi
+          }
+          cp disco.img notas.img
+          abre_notas notas.img notas1.txt "gato gato" "kiwi azul"
+          grep -q "notas leyó del disco: -3" notas1.txt
+          grep -q "notas guardó en el disco: 34" notas1.txt
+          abre_notas notas.img notas2.txt "perro gato" "otra"
+          grep -q "notas leyó del disco: 34" notas2.txt
+          grep -q "notas guardó en el disco: 39" notas2.txt
+          python3 - <<'FIN'
+          import struct
+
+          def gira(x, n):
+              return ((x << n) | (x >> (32 - n))) & 0xffffffff
+
+          def cuarto(s, a, b, c, d):
+              s[a] = (s[a] + s[b]) & 0xffffffff; s[d] = gira(s[d] ^ s[a], 16)
+              s[c] = (s[c] + s[d]) & 0xffffffff; s[b] = gira(s[b] ^ s[c], 12)
+              s[a] = (s[a] + s[b]) & 0xffffffff; s[d] = gira(s[d] ^ s[a], 8)
+              s[c] = (s[c] + s[d]) & 0xffffffff; s[b] = gira(s[b] ^ s[c], 7)
+
+          def bloque(clave, contador, n1, n2, n3):
+              estado = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574] + list(clave) + [contador, n1, n2, n3]
+              s = list(estado)
+              for _ in range(10):
+                  cuarto(s, 0, 4, 8, 12); cuarto(s, 1, 5, 9, 13); cuarto(s, 2, 6, 10, 14); cuarto(s, 3, 7, 11, 15)
+                  cuarto(s, 0, 5, 10, 15); cuarto(s, 1, 6, 11, 12); cuarto(s, 2, 7, 8, 13); cuarto(s, 3, 4, 9, 14)
+              return [(s[i] + estado[i]) & 0xffffffff for i in range(16)]
+
+          rfc = bloque(struct.unpack("<8I", bytes(range(32))), 1, 0x09000000, 0x4a000000, 0)
+          assert rfc[0] == 0xe4e7f110 and rfc[15] == 0x4e3c50a2
+
+          def descifra(archivo, contrasena):
+              sal1, sal2, guardadas, hora = struct.unpack("<4I", archivo[:16])
+              clave = [0] * 8
+              for i, b in enumerate(contrasena):
+                  clave[(i // 4) % 8] ^= b << (8 * (i % 4))
+              for v in range(1, 20001):
+                  t = bloque(clave, v, len(contrasena), sal1, sal2)
+                  clave = [t[j] ^ t[j + 8] for j in range(8)]
+              flujo = b"".join(struct.pack("<16I", *bloque(clave, c, 0, guardadas, hora)) for c in range(1, 9))
+              return bytes(a ^ b for a, b in zip(archivo[16:], flujo))
+
+          imagen = open("notas.img", "rb").read()
+          lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
+          sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+          sector, medida = sitio[b"notas.dat"]
+          archivo = imagen[sector * 512:sector * 512 + medida]
+          assert descifra(archivo, b"gato") == b"FalOS ok" + b"kiwi azul\notra\n", descifra(archivo, b"gato")
+          assert descifra(archivo, b"perro")[:8] != b"FalOS ok"
+          assert b"kiwi" not in imagen and b"azul" not in imagen
           FIN

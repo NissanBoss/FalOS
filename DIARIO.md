@@ -2,6 +2,75 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 10: notas cifradas con tu contraseña, y FalOS te dice quién usa el disco
+
+![El bloc de notas acaba de guardar, y la barra dice quién está escribiendo en el disco](capturas/dia-10.png)
+
+**Lo que hay.** Un bloc de notas, `notas`. Al abrirlo por primera vez te pide
+que elijas una contraseña y la repitas. Lo que escribes se guarda en el disco
+cifrado con ChaCha20, el mismo cifrado que usan TLS y WireGuard, con una clave
+que sale de tu contraseña. Con la tecla Fin se guarda. La siguiente vez que lo
+abres, sin la contraseña no hay notas.
+
+```
+lanza notas
+teclado 1
+lee notas.dat
+```
+
+`lee notas.dat` enseña lo que hay de verdad en el disco: ruido. La prueba
+automática lo descifra con un ChaCha20 escrito aparte, en Python, y comprueba
+dos cosas: que con la contraseña buena sale el texto, y que el texto no está en
+ningún byte del disco.
+
+![Lo que guarda notas, leído tal cual del disco](capturas/dia-10-disco.png)
+
+Y hay tres piezas más:
+
+- **La barra dice quién usa el disco.** Cuando un programa lee o escribe, el
+  núcleo lo pinta arriba durante tres segundos, con un cuadro del color de su
+  caja: "notas escribe en el disco". Es lo mismo que el punto verde del móvil
+  cuando algo usa la cámara. Lo pinta el núcleo después de las ventanas, así que
+  ningún programa lo puede tapar ni fingir.
+- **Lo que deja un programa se borra.** Cuando se cierra, cada página de memoria
+  que usó se llena de ceros antes de volver a la lista de libres. Antes se
+  borraba al prestarla a otro, y entre medias se quedaba ahí, con la clave de
+  `notas` dentro.
+- **El índice del disco ya ocupa dos sectores.** Estaba en 476 de 512 bytes, y
+  no cabían a la vez el récord de la serpiente, las veces y las notas. Ahora son
+  1.024. Un disco del formato viejo se rechaza en vez de pisarse: la primera
+  línea dice `FALDISC2`.
+
+**Lo que se aprende.** Una contraseña no es una clave. ChaCha20 necesita 32
+bytes al azar, y una contraseña son unas pocas letras que se pueden adivinar. Lo
+que se hace es pasarla por una función lenta a propósito: aquí son 20.000
+vueltas de ChaCha20, unos cuatro segundos en QEMU. A ti te cuesta esperar una
+vez. A quien prueba contraseñas una detrás de otra le cuesta lo mismo por cada
+intento.
+
+Y otra que parece un detalle: cada vez que guardas, el cifrado usa un número
+distinto, que se apunta delante. Si dos versiones de la nota se cifraran igual,
+juntándolas se podría quitar el cifrado sin saber la contraseña. Para saber si
+la contraseña es la buena, delante del texto va cifrado "FalOS ok": si al
+descifrar no sale eso, no es.
+
+**La seguridad.** Al disco, y al programa que escribe en él, solo les llega el
+ruido, y antes de guardar FalOS te pide permiso, como ayer. Lo que sí ve las
+letras es lo que las pinta: el núcleo las pone en la ventana, y el programa de
+la pantalla las dibuja. Eso no lo arregla cifrar el disco. Después de calcular la clave, `notas` llena de ceros la
+contraseña que escribiste.
+
+**Lo que costó.** Fal no tenía operaciones de bits, y ChaCha20 está hecho de
+tres: sumar dando la vuelta a los 32 bits, el o exclusivo y girar. Ahora Fal
+tiene `suma_doble`, `o_exclusivo` y `gira_doble`, y fuera de los 32 bits
+revientan en vez de recortar en silencio. Se prueban con los números del RFC
+8439, el que define ChaCha20.
+
+La primera ventana decía "Tu contrase a". Una ñ en un texto de Fal son dos
+bytes, y la ventana pinta una casilla por byte: el programa tiene que pasarla a
+la letra de la pantalla antes. Y el parámetro de la pregunta se iba a llamar
+`pregunta`, que es una palabra de Fal: lo paró el compilador, otra vez.
+
 ## Día 9, por la tarde: nada se guarda sin preguntarte
 
 ![FalOS pregunta antes de dejar guardar a un programa, y olvida borra con ceros](capturas/dia-9-permiso.png)

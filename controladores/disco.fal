@@ -29,12 +29,14 @@ ESCRIBIR es 48
 VACIA_CACHE es 231
 QUIEN_ERES es 236
 
-MAGIA es "FALDISCO"
+MAGIA es "FALDISC2"
 LARGO_NOMBRE es 32
 TOPE_SECTORES es 8
 TOPE_ARCHIVO es 4096
 PACIENCIA es 200000
 INDICE_NUEVO es 2560
+TOPE_INDICE es 1024
+MODELO es 3700
 
 buzon es region con 807399424 y 4096
 mesa es region con 807395328 y 4096
@@ -179,7 +181,7 @@ fin
 
 funcion salta_hasta_fin_de_linea
     comparte leido
-    mientras leido es menor o igual que 512 y (elemento leido de mesa) no es igual a 10
+    mientras leido es menor o igual que TOPE_INDICE y (elemento leido de mesa) no es igual a 10
         leido es leido mas 1
     fin
     leido es leido mas 1
@@ -189,7 +191,7 @@ funcion numero_en_mesa
     comparte leido
     n es 0
     cifras es 0
-    mientras leido es menor o igual que 512
+    mientras leido es menor o igual que TOPE_INDICE
         letra es elemento leido de mesa
         si letra es menor que 48 o letra es mayor que 57 o n es mayor que 1000000000000
             detente
@@ -207,7 +209,7 @@ fin
 funcion lee_linea
     comparte leido y nombre_largo y campo_sector y campo_bytes
     nombre_largo es 0
-    mientras leido es menor o igual que 512
+    mientras leido es menor o igual que TOPE_INDICE
         letra es elemento leido de mesa
         si letra es 32 o letra es 10
             detente
@@ -219,27 +221,27 @@ funcion lee_linea
         elemento 1024 mas nombre_largo de mesa es letra
         leido es leido mas 1
     fin
-    si nombre_largo es 0 o leido es mayor que 512 o (elemento leido de mesa) no es igual a 32
+    si nombre_largo es 0 o leido es mayor que TOPE_INDICE o (elemento leido de mesa) no es igual a 32
         devuelve falso
     fin
     leido es leido mas 1
     campo_sector es numero_en_mesa
-    si leido es mayor que 512 o (elemento leido de mesa) no es igual a 32
+    si leido es mayor que TOPE_INDICE o (elemento leido de mesa) no es igual a 32
         devuelve falso
     fin
     leido es leido mas 1
     campo_bytes es numero_en_mesa
-    si leido es mayor que 512 o (elemento leido de mesa) no es igual a 10
+    si leido es mayor que TOPE_INDICE o (elemento leido de mesa) no es igual a 10
         devuelve falso
     fin
-    si campo_sector es menor que 1 o campo_bytes es menor que 0
+    si campo_sector es menor que 2 o campo_bytes es menor que 0
         devuelve falso
     fin
     devuelve campo_sector mas (cociente con campo_bytes mas 511 y 512) es menor o igual que total_sectores
 fin
 
 funcion queda_entrada
-    devuelve leido es menor que 512 y (elemento leido de mesa) no es igual a 10 y (elemento leido de mesa) no es igual a 0 y (elemento leido de mesa) no es igual a 32
+    devuelve leido es menor que TOPE_INDICE y (elemento leido de mesa) no es igual a 10 y (elemento leido de mesa) no es igual a 0 y (elemento leido de mesa) no es igual a 32
 fin
 
 funcion abre_disco
@@ -248,9 +250,9 @@ funcion abre_disco
         devuelve NO_HAY_DISCO
     fin
     para cada i desde 1 hasta 40
-        elemento 512 mas i de mesa es elemento 54 mas i de mesa
+        elemento MODELO mas i de mesa es elemento 54 mas i de mesa
     fin
-    si no (lee_sector con 0 y mesa y 0)
+    si no (lee_sector con 0 y mesa y 0) o no (lee_sector con 1 y mesa y 512)
         devuelve NO_SE_LEE
     fin
     si no es_de_mi_formato
@@ -269,11 +271,11 @@ funcion lista
     salida es 0
     saca con "  Disco: "
     fin_del_modelo es 40
-    mientras fin_del_modelo es mayor que 1 y (elemento 512 mas fin_del_modelo de mesa) es 32
+    mientras fin_del_modelo es mayor que 1 y (elemento MODELO mas fin_del_modelo de mesa) es 32
         fin_del_modelo es fin_del_modelo menos 1
     fin
     para cada i desde 1 hasta fin_del_modelo
-        letra es elemento 512 mas i de mesa
+        letra es elemento MODELO mas i de mesa
         si letra es menor que 32 o letra es mayor que 126
             letra es 63
         fin
@@ -423,7 +425,7 @@ fin
 funcion apunta_letra con b
     comparte escrito
     escrito es escrito mas 1
-    si escrito es menor o igual que 512
+    si escrito es menor o igual que TOPE_INDICE
         elemento INDICE_NUEVO mas escrito de mesa es b
     fin
 fin
@@ -447,7 +449,7 @@ funcion guarda
         devuelve total
     fin
     sitio es 0
-    libre es 1
+    libre es 2
     mientras queda_entrada
         si no lee_linea
             devuelve DANADO
@@ -489,7 +491,7 @@ funcion guarda
     si no (escribe_sector con sitio y buzon y 512)
         devuelve NO_SE_ESCRIBE
     fin
-    si no (escribe_sector con 0 y mesa y INDICE_NUEVO)
+    si no (escribe_sector con 1 y mesa y INDICE_NUEVO mas 512) o no (escribe_sector con 0 y mesa y INDICE_NUEVO)
         devuelve NO_SE_ESCRIBE
     fin
     devuelve bytes
@@ -522,10 +524,10 @@ fin
 
 funcion cierra_indice
     apunta_letra con 10
-    si escrito es mayor que 512
+    si escrito es mayor que TOPE_INDICE
         devuelve falso
     fin
-    mientras escrito es menor que 512
+    mientras escrito es menor que TOPE_INDICE
         apunta_letra con 32
     fin
     devuelve verdadero
@@ -583,7 +585,7 @@ funcion olvida
     si no cierra_indice
         devuelve LLENO
     fin
-    si no (escribe_sector con 0 y mesa y INDICE_NUEVO)
+    si no (escribe_sector con 1 y mesa y INDICE_NUEVO mas 512) o no (escribe_sector con 0 y mesa y INDICE_NUEVO)
         devuelve NO_SE_ESCRIBE
     fin
     devuelve bytes

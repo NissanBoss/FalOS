@@ -1,0 +1,480 @@
+PIDE_TICS es 3
+DUERME es 4
+LEE_TECLA es 11
+PIDE_VENTANA es 12
+PON_CASILLA es 13
+GUARDA es 14
+LEE_GUARDADO es 15
+NEGADO es 0 menos 10
+
+TECLA_INTRO es 256
+TECLA_BORRA es 257
+TECLA_FIN es 261
+
+COLUMNAS es 38
+RENGLONES es 15
+ARRIBA es 4
+ABAJO es 13
+ANCHO_NOTA es 36
+CABEN es 360
+CABECERA es 24
+VUELTAS es 20000
+
+GRIS es 7
+GRIS_OSCURO es 8
+VERDE_CLARO es 10
+CIAN_CLARO es 11
+ROJO_CLARO es 12
+AMARILLO es 14
+BLANCO es 15
+
+MESA es 807395328
+DOBLE es 4294967296
+
+archivo es region con MESA y 512
+estado es region con MESA mas 512 y 16 y 8
+trabajo es region con MESA mas 640 y 16 y 8
+clave es region con MESA mas 768 y 8 y 8
+flujo es region con MESA mas 832 y 64
+escrito es region con MESA mas 1024 y CABEN
+secreta es region con MESA mas 1536 y 32
+repetida es region con MESA mas 1600 y 32
+
+COMPROBANTE es "FalOS ok"
+
+largo_nota es 0
+largo_secreta es 0
+semilla es 0
+sal_uno es 0
+sal_dos es 0
+guardadas es 0
+fila_fin es ARRIBA
+columna_fin es 0
+
+funcion descansa con centesimas
+    llama_al_sistema con DUERME y centesimas
+fin
+
+funcion pon con renglon y columna y tinta y letra
+    llama_al_sistema con PON_CASILLA y renglon por 256 mas columna y tinta por 256 mas letra
+fin
+
+funcion en_437 con segundo
+    si segundo es 161
+        devuelve 160
+    si no si segundo es 169
+        devuelve 130
+    si no si segundo es 173
+        devuelve 161
+    si no si segundo es 179
+        devuelve 162
+    si no si segundo es 186
+        devuelve 163
+    si no si segundo es 177
+        devuelve 164
+    fin
+    devuelve 63
+fin
+
+funcion texto_en con renglon y columna y texto y tinta
+    c es columna
+    a_medias es falso
+    para cada letra en texto
+        si letra es 195
+            a_medias es verdadero
+        si no si a_medias
+            pon con renglon y c y tinta y (en_437 con letra)
+            a_medias es falso
+            c es c mas 1
+        si no
+            pon con renglon y c y tinta y letra
+            c es c mas 1
+        fin
+    fin
+fin
+
+funcion limpia_renglon con renglon
+    para cada c desde 1 hasta COLUMNAS
+        pon con renglon y c y GRIS y 32
+    fin
+fin
+
+funcion aviso con texto y tinta
+    limpia_renglon con RENGLONES
+    texto_en con RENGLONES y 2 y texto y tinta
+fin
+
+funcion cuarto con a y b y c y d
+    elemento a de trabajo es suma_doble con (elemento a de trabajo) y (elemento b de trabajo)
+    elemento d de trabajo es gira_doble con (o_exclusivo con (elemento d de trabajo) y (elemento a de trabajo)) y 16
+    elemento c de trabajo es suma_doble con (elemento c de trabajo) y (elemento d de trabajo)
+    elemento b de trabajo es gira_doble con (o_exclusivo con (elemento b de trabajo) y (elemento c de trabajo)) y 12
+    elemento a de trabajo es suma_doble con (elemento a de trabajo) y (elemento b de trabajo)
+    elemento d de trabajo es gira_doble con (o_exclusivo con (elemento d de trabajo) y (elemento a de trabajo)) y 8
+    elemento c de trabajo es suma_doble con (elemento c de trabajo) y (elemento d de trabajo)
+    elemento b de trabajo es gira_doble con (o_exclusivo con (elemento b de trabajo) y (elemento c de trabajo)) y 7
+fin
+
+funcion bloque con contador y n_uno y n_dos y n_tres
+    elemento 1 de estado es 1634760805
+    elemento 2 de estado es 857760878
+    elemento 3 de estado es 2036477234
+    elemento 4 de estado es 1797285236
+    para cada i desde 1 hasta 8
+        elemento 4 mas i de estado es elemento i de clave
+    fin
+    elemento 13 de estado es contador
+    elemento 14 de estado es n_uno
+    elemento 15 de estado es n_dos
+    elemento 16 de estado es n_tres
+    copia_region con trabajo y 1 y estado y 1 y 16
+    repite 10 veces
+        cuarto con 1 y 5 y 9 y 13
+        cuarto con 2 y 6 y 10 y 14
+        cuarto con 3 y 7 y 11 y 15
+        cuarto con 4 y 8 y 12 y 16
+        cuarto con 1 y 6 y 11 y 16
+        cuarto con 2 y 7 y 12 y 13
+        cuarto con 3 y 8 y 9 y 14
+        cuarto con 4 y 5 y 10 y 15
+    fin
+    para cada i desde 1 hasta 16
+        elemento i de trabajo es suma_doble con (elemento i de trabajo) y (elemento i de estado)
+    fin
+fin
+
+funcion bloque_a_bytes
+    para cada i desde 1 hasta 16
+        queda es elemento i de trabajo
+        para cada j desde 1 hasta 4
+            elemento (i menos 1) por 4 mas j de flujo es queda resto 256
+            queda es cociente con queda y 256
+        fin
+    fin
+fin
+
+funcion palabra_de con desde
+    n es 0
+    para cada j desde 1 hasta 4
+        n es n por 256 mas elemento desde mas 4 menos j de archivo
+    fin
+    devuelve n
+fin
+
+funcion pon_palabra_en con desde y n
+    queda es n
+    para cada j desde 0 hasta 3
+        elemento desde mas j de archivo es queda resto 256
+        queda es cociente con queda y 256
+    fin
+fin
+
+funcion deriva_clave
+    para cada i desde 1 hasta 8
+        elemento i de clave es 0
+    fin
+    i es 1
+    mientras i es menor o igual que largo_secreta
+        sitio es ((cociente con (i menos 1) y 4) resto 8) mas 1
+        peso es 1
+        repite (i menos 1) resto 4 veces
+            peso es peso por 256
+        fin
+        elemento sitio de clave es o_exclusivo con (elemento sitio de clave) y (elemento i de secreta) por peso
+        i es i mas 1
+    fin
+    vuelta es 1
+    mientras vuelta es menor o igual que VUELTAS
+        bloque con vuelta y largo_secreta y sal_uno y sal_dos
+        para cada j desde 1 hasta 8
+            elemento j de clave es o_exclusivo con (elemento j de trabajo) y (elemento j mas 8 de trabajo)
+        fin
+        vuelta es vuelta mas 1
+    fin
+    para cada i desde 1 hasta 32
+        elemento i de secreta es 0
+        elemento i de repetida es 0
+    fin
+fin
+
+funcion cifra con cuantos
+    contador es 1
+    hecho es 0
+    mientras hecho es menor que cuantos
+        bloque con contador y 0 y guardadas y (palabra_de con 13)
+        bloque_a_bytes
+        j es 1
+        mientras j es menor o igual que 64 y hecho es menor que cuantos
+            sitio es CABECERA menos 8 mas hecho mas 1
+            elemento sitio de archivo es o_exclusivo con (elemento sitio de archivo) y (elemento j de flujo)
+            j es j mas 1
+            hecho es hecho mas 1
+        fin
+        contador es contador mas 1
+    fin
+fin
+
+funcion comprobante_bien
+    i es 1
+    para cada letra en COMPROBANTE
+        si (elemento CABECERA menos 8 mas i de archivo) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion remueve con tecla
+    comparte semilla
+    semilla es o_exclusivo con (gira_doble con semilla y 5) y ((llama_al_sistema con PIDE_TICS) mas tecla) resto DOBLE
+fin
+
+funcion pide_contrasena con frase y destino
+    limpia_renglon con 6
+    limpia_renglon con 8
+    texto_en con 6 y 3 y frase y BLANCO
+    cuantas es 0
+    pon con 8 y 3 y CIAN_CLARO y 95
+    mientras verdadero
+        tecla es llama_al_sistema con LEE_TECLA
+        si tecla es 0
+            descansa con 2
+        si no
+            remueve con tecla
+            si tecla es TECLA_INTRO y cuantas es mayor que 0
+                limpia_renglon con 8
+                devuelve cuantas
+            si no si tecla es TECLA_BORRA y cuantas es mayor que 0
+                pon con 8 y 3 mas cuantas y GRIS y 32
+                cuantas es cuantas menos 1
+                elemento cuantas mas 1 de destino es 0
+                pon con 8 y 3 mas cuantas y CIAN_CLARO y 95
+            si no si tecla es mayor o igual que 32 y tecla es menor que 256 y cuantas es menor que 32
+                cuantas es cuantas mas 1
+                elemento cuantas de destino es tecla
+                pon con 8 y 2 mas cuantas y AMARILLO y 42
+                pon con 8 y 3 mas cuantas y CIAN_CLARO y 95
+            fin
+        fin
+    fin
+fin
+
+funcion iguales_las_dos con cuantas y otras
+    si cuantas no es igual a otras
+        devuelve falso
+    fin
+    para cada i desde 1 hasta 32
+        si (elemento i de secreta) no es igual a (elemento i de repetida)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion abre_las_guardadas con leidos
+    comparte largo_secreta y sal_uno y sal_dos y guardadas y largo_nota
+    sal_uno es palabra_de con 1
+    sal_dos es palabra_de con 5
+    guardadas es palabra_de con 9
+    mientras verdadero
+        largo_secreta es pide_contrasena con "Tu contraseña:" y secreta
+        aviso con "Calculando la clave..." y GRIS
+        deriva_clave
+        cifra con 8
+        si comprobante_bien
+            largo_nota es leidos menos CABECERA
+            cifra con largo_nota mas 8
+            copia_region con escrito y 1 y archivo y CABECERA mas 1 y largo_nota
+            devuelve nada
+        fin
+        aviso con "No es esa. Espera un poco." y ROJO_CLARO
+        descansa con 200
+        cifra con 8
+    fin
+fin
+
+funcion elige_contrasena
+    comparte largo_secreta y sal_uno y sal_dos
+    mientras verdadero
+        largo_secreta es pide_contrasena con "Elige una contraseña:" y secreta
+        otras es pide_contrasena con "Repítela:" y repetida
+        si iguales_las_dos con largo_secreta y otras
+            sal_uno es semilla
+            remueve con 7
+            sal_dos es semilla
+            aviso con "Calculando la clave..." y GRIS
+            deriva_clave
+            devuelve nada
+        fin
+        aviso con "No son iguales. Otra vez." y ROJO_CLARO
+        para cada i desde 1 hasta 32
+            elemento i de secreta es 0
+            elemento i de repetida es 0
+        fin
+    fin
+fin
+
+funcion mide_nota
+    comparte fila_fin y columna_fin
+    fila_fin es ARRIBA
+    columna_fin es 0
+    i es 1
+    mientras i es menor o igual que largo_nota
+        letra es elemento i de escrito
+        si letra es 10
+            fila_fin es fila_fin mas 1
+            columna_fin es 0
+        si no
+            si columna_fin es ANCHO_NOTA
+                fila_fin es fila_fin mas 1
+                columna_fin es 0
+            fin
+            columna_fin es columna_fin mas 1
+        fin
+        i es i mas 1
+    fin
+fin
+
+funcion siguiente_fila
+    si columna_fin es ANCHO_NOTA
+        devuelve fila_fin mas 1
+    fin
+    devuelve fila_fin
+fin
+
+funcion siguiente_columna
+    si columna_fin es ANCHO_NOTA
+        devuelve 1
+    fin
+    devuelve columna_fin mas 1
+fin
+
+funcion pon_cursor con tinta y letra
+    fila es siguiente_fila
+    si fila es menor o igual que ABAJO
+        pon con fila y (siguiente_columna) mas 1 y tinta y letra
+    fin
+fin
+
+funcion pinta_nota
+    para cada renglon desde ARRIBA hasta ABAJO
+        limpia_renglon con renglon
+    fin
+    fila es ARRIBA
+    columna es 0
+    i es 1
+    mientras i es menor o igual que largo_nota
+        letra es elemento i de escrito
+        si letra es 10
+            fila es fila mas 1
+            columna es 0
+        si no
+            si columna es ANCHO_NOTA
+                fila es fila mas 1
+                columna es 0
+            fin
+            columna es columna mas 1
+            pon con fila y columna mas 1 y BLANCO y letra
+        fin
+        i es i mas 1
+    fin
+    mide_nota
+    pon_cursor con CIAN_CLARO y 95
+fin
+
+funcion escribe_letra con letra
+    comparte largo_nota
+    si largo_nota es mayor o igual que CABEN
+        aviso con "No cabe más." y AMARILLO
+        devuelve nada
+    fin
+    si letra es 10 y fila_fin es mayor o igual que ABAJO
+        aviso con "No caben más renglones." y AMARILLO
+        devuelve nada
+    fin
+    si letra no es igual a 10 y siguiente_fila es mayor que ABAJO
+        aviso con "No caben más renglones." y AMARILLO
+        devuelve nada
+    fin
+    pon_cursor con GRIS y 32
+    largo_nota es largo_nota mas 1
+    elemento largo_nota de escrito es letra
+    si letra no es igual a 10
+        pon con siguiente_fila y (siguiente_columna) mas 1 y BLANCO y letra
+    fin
+    mide_nota
+    pon_cursor con CIAN_CLARO y 95
+fin
+
+funcion borra_letra
+    comparte largo_nota
+    si largo_nota es 0
+        devuelve nada
+    fin
+    pon_cursor con GRIS y 32
+    si (elemento largo_nota de escrito) no es igual a 10
+        pon con fila_fin y columna_fin mas 1 y GRIS y 32
+    fin
+    largo_nota es largo_nota menos 1
+    mide_nota
+    pon_cursor con CIAN_CLARO y 95
+fin
+
+funcion guarda_nota
+    comparte guardadas
+    guardadas es (guardadas mas 1) resto DOBLE
+    pon_palabra_en con 1 y sal_uno
+    pon_palabra_en con 5 y sal_dos
+    pon_palabra_en con 9 y guardadas
+    pon_palabra_en con 13 y (llama_al_sistema con PIDE_TICS) resto DOBLE
+    i es 1
+    para cada letra en COMPROBANTE
+        elemento CABECERA menos 8 mas i de archivo es letra
+        i es i mas 1
+    fin
+    si largo_nota es mayor que 0
+        copia_region con archivo y CABECERA mas 1 y escrito y 1 y largo_nota
+    fin
+    cifra con largo_nota mas 8
+    aviso con "Esperando permiso..." y GRIS
+    respuesta es llama_al_sistema con GUARDA y 0 y CABECERA mas largo_nota
+    si respuesta es mayor que 0
+        aviso con "Guardada, cifrada con tu clave." y VERDE_CLARO
+    si no si respuesta es NEGADO
+        aviso con "No me dejas guardarla." y AMARILLO
+    si no
+        aviso con "No he podido guardarla." y ROJO_CLARO
+    fin
+fin
+
+llama_al_sistema con PIDE_VENTANA y COLUMNAS y RENGLONES
+texto_en con 1 y 2 y "NOTAS" y AMARILLO
+texto_en con 1 y 21 y "cifradas en disco" y GRIS_OSCURO
+para cada raya desde 1 hasta COLUMNAS
+    pon con 2 y raya y GRIS_OSCURO y 196
+fin
+semilla es (llama_al_sistema con PIDE_TICS) resto DOBLE
+aviso con "Dame el teclado para escribir." y GRIS
+lo_leido es llama_al_sistema con LEE_GUARDADO y 0 y 512
+si lo_leido es mayor o igual que CABECERA y lo_leido es menor o igual que CABECERA mas CABEN
+    abre_las_guardadas con lo_leido
+si no
+    elige_contrasena
+fin
+pinta_nota
+aviso con "Fin guarda. Nada sale sin cifrar." y GRIS
+mientras verdadero
+    pulsada es llama_al_sistema con LEE_TECLA
+    si pulsada es 0
+        descansa con 2
+    si no si pulsada es TECLA_FIN
+        guarda_nota
+    si no si pulsada es TECLA_INTRO
+        escribe_letra con 10
+    si no si pulsada es TECLA_BORRA
+        borra_letra
+    si no si pulsada es mayor o igual que 32 y pulsada es menor que 256
+        escribe_letra con pulsada
+    fin
+fin
