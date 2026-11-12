@@ -2,6 +2,55 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 11: FalOS apunta quién ha tocado tus cosas, y recuerda lo que le dejas
+
+![El registro: qué programa ha leído o guardado qué, cuándo, y qué decidiste tú](capturas/dia-11.png)
+
+**Lo que hay.** Una orden nueva, `registro`, que dice qué programa ha leído o
+guardado qué, y a qué hora. También apunta lo que decidiste tú: a quién dejaste
+guardar y a quién no, a quién le diste el teclado, y con cuántas teclas tuyas se
+cerró cada uno. Si un programa repite lo mismo, no llena la lista: se junta en
+una línea con las veces.
+
+```
+lanza veces
+deja siempre 1
+registro
+niega veces
+```
+
+Y dos piezas más:
+
+- **Un reloj en la barra.** El núcleo lee el reloj de la placa una vez por
+  segundo, lo pinta arriba y el registro apunta la hora con él. Va en UTC,
+  porque ese reloj no sabe en qué país estás.
+- **`deja siempre`.** `deja` da permiso hasta que el programa se cierra. `deja
+  siempre` lo recuerda aunque reinicies, y no te vuelve a preguntar. `permisos`
+  dice quién lo tiene, y `niega` con su nombre se lo quita, aunque no esté
+  abierto.
+
+![Después de reiniciar, veces guarda sin volver a preguntar, y el registro lo cuenta](capturas/dia-11-siempre.png)
+
+**Lo que se aprende.** Un registro de lo que haces también es un dato tuyo, y
+de los que más dicen. Por eso este vive solo en memoria: no se escribe en el
+disco, se borra al apagar, y ningún programa tiene una llamada para leerlo. Lo
+lees tú, desde la consola. La prueba automática lo busca en el disco después de
+usarlo, y no puede estar.
+
+**La seguridad.** La lista de quién guarda siempre sí va al disco, en
+`permisos.sis`, porque si no, no sobreviviría a un reinicio. La escribe el
+núcleo, y ningún programa la puede tocar: el archivo de un programa se llama
+siempre como él más `.dat`, y ese nombre lo pone el núcleo, no el programa. Al
+arrancar, FalOS la lee y mira que solo haya nombres y saltos de línea. Si
+encuentra cualquier otra cosa, la tira entera y vuelve a preguntar. La prueba
+automática le mete un byte raro y mira que pregunta.
+
+**Lo que costó.** Para ver si una línea del registro repetía la anterior usé una
+variable llamada `igual`, que es una palabra de Fal: el compilador la paró, como
+`pregunta` ayer. Y una trampa en la prueba, que vi antes de subirla: en el bash
+de GitHub, un `! grep` que falla no para el paso. La comprobación de "no vuelve
+a preguntar" se habría quedado en verde aunque volviera a preguntar.
+
 ## Día 10: notas cifradas con tu contraseña, y FalOS te dice quién usa el disco
 
 ![El bloc de notas acaba de guardar, y la barra dice quién está escribiendo en el disco](capturas/dia-10.png)

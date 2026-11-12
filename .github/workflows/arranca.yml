@@ -613,3 +613,77 @@ jobs:
           assert descifra(archivo, b"perro")[:8] != b"FalOS ok"
           assert b"kiwi" not in imagen and b"azul" not in imagen
           FIN
+
+      - name: Un registro de quien toca tus cosas, y permisos para siempre
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          arranca() {
+            imagen=$1
+            salida=$2
+            shift 2
+            {
+              sleep 4
+              for orden in "$@"; do
+                teclea "$orden"
+                sleep 2
+              done
+              echo quit
+            } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+              -drive file=$imagen,format=raw,if=ide \
+              -serial file:$salida -monitor stdio -no-reboot > /dev/null
+            cat $salida
+            if grep -q "  X  " $salida; then
+              echo "El registro ha tumbado a FalOS"
+              exit 1
+            fi
+          }
+          cp disco.img siempre.img
+          arranca siempre.img siempre1.txt "lanza veces" "deja siempre 1" "registro"
+          grep -q "veces pide permiso para guardar" siempre1.txt
+          grep -q "permisos.sis guardado: 6" siempre1.txt
+          grep -q "veces apunte 7 0" siempre1.txt
+          grep -q "FalOS apunte 14 6" siempre1.txt
+          grep -q "veces apunte 4 2" siempre1.txt
+          cp siempre.img basura.img
+          arranca siempre.img siempre2.txt "lanza veces" "registro"
+          grep -q "permisos.sis leido: 6" siempre2.txt
+          if grep -q "pide permiso" siempre2.txt; then
+            echo "Ha vuelto a preguntar despues de reiniciar"
+            exit 1
+          fi
+          grep -q "veces guardó en el disco: 2" siempre2.txt
+          grep -q "veces apunte 1 2" siempre2.txt
+          arranca siempre.img siempre3.txt "niega veces" "lanza veces" "niega 1" "registro"
+          grep -q "veces apunte 9 0" siempre3.txt
+          grep -q "veces pide permiso para guardar" siempre3.txt
+          grep -q "veces guardó en el disco: -10" siempre3.txt
+          python3 - <<'FIN'
+          def indice(nombre):
+              imagen = open(nombre, "rb").read()
+              lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
+              return imagen, {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+
+          imagen, sitio = indice("basura.img")
+          sector, medida = sitio[b"permisos.sis"]
+          assert imagen[sector * 512:sector * 512 + medida] == b"veces\n"
+          for registrado in (b"dejaste", b"apunte", b"pidi\xc3\xb3 guardar"):
+              assert registrado not in imagen
+          despues, sitio_despues = indice("siempre.img")
+          assert b"permisos.sis" not in sitio_despues
+          assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
+          roto = bytearray(imagen)
+          roto[sector * 512:sector * 512 + medida] = b"ve\x07ces"
+          open("basura.img", "wb").write(roto)
+          FIN
+          arranca basura.img basura.txt "lanza veces"
+          if grep -q "permisos.sis leido" basura.txt; then
+            echo "Se ha creido una lista de permisos rota"
+            exit 1
+          fi
+          grep -q "veces pide permiso para guardar" basura.txt

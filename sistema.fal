@@ -30,6 +30,7 @@ pantalla_sucia es falso
 aviso_disco_hasta es 0
 disco_lo_usa es 0
 disco_guardaba es falso
+segundos_del_dia es 0
 control es nada
 CURSOR_EN es 1
 SUBIDAS es 2
@@ -625,6 +626,31 @@ desde_de es region con pide_pagina y 512 y 8
 cuantos_de es region con pide_pagina y 512 y 8
 permiso_disco es region con pide_pagina y 512 y 8
 
+CUPO_REGISTRO es 16
+apuntes es region con pide_pagina y 512 y 8
+apuntes_nombres_en es pide_pagina
+apuntes_nombres es region con apuntes_nombres_en y 4096
+apuntados es 0
+R_LEYO es 1
+R_BUSCO es 2
+R_PIDE es 3
+R_GUARDO es 4
+R_NEGADO es 5
+R_DEJASTE es 6
+R_SIEMPRE es 7
+R_NEGASTE es 8
+R_QUITASTE es 9
+R_OLVIDASTE es 10
+R_TECLADO es 11
+R_TECLAS es 12
+R_LEE_LISTA es 13
+R_GUARDA_LISTA es 14
+
+TOPE_SIEMPRE es 512
+siempre_en es pide_pagina
+siempre es region con siempre_en y TOPE_SIEMPRE
+siempre_mide es 0
+
 actual es CONSOLA
 foco es CONSOLA
 esperando es falso
@@ -1020,6 +1046,7 @@ funcion compone
         i es i mas 1
     fin
     pinta_aviso_disco
+    pinta_reloj
     sitio es cursor_sitio
     renglon es (cociente con sitio y ANCHO) mas 1
     c es (sitio resto ANCHO) mas 1
@@ -1063,6 +1090,19 @@ funcion pinta_aviso_disco
     fin
 fin
 
+funcion pinta_reloj
+    tinta es (AZUL por 16 mas BLANCO) por 256
+    minutos es cociente con segundos_del_dia y 60
+    h es cociente con minutos y 60
+    m es minutos resto 60
+    pon_en_vista con 1 y 61 y tinta mas 48 mas (cociente con h y 10)
+    pon_en_vista con 1 y 62 y tinta mas 48 mas (h resto 10)
+    pon_en_vista con 1 y 63 y tinta mas 58
+    pon_en_vista con 1 y 64 y tinta mas 48 mas (cociente con m y 10)
+    pon_en_vista con 1 y 65 y tinta mas 48 mas (m resto 10)
+    pon_texto_en_vista con 1 y 67 y "UTC" y tinta
+fin
+
 funcion cierra_desde_la_ventana con t
     quita_ventana con t
     estado es elemento t de estados_tarea
@@ -1074,6 +1114,7 @@ fin
 funcion pulsa_en con renglon y c
     comparte agarrada y agarre y foco
     t es ventana_en con renglon y c
+    antes es foco
     foco es CONSOLA
     si t es 0
         devuelve nada
@@ -1087,6 +1128,9 @@ funcion pulsa_en con renglon y c
     sube_ventana con t
     si (elemento t de ventana_de) es VENTANA_VIVA
         foco es t
+        si antes no es igual a t
+            apunta_de con R_TECLADO y t y 0
+        fin
     fin
     si renglon es (elemento t de ventana_y)
         agarrada es t
@@ -1587,6 +1631,9 @@ fin
 funcion al_tic
     comparte tics y tics_dormido y pantalla_sucia y aviso_disco_hasta
     tics es tics mas 1
+    si (tics resto TICS_POR_SEGUNDO) es 0
+        mira_el_reloj
+    fin
     si aviso_disco_hasta no es igual a 0 y tics es mayor o igual que aviso_disco_hasta
         aviso_disco_hasta es 0
         pantalla_sucia es verdadero
@@ -1872,6 +1919,8 @@ funcion ejecuta
         tareas
     si no si es_orden con "permisos"
         permisos
+    si no si es_orden con "registro"
+        ensena_registro
     si no si empieza_por con "permite "
         permite
     si no si empieza_por con "prohibe "
@@ -1888,10 +1937,12 @@ funcion ejecuta
         lee_archivo
     si no si empieza_por con "olvida "
         olvida
+    si no si empieza_por con "deja siempre "
+        decide_guardar con 14 y DISCO_SI y verdadero
     si no si empieza_por con "deja "
-        decide_guardar con 6 y DISCO_SI
+        decide_guardar con 6 y DISCO_SI y falso
     si no si empieza_por con "niega "
-        decide_guardar con 7 y DISCO_NO
+        decide_guardar con 7 y DISCO_NO y falso
     si no si empieza_por con "cuelga "
         estropea con 8 y AVISO_CUELGA
     si no si empieza_por con "rompe "
@@ -1918,11 +1969,13 @@ funcion ayuda
     pinta_linea con "  permisos       quién puede hablar con quién y tocar qué"
     pinta_linea con "  permite N M    deja que la tarea N hable con la M"
     pinta_linea con "  prohibe N M    se lo quita, en el acto"
+    pinta_linea con "  registro       qué programa ha leído o guardado qué, y cuándo"
     pinta_linea con ""
     pinta_linea con "  disco          lo que hay en el disco"
     pinta_linea con "  lee X          enseña un archivo del disco"
     pinta_linea con "  deja N         deja que el programa N guarde en su archivo"
-    pinta_linea con "  niega N        no le deja guardar nada"
+    pinta_linea con "  deja siempre N y no vuelve a preguntarte, aunque reinicies"
+    pinta_linea con "  niega N        no le deja guardar nada, y le quita el siempre"
     pinta_linea con "  olvida X       borra de verdad lo que guardó X"
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
@@ -1957,16 +2010,30 @@ funcion del_reloj con registro
     devuelve (cociente con v y 16) por 10 mas (v resto 16)
 fin
 
-funcion hora
-    mientras (lee_cmos con 10) es mayor o igual que 128
+funcion mira_el_reloj
+    comparte segundos_del_dia y pantalla_sucia
+    si (lee_cmos con 10) es mayor o igual que 128
+        devuelve nada
     fin
+    antes es cociente con segundos_del_dia y 60
+    segundos_del_dia es ((del_reloj con 4) por 60 mas (del_reloj con 2)) por 60 mas (del_reloj con 0)
+    si (cociente con segundos_del_dia y 60) no es igual a antes
+        pantalla_sucia es verdadero
+    fin
+fin
+
+funcion pinta_hora con s
+    pinta_dos con (cociente con s y 3600)
+    pinta con ":"
+    pinta_dos con ((cociente con s y 60) resto 60)
+    pinta con ":"
+    pinta_dos con (s resto 60)
+fin
+
+funcion hora
     pinta con "  Son las "
     pon_color con BLANCO y NEGRO
-    pinta_dos con (del_reloj con 4)
-    pinta con ":"
-    pinta_dos con (del_reloj con 2)
-    pinta con ":"
-    pinta_dos con (del_reloj con 0)
+    pinta_hora con segundos_del_dia
     pon_color con GRIS y NEGRO
     pinta_linea con " en UTC."
     pinta_linea con ""
@@ -2480,6 +2547,9 @@ funcion da_el_teclado
         devuelve nada
     fin
     desactiva_interrupciones
+    si foco no es igual a t
+        apunta_de con R_TECLADO y t y 0
+    fin
     foco es t
     sube_ventana con t
     activa_interrupciones
@@ -2603,6 +2673,8 @@ funcion permisos
         cabecera_de_tarea con TAREA_PANTALLA
         pinta_linea con "solo la imagen, y lee lo que hay que pintar sin poder cambiarlo"
     fin
+    pinta_linea con ""
+    pinta_siempre
     pinta_linea con ""
 fin
 
@@ -2887,6 +2959,11 @@ funcion cuenta_el_final con t
         escribe causa
     fin
     si no (es_controlador con t)
+        si (elemento t de teclas_recibidas) es mayor que 0
+            desactiva_interrupciones
+            apunta_de con R_TECLAS y t y (elemento t de teclas_recibidas)
+            activa_interrupciones
+        fin
         al_serie con nombre
         escribe " recibió " sin salto
         escribe (elemento t de teclas_recibidas) sin salto
@@ -3074,6 +3151,10 @@ funcion atiende_encargos
         si (elemento t de estados_tarea) es CON_EL_DISCO
             pedido es elemento t de pedido_de
             permiso es elemento t de permiso_disco
+            si pedido es GUARDA y permiso es DISCO_SIN_PEDIR y (esta_siempre con (nombre_de con t)) es mayor que 0
+                elemento t de permiso_disco es DISCO_SI
+                permiso es DISCO_SI
+            fin
             si pedido es GUARDA y permiso es DISCO_SIN_PEDIR
                 elemento t de permiso_disco es DISCO_PEDIDO
                 pide_permiso_de con t
@@ -3102,6 +3183,15 @@ funcion termina_encargo con t y hecho
     fin
     escribe hecho
     desactiva_interrupciones
+    si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0
+        apunta_de con R_GUARDO y t y hecho
+    si no si (elemento t de pedido_de) es GUARDA y hecho es NEGADO
+        apunta_de con R_NEGADO y t y 0
+    si no si hecho es mayor o igual que 0
+        apunta_de con R_LEYO y t y hecho
+    si no si hecho es NO_ESTA
+        apunta_de con R_BUSCO y t y 0
+    fin
     si (elemento t de estados_tarea) es CON_EL_DISCO
         despierta_con con t y hecho
     fin
@@ -3133,16 +3223,32 @@ funcion pide_permiso_de con t
     pinta_linea con ""
     al_serie con (nombre_de con t)
     escribe " pide permiso para guardar"
+    desactiva_interrupciones
+    apunta_de con R_PIDE y t y (elemento t de cuantos_de)
+    activa_interrupciones
     indicador
     redibuja
 fin
 
-funcion decide_guardar con primera y permiso
+funcion decide_guardar con primera y permiso y para_siempre
     comparte hay_encargos
     t es numero_entre con primera y escritas
     bien es t es mayor o igual que 1 y t es menor o igual que MAX_TAREAS
     si bien
         bien es sigue_viva con t
+    fin
+    si no bien y permiso es DISCO_NO
+        nombre es trozo_de_orden con primera
+        si (esta_siempre con nombre) es mayor que 0
+            quita_siempre con nombre y GRIS
+            pon_color con ROJO_CLARO y NEGRO
+            pinta con "  "
+            pinta con nombre
+            pinta_linea con " ya no guardará nada sin preguntarte."
+            pon_color con GRIS y NEGRO
+            pinta_linea con ""
+            devuelve nada
+        fin
     fin
     si no bien
         pon_color con ROJO_CLARO y NEGRO
@@ -3154,16 +3260,43 @@ funcion decide_guardar con primera y permiso
     desactiva_interrupciones
     elemento t de permiso_disco es permiso
     hay_encargos es verdadero
+    si permiso es DISCO_SI y para_siempre
+        apunta_de con R_SIEMPRE y t y 0
+    si no si permiso es DISCO_SI
+        apunta_de con R_DEJASTE y t y 0
+    si no
+        apunta_de con R_NEGASTE y t y 0
+    fin
     activa_interrupciones
+    nombre es nombre_de con t
     pinta con "  "
-    si permiso es DISCO_SI
+    si permiso es DISCO_SI y para_siempre
+        si anade_siempre con nombre
+            pon_color con VERDE_CLARO y NEGRO
+            pinta con nombre
+            pinta_linea con " puede guardar siempre, también cuando reinicies."
+            pon_color con GRIS y NEGRO
+            pinta con "  Para quitárselo: niega "
+            pinta_linea con nombre
+        si no
+            pon_color con AMARILLO y NEGRO
+            pinta con nombre
+            pinta_linea con " puede guardar hasta que se cierre. Lo de siempre"
+            pinta_linea con "  no he podido apuntarlo en el disco."
+        fin
+    si no si permiso es DISCO_SI
         pon_color con VERDE_CLARO y NEGRO
-        pinta con (nombre_de con t)
+        pinta con nombre
         pinta_linea con " puede guardar en su archivo hasta que se cierre."
     si no
         pon_color con ROJO_CLARO y NEGRO
-        pinta con (nombre_de con t)
+        pinta con nombre
         pinta_linea con " no guardará nada en el disco."
+        si (esta_siempre con nombre) es mayor que 0
+            quita_siempre con nombre y (color_de con t)
+            pon_color con GRIS y NEGRO
+            pinta_linea con "  Y le he quitado el permiso para siempre."
+        fin
     fin
     pon_color con GRIS y NEGRO
     pinta_linea con ""
@@ -3187,6 +3320,9 @@ funcion olvida
         pinta con ".dat: "
         pinta_numero con respuesta
         pinta_linea con " bytes. Donde estaban, ahora solo hay ceros."
+        desactiva_interrupciones
+        apunta con R_OLVIDASTE y nombre y GRIS y respuesta
+        activa_interrupciones
         pon_color con GRIS y NEGRO
         pinta_linea con ""
         al_serie con nombre
@@ -3230,6 +3366,325 @@ funcion estropea con primera y aviso
     activa_interrupciones
 fin
 
+funcion apunta con clase y nombre y tinta y numero
+    comparte apuntados
+    cuantas es largo de nombre
+    si cuantas es mayor que 32
+        cuantas es 32
+    fin
+    si apuntados es mayor que 0
+        base es ((apuntados menos 1) resto CUPO_REGISTRO) por 8
+        sitio es ((apuntados menos 1) resto CUPO_REGISTRO) por 32
+        mismo es (elemento base mas 2 de apuntes) es clase y (elemento base mas 4 de apuntes) es numero y (elemento base mas 5 de apuntes) es cuantas
+        i es 1
+        mientras mismo y i es menor o igual que cuantas
+            si (elemento sitio mas i de apuntes_nombres) no es igual a (elemento i de nombre)
+                mismo es falso
+            fin
+            i es i mas 1
+        fin
+        si mismo
+            elemento base mas 1 de apuntes es segundos_del_dia
+            elemento base mas 6 de apuntes es (elemento base mas 6 de apuntes) mas 1
+            devuelve nada
+        fin
+    fin
+    base es (apuntados resto CUPO_REGISTRO) por 8
+    sitio es (apuntados resto CUPO_REGISTRO) por 32
+    elemento base mas 1 de apuntes es segundos_del_dia
+    elemento base mas 2 de apuntes es clase
+    elemento base mas 3 de apuntes es tinta
+    elemento base mas 4 de apuntes es numero
+    elemento base mas 5 de apuntes es cuantas
+    elemento base mas 6 de apuntes es 1
+    i es 1
+    mientras i es menor o igual que cuantas
+        elemento sitio mas i de apuntes_nombres es elemento i de nombre
+        i es i mas 1
+    fin
+    apuntados es apuntados mas 1
+fin
+
+funcion apunta_de con clase y t y numero
+    apunta con clase y (nombre_de con t) y (color_de con t) y numero
+fin
+
+funcion es_tuya con clase
+    devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
+fin
+
+funcion pinta_de con nombre y tinta
+    pon_color con tinta y NEGRO
+    pinta con nombre
+    pon_color con GRIS y NEGRO
+fin
+
+funcion pinta_cuantos con n
+    pon_color con BLANCO y NEGRO
+    pinta_numero con n
+    pon_color con GRIS y NEGRO
+fin
+
+funcion pinta_apunte con k
+    base es (k resto CUPO_REGISTRO) por 8
+    clase es elemento base mas 2 de apuntes
+    tinta es elemento base mas 3 de apuntes
+    n es elemento base mas 4 de apuntes
+    veces es elemento base mas 6 de apuntes
+    nombre es region con apuntes_nombres_en mas (k resto CUPO_REGISTRO) por 32 y (elemento base mas 5 de apuntes)
+    al_serie con nombre
+    escribe " apunte " sin salto
+    escribe clase sin salto
+    escribe " " sin salto
+    escribe n
+    pon_color con GRIS_OSCURO y NEGRO
+    pinta con "  "
+    pinta_hora con (elemento base mas 1 de apuntes)
+    hasta_columna con 13
+    si es_tuya con clase
+        pinta_de con "tú" y BLANCO
+    si no
+        pinta_de con nombre y tinta
+    fin
+    pinta con " "
+    hasta_columna con 25
+    si clase es R_LEYO
+        pinta con "leyó "
+        pinta_cuantos con n
+        pinta con " bytes de "
+        pinta con nombre
+        pinta con ".dat"
+    si no si clase es R_BUSCO
+        pinta con "buscó "
+        pinta con nombre
+        pinta con ".dat y no había nada"
+    si no si clase es R_PIDE
+        pinta con "pidió guardar "
+        pinta_cuantos con n
+        pinta con " bytes"
+    si no si clase es R_GUARDO
+        pinta con "guardó "
+        pinta_cuantos con n
+        pinta con " bytes en "
+        pinta con nombre
+        pinta con ".dat"
+    si no si clase es R_NEGADO
+        pinta_de con "quiso guardar y no le dejé" y ROJO_CLARO
+    si no si clase es R_TECLAS
+        pinta con "se cerró con "
+        pinta_cuantos con n
+        si n es 1
+            pinta con " tecla tuya"
+        si no
+            pinta con " teclas tuyas"
+        fin
+    si no si clase es R_LEE_LISTA
+        pinta con "leyó quién guarda sin preguntarte"
+    si no si clase es R_GUARDA_LISTA
+        pinta con "apuntó quién guarda sin preguntarte"
+    si no si clase es R_DEJASTE
+        pinta con "dejaste guardar a "
+        pinta_de con nombre y tinta
+    si no si clase es R_SIEMPRE
+        pinta con "dejaste guardar siempre a "
+        pinta_de con nombre y tinta
+    si no si clase es R_NEGASTE
+        pinta con "no dejaste guardar a "
+        pinta_de con nombre y tinta
+    si no si clase es R_QUITASTE
+        pinta con "quitaste el siempre a "
+        pinta_de con nombre y tinta
+    si no si clase es R_OLVIDASTE
+        pinta con "borraste "
+        pinta con nombre
+        pinta con ".dat, "
+        pinta_cuantos con n
+        pinta con " bytes"
+    si no si clase es R_TECLADO
+        pinta con "diste el teclado a "
+        pinta_de con nombre y tinta
+    fin
+    si veces es mayor que 1
+        pon_color con GRIS_OSCURO y NEGRO
+        pinta con " ("
+        pinta_numero con veces
+        pinta con " veces)"
+        pon_color con GRIS y NEGRO
+    fin
+    pinta_linea con ""
+fin
+
+funcion ensena_registro
+    si apuntados es 0
+        pinta_linea con "  Todavía nadie ha leído ni guardado nada."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    desde es 0
+    si apuntados es mayor que CUPO_REGISTRO
+        desde es apuntados menos CUPO_REGISTRO
+    fin
+    pon_color con GRIS_OSCURO y NEGRO
+    pinta_linea con "  hora UTC  quién       qué"
+    pon_color con GRIS y NEGRO
+    k es desde
+    mientras k es menor que apuntados
+        pinta_apunte con k
+        k es k mas 1
+    fin
+    pinta_linea con ""
+    pon_color con GRIS_OSCURO y NEGRO
+    si desde es mayor que 0
+        pinta con "  Antes hubo "
+        pinta_numero con desde
+        pinta_linea con " más, ya olvidados: guardo los 16 últimos."
+    fin
+    pinta_linea con "  Este registro solo vive en memoria. No lo escribo en el disco,"
+    pinta_linea con "  se borra al apagar y ningún programa lo puede leer."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion esta_siempre con nombre
+    i es 1
+    mientras i es menor o igual que siempre_mide
+        final es i
+        mientras final es menor o igual que siempre_mide y (elemento final de siempre) no es igual a 10
+            final es final mas 1
+        fin
+        si (final menos i) es (largo de nombre)
+            parecido es verdadero
+            j es 1
+            mientras parecido y j es menor o igual que largo de nombre
+                si (minuscula con (elemento i mas j menos 1 de siempre)) no es igual a (minuscula con (elemento j de nombre))
+                    parecido es falso
+                fin
+                j es j mas 1
+            fin
+            si parecido
+                devuelve i
+            fin
+        fin
+        i es final mas 1
+    fin
+    devuelve 0
+fin
+
+funcion guarda_siempre
+    respuesta es 0
+    buzon es nombre_al_buzon con "permisos" y ".sis"
+    si siempre_mide es 0
+        respuesta es pide_al_disco con ORDEN_OLVIDA
+        si respuesta es NO_ESTA
+            respuesta es 0
+        fin
+    si no
+        elemento 41 de buzon es cociente con siempre_mide y 256
+        elemento 42 de buzon es siempre_mide resto 256
+        copia_region con buzon y 513 y siempre y 1 y siempre_mide
+        respuesta es pide_al_disco con ORDEN_GUARDA
+    fin
+    si respuesta es mayor o igual que 0
+        desactiva_interrupciones
+        apunta con R_GUARDA_LISTA y "FalOS" y BLANCO y siempre_mide
+        activa_interrupciones
+    fin
+    al_serie con "permisos.sis guardado: "
+    escribe respuesta
+    devuelve respuesta
+fin
+
+funcion anade_siempre con nombre
+    comparte siempre_mide
+    si (esta_siempre con nombre) es mayor que 0
+        devuelve verdadero
+    fin
+    viejo es siempre_mide
+    si siempre_mide mas (largo de nombre) mas 1 es mayor que TOPE_SIEMPRE
+        devuelve falso
+    fin
+    para cada b en nombre
+        siempre_mide es siempre_mide mas 1
+        elemento siempre_mide de siempre es b
+    fin
+    siempre_mide es siempre_mide mas 1
+    elemento siempre_mide de siempre es 10
+    si (guarda_siempre) es menor que 0
+        siempre_mide es viejo
+        devuelve falso
+    fin
+    devuelve verdadero
+fin
+
+funcion quita_siempre con nombre y tinta
+    comparte siempre_mide
+    i es esta_siempre con nombre
+    si i es 0
+        devuelve nada
+    fin
+    quitar es (largo de nombre) mas 1
+    j es i
+    mientras j mas quitar es menor o igual que siempre_mide
+        elemento j de siempre es elemento j mas quitar de siempre
+        j es j mas 1
+    fin
+    siempre_mide es siempre_mide menos quitar
+    desactiva_interrupciones
+    apunta con R_QUITASTE y nombre y tinta y 0
+    activa_interrupciones
+    guarda_siempre
+fin
+
+funcion lee_siempre
+    comparte siempre_mide
+    siempre_mide es 0
+    traido es pide_archivo con "permisos" y ".sis" y 0
+    si traido es menor que 1 o traido es mayor que TOPE_SIEMPRE
+        devuelve nada
+    fin
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    si (elemento traido de buzon) no es igual a 10
+        devuelve nada
+    fin
+    i es 1
+    mientras i es menor o igual que traido
+        b es elemento i de buzon
+        si b no es igual a 10 y (b es menor que 33 o b es mayor que 126)
+            devuelve nada
+        fin
+        i es i mas 1
+    fin
+    copia_region con siempre y 1 y buzon y 1 y traido
+    siempre_mide es traido
+    desactiva_interrupciones
+    apunta con R_LEE_LISTA y "FalOS" y BLANCO y traido
+    activa_interrupciones
+    al_serie con "permisos.sis leido: "
+    escribe traido
+fin
+
+funcion pinta_siempre
+    si siempre_mide es 0
+        pinta_linea con "  Ningún programa guarda sin preguntarte."
+        devuelve nada
+    fin
+    pinta con "  Guardan sin preguntarte: "
+    pon_color con BLANCO y NEGRO
+    i es 1
+    mientras i es menor o igual que siempre_mide
+        b es elemento i de siempre
+        si b es 10 y i es menor que siempre_mide
+            pinta con ", "
+        si no si b no es igual a 10
+            pon_letra con b
+        fin
+        i es i mas 1
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    pinta_linea con "  Para quitárselo a uno: niega y su nombre."
+fin
+
 funcion barra
     pon_color con BLANCO y AZUL
     ve_a con 1 y 1
@@ -3239,7 +3694,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 10"
+    pinta con "día 11"
     pon_color con GRIS y NEGRO
 fin
 
@@ -3271,6 +3726,7 @@ funcion portada
     pinta_linea con ""
     pinta_linea con "  Hay un juego en el disco (lanza serpiente) y un bloc de notas"
     pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
+    pinta_linea con "  Y registro te dice qué programa ha tocado tus cosas, y cuándo."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -3289,7 +3745,9 @@ prepara_raton
 si hay_raton
     escribe "ratón listo"
 fin
+mira_el_reloj
 prepara_interrupciones
+lee_siempre
 indicador
 escribe "pantalla lista"
 

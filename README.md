@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![El bloc de notas de FalOS acaba de guardar, cifrado, y la barra dice quién escribe en el disco](capturas/dia-10.png)
+![El registro de FalOS: qué programa ha leído o guardado qué, cuándo, y qué decidiste tú](capturas/dia-11.png)
 
 ## Por qué
 
@@ -52,7 +52,8 @@ Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
-`disco`, `lee`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
+`disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cuelga`, `rompe` y
+`reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -146,6 +147,21 @@ teclado 1
 lee notas.dat
 ```
 
+`registro` dice qué programa ha leído o guardado qué, y cuándo, y también lo que
+decidiste tú: a quién dejaste guardar, a quién le diste el teclado y con cuántas
+teclas tuyas se cerró. Ese registro solo vive en memoria: no se escribe en el
+disco, se borra al apagar y ningún programa tiene forma de leerlo. La hora sale
+del reloj de la placa, y está también en la barra. Y `deja siempre` recuerda un
+permiso aunque reinicies: `permisos` dice quién lo tiene, y `niega` con su
+nombre se lo quita.
+
+```
+lanza veces
+deja siempre 1
+registro
+niega veces
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -195,7 +211,10 @@ Le niega el permiso y mira que no se ha guardado nada, y después de `olvida`,
 que donde estaba el archivo solo quedan ceros. Escribe una nota con `notas`, la
 descifra con un ChaCha20 escrito aparte en Python, que antes pasa la prueba del
 RFC 8439, y comprueba que el texto no está en el disco y que una contraseña
-equivocada no abre nada.
+equivocada no abre nada. Da un permiso para siempre, reinicia y mira que no
+vuelve a preguntar; se lo quita y mira que pregunta. Busca el registro en el
+disco y no puede estar, y le mete un byte raro a la lista de permisos para ver
+que FalOS la tira entera en vez de creérsela.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -207,11 +226,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 - **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
   archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 10.
+  FalOS. Es el día 11.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.300
-  líneas, más que ayer, porque ahora también pinta quién usa el disco.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.750
+  líneas, más que ayer, porque ahora también lleva el registro.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -262,8 +281,15 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Los ceros de `olvida` valen en este disco.** En un SSD, el propio disco puede
   guardar copias de un sector en otro sitio sin decírselo a nadie, y escribir
   ceros encima no las alcanza. Ahí haría falta cifrar.
-- **El permiso para guardar dura lo que dura el programa.** Si lo cierras y lo
-  vuelves a lanzar, pregunta otra vez. No se apunta en ningún sitio.
+- **El permiso para siempre va por el nombre.** Se apunta que `veces` puede
+  guardar, no qué `veces`: si alguien cambia `veces.prg` por otro programa con el
+  mismo nombre, el nuevo lo hereda. Y quien pueda tocar el disco puede escribir
+  `permisos.sis` a mano. Ningún programa de dentro puede.
+- **El registro guarda los 16 últimos.** Si un programa repite lo mismo, se
+  junta en una línea con las veces, pero uno que alterne cosas distintas puede
+  empujar fuera lo de antes. Y no apunta lo que lees tú con `lee`.
+- **La hora es la del reloj de la placa, en UTC.** FalOS no sabe en qué país
+  estás, y si ese reloj va mal, el registro también.
 - **Escribir un sector no es atómico del todo.** Si se va la luz justo mientras
   se escribe el índice, el disco puede quedar sin índice. No hay diario ni copia.
 - **Un controlador que se cae siempre se relanza siempre.** No hay espera ni

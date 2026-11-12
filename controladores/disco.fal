@@ -398,6 +398,9 @@ funcion es_de_datos con largo_pedido
         fin
     fin
     cola es ".dat"
+    si (elemento 2048 mas largo_pedido de mesa) es 115
+        cola es ".sis"
+    fin
     para cada i desde 1 hasta 4
         si (elemento 2048 mas largo_pedido menos 4 mas i de mesa) no es igual a (elemento i de cola)
             devuelve falso
