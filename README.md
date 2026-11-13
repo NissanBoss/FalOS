@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![El registro de FalOS: qué programa ha leído o guardado qué, cuándo, y qué decidiste tú](capturas/dia-11.png)
+![FalOS bloqueado: pide la contraseña, y los programas siguen sin ver tus teclas](capturas/dia-12.png)
 
 ## Por qué
 
@@ -52,8 +52,8 @@ Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
-`disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cuelga`, `rompe` y
-`reinicia`. Lo que escribes se corrige
+`disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
+`sin cerrojo`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -134,12 +134,20 @@ lee veces.dat
 olvida veces
 ```
 
-`notas` es un bloc de notas que guarda cifrado con tu contraseña. El cifrado es
-ChaCha20, escrito en Fal, y la clave sale de la contraseña después de 20.000
-vueltas, para que probar contraseñas a ciegas cueste. Al disco solo llega ruido:
-`lee notas.dat` lo enseña. Y cada vez que un programa lee o escribe en el disco,
-el núcleo lo pinta en la barra de arriba, con el color de su caja, donde ninguna
-ventana lo puede tapar.
+`notas` es un bloc de notas que guarda cifrado con tu contraseña. La clave sale
+de la contraseña con [Argon2id](https://www.rfc-editor.org/rfc/rfc9106), el que
+ganó el concurso de 2015 para guardar contraseñas: cada intento llena 2 MB de
+memoria tres veces, así que probar contraseñas a ciegas cuesta tiempo y memoria,
+también con una tarjeta gráfica. Con esa clave, la nota se cifra con ChaCha20 y
+se firma con BLAKE2b: si alguien cambia un solo bit en el disco, `notas` no la
+abre y te dice que la han tocado, que no es lo mismo que equivocarte de
+contraseña. La sal y el número que no se repite salen del generador de azar del
+procesador (RDRAND), no del reloj. Todo está escrito en Fal, en
+[comun/cifrado.fal](comun/cifrado.fal), y da byte a byte lo mismo que la
+biblioteca de referencia de Argon2. Al disco solo llega ruido: `lee notas.dat` lo
+enseña. Y cada vez que un programa lee o escribe en el disco, el núcleo lo pinta
+en la barra de arriba, con el color de su caja, donde ninguna ventana lo puede
+tapar.
 
 ```
 lanza notas
@@ -160,6 +168,22 @@ lanza veces
 deja siempre 1
 registro
 niega veces
+```
+
+`cerrojo` le pone contraseña a la pantalla. FalOS no la guarda: guarda su huella,
+hecha con el mismo Argon2id, y una sal al azar. Desde entonces arranca bloqueado,
+`bloquea` lo bloquea en el acto, y se bloquea solo si pasan 5 minutos sin que
+toques el teclado ni el ratón. Bloqueado, los programas siguen corriendo, pero no
+les llega ni una tecla ni un clic, lo que pintan no sale en la pantalla y no se
+puede escribir ninguna orden. Lo que escribes ahí solo lo ve el núcleo. Al abrir,
+te dice cuántas contraseñas malas probó alguien mientras no estabas, y el
+registro apunta a qué hora.
+
+```
+cerrojo
+bloquea
+registro
+sin cerrojo
 ```
 
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
@@ -208,10 +232,15 @@ equivoque: uno con el índice roto, otro lleno, y otro en el que el archivo de
 `veces` cae encima de su propio programa. En los dos primeros comprueba que el
 disco sigue igual byte a byte, y en el tercero, que el programa sigue entero.
 Le niega el permiso y mira que no se ha guardado nada, y después de `olvida`,
-que donde estaba el archivo solo quedan ceros. Escribe una nota con `notas`, la
-descifra con un ChaCha20 escrito aparte en Python, que antes pasa la prueba del
-RFC 8439, y comprueba que el texto no está en el disco y que una contraseña
-equivocada no abre nada. Da un permiso para siempre, reinicia y mira que no
+que donde estaba el archivo solo quedan ceros. Escribe una nota con `notas`, saca
+la clave con la biblioteca de referencia de Argon2, la descifra con un ChaCha20
+escrito aparte en Python, que antes pasa la prueba del RFC 8439, y comprueba la
+firma, que el texto no está en el disco y que una contraseña equivocada no abre
+nada. Después le cambia un bit a la nota y mira que `notas` no la abre. Pone
+contraseña a la pantalla, comprueba la huella con Argon2 y mira que la contraseña
+no está en el disco; arranca bloqueado y mira que una orden escrita entonces no
+llega a la consola, espera 5 minutos para verlo bloquearse solo, y con un
+programa esperando tu permiso, escribe `deja 1` y mira que no se lo ha dado. Da un permiso para siempre, reinicia y mira que no
 vuelve a preguntar; se lo quita y mira que pregunta. Busca el registro en el
 disco y no puede estar, y le mete un byte raro a la lista de permisos para ver
 que FalOS la tira entera en vez de creérsela.
@@ -226,11 +255,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 - **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
   archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 11.
+  FalOS. Es el día 12.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 3.750
-  líneas, más que ayer, porque ahora también lleva el registro.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 4.250
+  líneas, y además el cifrado, porque la pantalla de bloqueo vive en él.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -264,20 +293,36 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   unos 480 libres. Si no cabe, el programa recibe un error y el disco no se toca.
 - **Un hueco del disco no se reutiliza.** Si el sitio de antes no vale, o se ha
   borrado con `olvida`, lo siguiente se escribe al final.
-- **El cifrado de `notas` no se ha revisado.** ChaCha20 está comprobado con los
-  números del RFC, pero la forma de sacar la clave de la contraseña es mía: 20.000
-  vueltas de ChaCha20, sin la memoria que pide [Argon2](https://www.rfc-editor.org/rfc/rfc9106),
-  así que con una tarjeta gráfica se prueban contraseñas mucho más deprisa. Una
-  contraseña corta se adivina igual.
-- **Cifrar no impide que cambien la nota.** No hay Poly1305 ni nada que la firme:
-  quien pueda tocar el disco no la lee, pero puede estropearla sin que `notas` se
-  dé cuenta.
+- **Argon2id con 2 MB, no con 19.** [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+  pide al menos 19 MiB y dos pasadas. FalOS usa 2 MB y tres, porque es lo que un
+  programa puede pedir hoy de una vez, y en QEMU sin aceleración ya tarda unos 3
+  segundos. Es mucho más caro de atacar que las 20.000 vueltas de ayer, pero
+  menos que lo que recomiendan. Y una contraseña corta se adivina igual.
+- **El cifrado no lo ha revisado nadie.** BLAKE2b, Argon2id y ChaCha20 dan lo
+  mismo que las bibliotecas de referencia en todas las pruebas, pero están
+  escritos a mano en Fal. Que coincidan no demuestra que no haya un fallo en un
+  caso que no se ha probado.
+- **Una contraseña mala y un comprobante tocado se ven igual.** `notas` mira
+  primero un comprobante hecho con la clave, y luego la firma. Si alguien cambia
+  el comprobante, te dirá que la contraseña no es esa, aunque lo sea.
 - **Lo que se ve en la ventana está sin cifrar.** El núcleo pone las letras de la
   nota en la ventana y el programa de la pantalla las dibuja: los dos las ven.
   Cifrar protege el disco, no la memoria.
-- **No hay azar de verdad.** Los números que hacen distinta cada clave salen del
-  reloj y de cuándo pulsas las teclas, no de un generador de azar del
-  procesador. Sirven para que no se repitan, no para ser secretos.
+- **El azar es el del procesador.** RDRAND lo traen los procesadores de Intel
+  desde 2012 y los de AMD desde 2015, pero el procesador que QEMU pone si no le
+  dices otra cosa no lo tiene: hace falta `-cpu max`. Sin él, `notas` lo avisa y
+  saca el azar del reloj y de cuándo pulsas las teclas. Para la sal y el número
+  de cada guardado basta con que no se repitan, pero eso es más fácil de
+  predecir. Y quien no se fíe del generador de Intel tampoco tiene aquí otro.
+- **El bloqueo protege la pantalla, no el disco.** El disco no va cifrado: quien
+  se lo lleve lee todo lo que no es una nota, y si borra `cerrojo.sis`, FalOS
+  arranca sin contraseña. Si lo encuentra roto, lo dice al arrancar.
+- **Entre intento e intento solo espera Argon2.** No hay un tope de intentos ni
+  una espera que crezca. En QEMU son unos segundos por intento; en un ordenador de
+  verdad, mucho menos.
+- **Los programas siguen corriendo bloqueado.** No ven teclas ni ratón y no se
+  ven, pero siguen haciendo lo suyo, como pedir guardar. El permiso espera a que
+  vuelvas.
 - **Los ceros de `olvida` valen en este disco.** En un SSD, el propio disco puede
   guardar copias de un sector en otro sitio sin decírselo a nadie, y escribir
   ceros encima no las alcanza. Ahí haría falta cifrar.

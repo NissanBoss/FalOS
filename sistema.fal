@@ -1,3 +1,5 @@
+usa "comun/cifrado.fal"
+
 NEGRO es 0
 AZUL es 1
 VERDE es 2
@@ -305,6 +307,49 @@ funcion pide_pagina
     falla "Me he quedado sin memoria."
 fin
 
+funcion pide_dos_megas
+    seguidas es cociente con DOS_MEGAS y PAGINA
+    primera es seguidas mas 1
+    mientras primera mas seguidas menos 1 es menor o igual que total_paginas
+        libres es verdadero
+        i es 0
+        mientras libres y i es menor que seguidas
+            si (elemento primera mas i de estados) no es igual a LIBRE
+                libres es falso
+            fin
+            i es i mas 1
+        fin
+        si libres
+            i es 0
+            mientras i es menor que seguidas
+                elemento primera mas i de estados es PRESTADA
+                i es i mas 1
+            fin
+            direccion es (primera menos 1) por PAGINA
+            todo es region con direccion y (cociente con DOS_MEGAS y 8) y 8
+            i es 1
+            mientras i es menor o igual que largo de todo
+                elemento i de todo es 0
+                i es i mas 1
+            fin
+            devuelve direccion
+        fin
+        primera es primera mas seguidas
+    fin
+    devuelve 0
+fin
+
+funcion suelta_dos_megas con direccion
+    si direccion es 0
+        devuelve nada
+    fin
+    i es 0
+    mientras i es menor que cociente con DOS_MEGAS y PAGINA
+        suelta_pagina con direccion mas i por PAGINA
+        i es i mas 1
+    fin
+fin
+
 funcion suelta_pagina con direccion
     p es (cociente con direccion y PAGINA) mas 1
     si (direccion resto PAGINA) no es igual a 0 o direccion es menor que 0 o p es mayor que total_paginas
@@ -519,6 +564,7 @@ PIDE_VENTANA es 12
 PON_CASILLA es 13
 GUARDA es 14
 LEE_GUARDADO es 15
+PIDE_MEMORIA es 16
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -562,6 +608,7 @@ NO_SE_ESCRIBE es 0 menos 6
 LLENO es 0 menos 7
 PROHIBIDO es 0 menos 8
 NEGADO es 0 menos 10
+SIN_MEMORIA es 0 menos 11
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
@@ -625,6 +672,10 @@ pedido_de es region con pide_pagina y 512 y 8
 desde_de es region con pide_pagina y 512 y 8
 cuantos_de es region con pide_pagina y 512 y 8
 permiso_disco es region con pide_pagina y 512 y 8
+directorios es region con pide_pagina y 512 y 8
+memoria_grande_de es region con pide_pagina y 512 y 8
+SITIO_GRANDE es (cociente con DONDE_VAN y DOS_MEGAS) mas 2
+MEMORIA_GRANDE es DONDE_VAN mas DOS_MEGAS
 
 CUPO_REGISTRO es 16
 apuntes es region con pide_pagina y 512 y 8
@@ -645,11 +696,51 @@ R_TECLADO es 11
 R_TECLAS es 12
 R_LEE_LISTA es 13
 R_GUARDA_LISTA es 14
+R_CERROJO es 15
+R_BLOQUEASTE es 16
+R_SE_BLOQUEO es 17
+R_ABRISTE es 18
+R_MALA es 19
+R_SIN_CERROJO es 20
 
 TOPE_SIEMPRE es 512
 siempre_en es pide_pagina
 siempre es region con siempre_en y TOPE_SIEMPRE
 siempre_mide es 0
+
+TOPE_CERROJO es 52
+MARCA_CERROJO es "CER1"
+BLOQUES_CERROJO es 2040
+PASADAS_CERROJO es 3
+PLAZO_BLOQUEO es 30000
+SIN_CLAVE es 0
+CLAVE_NUEVA es 1
+CLAVE_REPITE es 2
+CLAVE_ABRE es 3
+POR_TI es 1
+POR_QUIETO es 2
+AL_ARRANCAR es 3
+NADA_QUE_DECIR es 0
+NO_ES_ESA es 1
+COMPROBANDO es 2
+cerrojo_en es pide_pagina
+cerrojo es region con cerrojo_en y TOPE_CERROJO
+clave_en es pide_pagina
+clave_escrita es region con clave_en y 32
+clave_primera es region con clave_en mas 64 y 32
+comprobada es region con clave_en mas 128 y 32
+azar_en es clave_en mas 192
+taller_cerrojo es clave_en mas 1024
+memoria_cerrojo es pide_dos_megas
+hay_cerrojo es falso
+bloqueado es falso
+modo_clave es SIN_CLAVE
+clave_mide es 0
+primera_mide es 0
+mensaje_cerrojo es NADA_QUE_DECIR
+ultima_actividad es 0
+malas es 0
+cortado es falso
 
 actual es CONSOLA
 foco es CONSOLA
@@ -1039,18 +1130,22 @@ funcion ventana_en con renglon y c
 fin
 
 funcion compone
-    copia_region con lo_que_se_ve y 1 y pantalla y 1 y ANCHO por ALTO
-    i es 1
-    mientras i es menor o igual que puestas
-        pinta_ventana con (elemento i de encima)
-        i es i mas 1
+    si bloqueado
+        pinta_cerrojo
+    si no
+        copia_region con lo_que_se_ve y 1 y pantalla y 1 y ANCHO por ALTO
+        i es 1
+        mientras i es menor o igual que puestas
+            pinta_ventana con (elemento i de encima)
+            i es i mas 1
+        fin
+        pinta_aviso_disco
     fin
-    pinta_aviso_disco
     pinta_reloj
     sitio es cursor_sitio
     renglon es (cociente con sitio y ANCHO) mas 1
     c es (sitio resto ANCHO) mas 1
-    si (ventana_en con renglon y c) no es igual a 0 o foco no es igual a CONSOLA
+    si (ventana_en con renglon y c) no es igual a 0 o foco no es igual a CONSOLA o bloqueado
         sitio es ANCHO por ALTO
     fin
     si hay_graficos
@@ -1072,6 +1167,49 @@ funcion compone
         al_reves es (atributo resto 16) por 16 mas (cociente con atributo y 16)
         elemento casilla de lo_que_se_ve es al_reves por 256 mas (valor resto 256)
     fin
+fin
+
+funcion pon_frase_en_vista con renglon y c y texto y tinta
+    sitio es c
+    a_medias es 0
+    para cada b en texto
+        si b es 195
+            a_medias es b
+        si no
+            letra es b
+            si a_medias no es igual a 0
+                letra es en_437 con a_medias y b
+                a_medias es 0
+            fin
+            pon_en_vista con renglon y sitio y tinta mas letra
+            sitio es sitio mas 1
+        fin
+    fin
+fin
+
+funcion pinta_cerrojo
+    fondo es (NEGRO por 16 mas GRIS) por 256
+    i es 1
+    mientras i es menor o igual que ANCHO por ALTO
+        elemento i de lo_que_se_ve es fondo mas 32
+        i es i mas 1
+    fin
+    copia_region con lo_que_se_ve y 1 y pantalla y 1 y ANCHO
+    pon_frase_en_vista con 9 y 31 y "FalOS está bloqueado" y (NEGRO por 16 mas BLANCO) por 256
+    pon_frase_en_vista con 12 y 25 y "Contraseña:" y fondo
+    i es 1
+    mientras i es menor o igual que clave_mide
+        pon_en_vista con 12 y 36 mas i y (NEGRO por 16 mas AMARILLO) por 256 mas 42
+        i es i mas 1
+    fin
+    pon_en_vista con 12 y 37 mas clave_mide y (NEGRO por 16 mas CIAN_CLARO) por 256 mas 95
+    si mensaje_cerrojo es NO_ES_ESA
+        pon_frase_en_vista con 14 y 37 y "No es esa." y (NEGRO por 16 mas ROJO_CLARO) por 256
+    si no si mensaje_cerrojo es COMPROBANDO
+        pon_frase_en_vista con 14 y 37 y "Comprobando..." y fondo
+    fin
+    pon_frase_en_vista con 18 y 12 y "Los programas siguen, pero no ven tus teclas ni tu ratón," y (NEGRO por 16 mas GRIS_OSCURO) por 256
+    pon_frase_en_vista con 19 y 12 y "y lo que pintan no sale hasta que vuelvas." y (NEGRO por 16 mas GRIS_OSCURO) por 256
 fin
 
 funcion pinta_aviso_disco
@@ -1150,7 +1288,7 @@ funcion arrastra_a con renglon y c
 fin
 
 funcion recibe_raton con a y b
-    comparte raton_x y raton_y y raton_visto y botones_antes y agarrada
+    comparte raton_x y raton_y y raton_visto y botones_antes y agarrada y ultima_actividad
     si actual no es igual a TAREA_TECLADO
         devuelve rechaza_a_actual
     fin
@@ -1163,6 +1301,10 @@ funcion recibe_raton con a y b
     raton_x es entre_limites con (raton_x mas dx) y 0 y (EN_ANCHO menos 1)
     raton_y es entre_limites con (raton_y menos dy) y 0 y (EN_ALTO menos 1)
     raton_visto es verdadero
+    ultima_actividad es tics
+    si bloqueado
+        devuelve 0
+    fin
     renglon es (cociente con raton_y y LETRA_ALTO) mas 1
     c es (cociente con raton_x y LETRA_ANCHO) mas 1
     pulsado es (botones resto 2) es 1
@@ -1381,19 +1523,20 @@ funcion aguarda_aviso con respuesta
 fin
 
 funcion recibe_tecla con tecla
-    comparte entra y foco
+    comparte entra y foco y ultima_actividad
     si actual no es igual a TAREA_TECLADO
         devuelve rechaza_a_actual
     fin
     si tecla es menor que 1 o tecla es mayor que TECLA_ESCAPE
         devuelve RECHAZADA
     fin
+    ultima_actividad es tics
     si tecla es TECLA_ESCAPE
         foco es CONSOLA
         ensucia
         devuelve 0
     fin
-    si foco no es igual a CONSOLA
+    si foco no es igual a CONSOLA y no bloqueado
         devuelve guarda_tecla_de con foco y tecla
     fin
     siguiente es (entra mas 1) resto CAPACIDAD
@@ -1429,6 +1572,25 @@ funcion da_tecla
     elemento t de salen_de es (sitio mas 1) resto COLA_TECLAS
     elemento t de teclas_recibidas es (elemento t de teclas_recibidas) mas 1
     devuelve tecla
+fin
+
+funcion da_memoria
+    t es actual
+    si es_controlador con t
+        devuelve rechaza_a_actual
+    fin
+    si (elemento t de memoria_grande_de) no es igual a 0
+        devuelve MEMORIA_GRANDE
+    fin
+    fisica es pide_dos_megas
+    si fisica es 0
+        devuelve SIN_MEMORIA
+    fin
+    elemento t de memoria_grande_de es fisica
+    directorio es region con (elemento t de directorios) y 512 y 8
+    elemento SITIO_GRANDE de directorio es fisica mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+    usa_tablas con (elemento t de raices)
+    devuelve MEMORIA_GRANDE
 fin
 
 funcion encarga con pedido y desde y cuantos
@@ -1492,6 +1654,8 @@ funcion al_llamar
         elemento EN_RAX de marco es cambia_tamano con a y (elemento EN_RSI de marco)
     si no si numero es PON_CASILLA
         elemento EN_RAX de marco es pon_en_casilla con a y (elemento EN_RSI de marco)
+    si no si numero es PIDE_MEMORIA
+        elemento EN_RAX de marco es da_memoria
     si no si numero es GUARDA o numero es LEE_GUARDADO
         elemento EN_RAX de marco es encarga con numero y a y (elemento EN_RSI de marco)
     si no
@@ -1642,6 +1806,9 @@ funcion al_tic
     si actual es CONSOLA y esperando
         tics_dormido es tics_dormido mas 1
     fin
+    si hay_cerrojo y no bloqueado y tics menos ultima_actividad es mayor o igual que PLAZO_BLOQUEO
+        bloquea_ya con POR_QUIETO
+    fin
     pon_en_puerto con CONTROLADOR y YA_ESTA
     vigila con TAREA_TECLADO
     vigila con TAREA_DISCO
@@ -1681,7 +1848,9 @@ funcion siguiente_tecla
 fin
 
 funcion atiende con tecla
-    si tecla es menor que TECLA_INTRO
+    si modo_clave no es igual a SIN_CLAVE
+        atiende_clave con tecla
+    si no si tecla es menor que TECLA_INTRO
         teclea con tecla
     si no si tecla es TECLA_INTRO
         ejecuta
@@ -1949,12 +2118,20 @@ funcion ejecuta
         estropea con 7 y AVISO_ROMPE
     si no si es_orden con "reinicia"
         reinicia
+    si no si es_orden con "cerrojo"
+        pon_cerrojo
+    si no si es_orden con "bloquea"
+        orden_bloquea
+    si no si es_orden con "sin cerrojo"
+        quita_cerrojo
     si no
         no_conozco
     fin
     escritas es 0
     pos es 0
-    indicador
+    si modo_clave es SIN_CLAVE
+        indicador
+    fin
 fin
 
 funcion ayuda
@@ -1977,6 +2154,10 @@ funcion ayuda
     pinta_linea con "  deja siempre N y no vuelve a preguntarte, aunque reinicies"
     pinta_linea con "  niega N        no le deja guardar nada, y le quita el siempre"
     pinta_linea con "  olvida X       borra de verdad lo que guardó X"
+    pinta_linea con ""
+    pinta_linea con "  cerrojo        pon o cambia la contraseña de la pantalla"
+    pinta_linea con "  bloquea        bloquea ya. Solo, a los 5 minutos sin tocarme"
+    pinta_linea con "  sin cerrojo    quita la contraseña"
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
@@ -2285,6 +2466,7 @@ funcion monta_programa con t y archivo y total
     directorio es region con nivel_2 y 512 y 8
     entradas es region con hojas y 512 y 8
     copia_directorio con nivel_2
+    elemento t de directorios es nivel_2
     elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
@@ -2973,6 +3155,8 @@ funcion cuenta_el_final con t
 fin
 
 funcion suelta_tarea con t
+    suelta_dos_megas con (elemento t de memoria_grande_de)
+    elemento t de memoria_grande_de es 0
     lista es region con (elemento t de listas_de_paginas) y 512 y 8
     para cada i desde 1 hasta elemento t de paginas_usadas
         suelta_pagina con (elemento i de lista)
@@ -3410,6 +3594,9 @@ funcion apunta_de con clase y t y numero
 fin
 
 funcion es_tuya con clase
+    si clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
+        devuelve verdadero
+    fin
     devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
 fin
 
@@ -3503,6 +3690,18 @@ funcion pinta_apunte con k
     si no si clase es R_TECLADO
         pinta con "diste el teclado a "
         pinta_de con nombre y tinta
+    si no si clase es R_CERROJO
+        pinta con "pusiste contraseña a la pantalla"
+    si no si clase es R_BLOQUEASTE
+        pinta con "bloqueaste la pantalla"
+    si no si clase es R_SE_BLOQUEO
+        pinta con "bloqueó la pantalla: 5 minutos sin tocarla"
+    si no si clase es R_ABRISTE
+        pinta con "abriste la pantalla"
+    si no si clase es R_MALA
+        pinta_de con "alguien probó una contraseña mala" y ROJO_CLARO
+    si no si clase es R_SIN_CERROJO
+        pinta con "quitaste la contraseña de la pantalla"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -3685,6 +3884,316 @@ funcion pinta_siempre
     pinta_linea con "  Para quitárselo a uno: niega y su nombre."
 fin
 
+funcion olvida_lo_escrito
+    comparte clave_mide y primera_mide
+    para cada i desde 1 hasta 32
+        elemento i de clave_escrita es 0
+        elemento i de clave_primera es 0
+        elemento i de comprobada es 0
+    fin
+    clave_mide es 0
+    primera_mide es 0
+fin
+
+funcion bloquea_ya con por_que
+    comparte bloqueado y foco y agarrada y modo_clave y mensaje_cerrojo y malas y cortado
+    si bloqueado o no hay_cerrojo
+        devuelve nada
+    fin
+    si modo_clave es CLAVE_NUEVA o modo_clave es CLAVE_REPITE
+        cortado es verdadero
+    fin
+    bloqueado es verdadero
+    foco es CONSOLA
+    agarrada es 0
+    olvida_lo_escrito
+    modo_clave es CLAVE_ABRE
+    mensaje_cerrojo es NADA_QUE_DECIR
+    malas es 0
+    si por_que es POR_TI
+        apunta con R_BLOQUEASTE y "FalOS" y BLANCO y 0
+    si no si por_que es POR_QUIETO
+        apunta con R_SE_BLOQUEO y "FalOS" y BLANCO y 0
+    fin
+    ensucia
+fin
+
+funcion saca_sal con destino y desde
+    trozos es region con azar_en y 4 y 8
+    si hay_azar
+        elemento 1 de trozos es azar_del_procesador
+        elemento 2 de trozos es azar_del_procesador
+    si no
+        elemento 3 de trozos es tics
+        elemento 4 de trozos es segundos_del_dia
+        blake2b con taller_cerrojo y (region con azar_en mas 16 y 16) y 16 y "" y (region con azar_en y 16) y 16
+    fin
+    copia_region con destino y desde y (region con azar_en y 16) y 1 y 16
+    para cada i desde 1 hasta 4
+        elemento i de trozos es 0
+    fin
+fin
+
+funcion huella_de con sal y salida
+    argon2id con memoria_cerrojo y BLOQUES_CERROJO y PASADAS_CERROJO y (region con clave_en y clave_mide) y sal y salida
+fin
+
+funcion es_la_buena
+    distinto es 0
+    para cada i desde 1 hasta 32
+        distinto es distinto mas o_exclusivo con (elemento 20 mas i de cerrojo) y (elemento i de comprobada)
+    fin
+    si distinto es 0
+        devuelve verdadero
+    fin
+    devuelve falso
+fin
+
+funcion pon_cerrojo
+    comparte modo_clave
+    si memoria_cerrojo es 0
+        pinta_linea con "  No me quedan 2 MB seguidos para Argon2id, así que no puedo."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    pinta_linea con "  No guardo tu contraseña: guardo su huella, hecha con Argon2id."
+    pinta_linea con "  Si le das a Intro sin escribir nada, todo sigue como está."
+    pinta con "  Contraseña nueva: "
+    olvida_lo_escrito
+    modo_clave es CLAVE_NUEVA
+fin
+
+funcion orden_bloquea
+    si no hay_cerrojo
+        pinta_linea con "  Primero ponle contraseña: cerrojo."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    desactiva_interrupciones
+    bloquea_ya con POR_TI
+    activa_interrupciones
+fin
+
+funcion quita_cerrojo
+    comparte hay_cerrojo
+    si no hay_cerrojo
+        pinta_linea con "  La pantalla no tiene contraseña."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    nombre_al_buzon con "cerrojo" y ".sis"
+    respuesta es pide_al_disco con ORDEN_OLVIDA
+    al_serie con "cerrojo.sis olvidado: "
+    escribe respuesta
+    si respuesta es menor que 0 y respuesta no es igual a NO_ESTA
+        fallo_de_disco con respuesta
+        devuelve nada
+    fin
+    hay_cerrojo es falso
+    para cada i desde 1 hasta TOPE_CERROJO
+        elemento i de cerrojo es 0
+    fin
+    desactiva_interrupciones
+    apunta con R_SIN_CERROJO y "FalOS" y BLANCO y 0
+    activa_interrupciones
+    pinta_linea con "  Quitada, y su huella borrada del disco con ceros."
+    pinta_linea con ""
+fin
+
+funcion guarda_cerrojo
+    comparte hay_cerrojo
+    fichero es region con clave_en mas 256 y TOPE_CERROJO
+    i es 1
+    para cada letra en MARCA_CERROJO
+        elemento i de fichero es letra
+        i es i mas 1
+    fin
+    saca_sal con fichero y 5
+    huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 32)
+    buzon es nombre_al_buzon con "cerrojo" y ".sis"
+    elemento 41 de buzon es 0
+    elemento 42 de buzon es TOPE_CERROJO
+    copia_region con buzon y 513 y fichero y 1 y TOPE_CERROJO
+    respuesta es pide_al_disco con ORDEN_GUARDA
+    al_serie con "cerrojo.sis guardado: "
+    escribe respuesta
+    si respuesta es menor que 0
+        fallo_de_disco con respuesta
+        pinta_linea con "  No la he guardado, así que todo sigue como estaba."
+        devuelve nada
+    fin
+    copia_region con cerrojo y 1 y fichero y 1 y TOPE_CERROJO
+    hay_cerrojo es verdadero
+    desactiva_interrupciones
+    apunta con R_CERROJO y "FalOS" y BLANCO y 0
+    activa_interrupciones
+    pon_color con VERDE_CLARO y NEGRO
+    pinta_linea con "  Hecho. Para entrar hará falta, también al arrancar."
+    pon_color con GRIS y NEGRO
+    pinta_linea con "  Escribe bloquea para bloquear ya. Y me bloqueo solo si pasan"
+    pinta_linea con "  5 minutos sin que toques el teclado ni el ratón."
+fin
+
+funcion abre_cerrojo
+    comparte bloqueado y modo_clave y mensaje_cerrojo y malas y cortado y ultima_actividad
+    si clave_mide es 0
+        devuelve nada
+    fin
+    mensaje_cerrojo es COMPROBANDO
+    ensucia
+    huella_de con (region con cerrojo_en mas 4 y 16) y comprobada
+    buena es es_la_buena
+    olvida_lo_escrito
+    si no buena
+        malas es malas mas 1
+        mensaje_cerrojo es NO_ES_ESA
+        desactiva_interrupciones
+        apunta con R_MALA y "FalOS" y BLANCO y 0
+        activa_interrupciones
+        ensucia
+        devuelve nada
+    fin
+    desactiva_interrupciones
+    bloqueado es falso
+    modo_clave es SIN_CLAVE
+    mensaje_cerrojo es NADA_QUE_DECIR
+    ultima_actividad es tics
+    apunta con R_ABRISTE y "FalOS" y BLANCO y 0
+    activa_interrupciones
+    si cortado
+        pinta_linea con ""
+        pinta_linea con "  Me bloqueé antes de que acabaras la contraseña. Nada cambia."
+        pinta_linea con ""
+        indicador
+        cortado es falso
+    fin
+    si malas es mayor que 0
+        pinta_linea con ""
+        pon_color con AMARILLO y NEGRO
+        pinta con "  Mientras estaba bloqueado, alguien probó "
+        pinta_numero con malas
+        si malas es 1
+            pinta_linea con " contraseña mala."
+        si no
+            pinta_linea con " contraseñas malas."
+        fin
+        pon_color con GRIS y NEGRO
+        pinta_linea con "  Lo tienes en registro."
+        pinta_linea con ""
+        indicador
+        redibuja
+        malas es 0
+    fin
+    ensucia
+fin
+
+funcion atiende_clave con tecla
+    comparte clave_mide y columna y mensaje_cerrojo
+    si tecla es TECLA_INTRO
+        termina_clave
+    si no si tecla es TECLA_BORRA y clave_mide es mayor que 0
+        elemento clave_mide de clave_escrita es 0
+        clave_mide es clave_mide menos 1
+        si modo_clave es CLAVE_ABRE
+            ensucia
+        si no
+            columna es columna menos 1
+            pinta con " "
+            columna es columna menos 1
+            mueve_cursor
+        fin
+    si no si tecla es mayor o igual que 32 y tecla es menor que 256 y clave_mide es menor que 32
+        clave_mide es clave_mide mas 1
+        elemento clave_mide de clave_escrita es tecla
+        si modo_clave es CLAVE_ABRE
+            mensaje_cerrojo es NADA_QUE_DECIR
+            ensucia
+        si no
+            pinta con "*"
+        fin
+    fin
+fin
+
+funcion termina_clave
+    comparte modo_clave y primera_mide y clave_mide
+    si modo_clave es CLAVE_ABRE
+        abre_cerrojo
+        devuelve nada
+    fin
+    pinta_linea con ""
+    si modo_clave es CLAVE_NUEVA
+        si clave_mide es 0
+            pinta_linea con "  Nada cambia."
+            acaba_clave
+            devuelve nada
+        fin
+        copia_region con clave_primera y 1 y clave_escrita y 1 y 32
+        primera_mide es clave_mide
+        para cada i desde 1 hasta 32
+            elemento i de clave_escrita es 0
+        fin
+        clave_mide es 0
+        pinta con "  Repítela: "
+        modo_clave es CLAVE_REPITE
+        devuelve nada
+    fin
+    iguales es clave_mide es primera_mide
+    para cada i desde 1 hasta 32
+        si (elemento i de clave_escrita) no es igual a (elemento i de clave_primera)
+            iguales es falso
+        fin
+    fin
+    si iguales y clave_mide es mayor que 0
+        pinta_linea con "  Calculando la huella..."
+        guarda_cerrojo
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No son iguales. No cambio nada."
+        pon_color con GRIS y NEGRO
+    fin
+    acaba_clave
+fin
+
+funcion acaba_clave
+    comparte modo_clave
+    olvida_lo_escrito
+    modo_clave es SIN_CLAVE
+    pinta_linea con ""
+    indicador
+fin
+
+funcion lee_cerrojo
+    comparte hay_cerrojo
+    traido es pide_archivo con "cerrojo" y ".sis" y 0
+    si traido es menor que 0
+        devuelve nada
+    fin
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    bien es traido es TOPE_CERROJO
+    i es 1
+    para cada letra en MARCA_CERROJO
+        si bien y (elemento i de buzon) no es igual a letra
+            bien es falso
+        fin
+        i es i mas 1
+    fin
+    al_serie con "cerrojo.sis leido: "
+    escribe traido
+    si no bien o memoria_cerrojo es 0
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No entiendo cerrojo.sis, así que arranco sin contraseña."
+        pinta_linea con "  Si no lo has tocado tú, alguien ha estado en el disco."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    copia_region con cerrojo y 1 y buzon y 1 y TOPE_CERROJO
+    hay_cerrojo es verdadero
+    desactiva_interrupciones
+    bloquea_ya con AL_ARRANCAR
+    activa_interrupciones
+fin
+
 funcion barra
     pon_color con BLANCO y AZUL
     ve_a con 1 y 1
@@ -3694,7 +4203,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 11"
+    pinta con "día 12"
     pon_color con GRIS y NEGRO
 fin
 
@@ -3727,6 +4236,7 @@ funcion portada
     pinta_linea con "  Hay un juego en el disco (lanza serpiente) y un bloc de notas"
     pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
     pinta_linea con "  Y registro te dice qué programa ha tocado tus cosas, y cuándo."
+    pinta_linea con "  Con cerrojo, la pantalla pide contraseña para entrar."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -3748,6 +4258,7 @@ fin
 mira_el_reloj
 prepara_interrupciones
 lee_siempre
+lee_cerrojo
 indicador
 escribe "pantalla lista"
 

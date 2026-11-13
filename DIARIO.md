@@ -2,6 +2,68 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 12: FalOS pide contraseña, y tus notas ya no se pueden tocar sin que lo sepas
+
+![FalOS bloqueado: pide la contraseña, y los programas siguen sin ver tus teclas](capturas/dia-12.png)
+
+**Lo que hay.** Una pantalla de bloqueo. `cerrojo` le pone contraseña, y desde
+ese momento FalOS arranca bloqueado, `bloquea` lo bloquea en el acto, y se
+bloquea solo si pasan 5 minutos sin que toques el teclado ni el ratón.
+Bloqueado, los programas siguen corriendo, pero no les llega ni una tecla ni un
+clic, lo que pintan no sale en la pantalla, y lo que escribes no llega a la
+consola: solo lo ve el núcleo, para comprobar la contraseña. Al abrir, te dice
+cuántas contraseñas malas probó alguien mientras no estabas.
+
+```
+cerrojo
+bloquea
+registro
+sin cerrojo
+```
+
+FalOS no guarda tu contraseña. Guarda su huella, sacada con Argon2id y una sal
+al azar, en `cerrojo.sis`, que solo escribe el núcleo.
+
+Y el cifrado de `notas`, más duro:
+
+- **Argon2id en vez de 20.000 vueltas.** Es el que ganó el concurso de 2015 para
+  guardar contraseñas, y el que usan los gestores de claves. Cada intento llena
+  2 MB de memoria tres veces, así que probar contraseñas a ciegas ya no es solo
+  cuestión de hacer cuentas deprisa. Para eso, un programa puede pedir ahora 2 MB
+  de memoria de una vez, en una página grande.
+- **Una firma.** La nota se cifra y luego se firma con BLAKE2b, con una clave que
+  también sale de tu contraseña. Si alguien cambia un solo bit del disco,
+  `notas` no la abre y te dice que la han tocado. Antes de mirar la firma mira un
+  comprobante, para distinguir eso de equivocarte de contraseña.
+- **Azar del procesador.** La sal y el número que no se puede repetir en cada
+  guardado salen de RDRAND, el generador de azar que llevan los procesadores, en
+  vez del reloj.
+
+![notas se niega a abrir una nota a la que le han cambiado un bit](capturas/dia-12-tocada.png)
+
+**Lo que se aprende.** BLAKE2b y Argon2id van con números de 64 bits que dan la
+vuelta al pasarse, y Fal no tenía forma de hacer esas cuentas: revienta si un
+número se sale, a propósito. Así que el compilador ganó unas pocas operaciones
+que dan la vuelta, una para girar bits y dos para pedirle azar al procesador. Y
+`usa`, para que el núcleo y `notas` compartan el mismo
+[comun/cifrado.fal](comun/cifrado.fal) en vez de copiarlo.
+
+**La seguridad.** Todo el cifrado está escrito a mano, así que no me lo creo
+porque sí. Comparé BLAKE2b con el de Python y Argon2id con la biblioteca de
+referencia en cinco casos distintos, de una pasada y de tres, de 8 bloques y de
+2.040, y salida corta y larga, y daban lo mismo byte a byte. La prueba automática
+hace lo mismo con lo que FalOS deja en el disco: saca la clave de la nota con
+esa biblioteca, comprueba la firma, la descifra, y luego le cambia un bit y mira
+que `notas` se niega. Con el cerrojo, mira que la huella es la que tiene que ser
+y que la contraseña no está en el disco.
+
+**Lo que costó.** Una variable llamada `nuevo`, que es una palabra de Fal: el
+compilador la paró, como `igual` y `pregunta`. Al juntar el cifrado con el
+núcleo, tres nombres coincidían con cosas del núcleo, `memoria`, `orden` y
+`fila`, y los cambié en el archivo compartido. Y el procesador que QEMU pone si
+no le dices nada no tiene RDRAND: la prueba automática arranca con `-cpu max`, y
+sin él `notas` avisa y saca el azar de cuándo pulsas las teclas.
+
 ## Día 11: FalOS apunta quién ha tocado tus cosas, y recuerda lo que le dejas
 
 ![El registro: qué programa ha leído o guardado qué, cuándo, y qué decidiste tú](capturas/dia-11.png)

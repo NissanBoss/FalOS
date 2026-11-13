@@ -1,0 +1,404 @@
+funcion iv_blake con i
+    si i es 1
+        devuelve 7640891576956012808
+    si no si i es 2
+        devuelve 0 menos 4942790177534073029
+    si no si i es 3
+        devuelve 4354685564936845355
+    si no si i es 4
+        devuelve 0 menos 6534734903238641935
+    si no si i es 5
+        devuelve 5840696475078001361
+    si no si i es 6
+        devuelve 0 menos 7276294671716946913
+    si no si i es 7
+        devuelve 2270897969802886507
+    fin
+    devuelve 6620516959819538809
+fin
+
+funcion palabra_de_bytes con bytes y desde
+    w es 0
+    k es 8
+    mientras k es mayor que 0
+        w es suma_cuadruple con (producto_cuadruple con w y 256) y (elemento desde mas k menos 1 de bytes)
+        k es k menos 1
+    fin
+    devuelve w
+fin
+
+funcion byte_de con w y k
+    mitad es mitad_baja de w
+    cual es k
+    si k es mayor o igual que 4
+        mitad es mitad_alta de w
+        cual es k menos 4
+    fin
+    divisor es 1
+    si cual es 1
+        divisor es 256
+    si no si cual es 2
+        divisor es 65536
+    si no si cual es 3
+        divisor es 16777216
+    fin
+    devuelve (cociente con mitad y divisor) resto 256
+fin
+
+funcion pon_le32 con bytes y desde y valor
+    queda es valor
+    k es 0
+    mientras k es menor que 4
+        elemento desde mas k de bytes es queda resto 256
+        queda es cociente con queda y 256
+        k es k mas 1
+    fin
+fin
+
+funcion g_blake con v y a y b y c y d y x1 y x2
+    elemento a de v es suma_cuadruple con (suma_cuadruple con (elemento a de v) y (elemento b de v)) y x1
+    elemento d de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento d de v) y (elemento a de v)) y 32
+    elemento c de v es suma_cuadruple con (elemento c de v) y (elemento d de v)
+    elemento b de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento b de v) y (elemento c de v)) y 40
+    elemento a de v es suma_cuadruple con (suma_cuadruple con (elemento a de v) y (elemento b de v)) y x2
+    elemento d de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento d de v) y (elemento a de v)) y 48
+    elemento c de v es suma_cuadruple con (elemento c de v) y (elemento d de v)
+    elemento b de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento b de v) y (elemento c de v)) y 1
+fin
+
+funcion del_mensaje con m y sigma y k
+    devuelve elemento ((elemento k de sigma) menos 64) de m
+fin
+
+funcion comprime_blake con taller y contador y final
+    h es region con taller y 8 y 8
+    v es region con taller mas 64 y 16 y 8
+    m es region con taller mas 192 y 16 y 8
+    bloque es region con taller mas 320 y 128
+    sigma es "ABCDEFGHIJKLMNOPOKEIJPNGBMACLHFDLIMAFCPNKODGHBJEHJDBNMLOCGFKEAPIJAFHCEKPOBLMGIDNCMGKALIDENHFPOBJMFBPONEKAHGDJCILNLHOMBDJFAPEIGCKGPOJLDAIMCNHBEKFKCIEHGBFPLJODMNA"
+    j es 1
+    mientras j es menor o igual que 16
+        elemento j de m es palabra_de_bytes con bloque y ((j menos 1) por 8 mas 1)
+        j es j mas 1
+    fin
+    j es 1
+    mientras j es menor o igual que 8
+        elemento j de v es elemento j de h
+        elemento j mas 8 de v es iv_blake con j
+        j es j mas 1
+    fin
+    elemento 13 de v es o_exclusivo_cuadruple con (elemento 13 de v) y contador
+    si final
+        elemento 15 de v es o_exclusivo_cuadruple con (elemento 15 de v) y (0 menos 1)
+    fin
+    ronda es 0
+    mientras ronda es menor que 12
+        b es (ronda resto 10) por 16
+        g_blake con v y 1 y 5 y 9 y 13 y (del_mensaje con m y sigma y b mas 1) y (del_mensaje con m y sigma y b mas 2)
+        g_blake con v y 2 y 6 y 10 y 14 y (del_mensaje con m y sigma y b mas 3) y (del_mensaje con m y sigma y b mas 4)
+        g_blake con v y 3 y 7 y 11 y 15 y (del_mensaje con m y sigma y b mas 5) y (del_mensaje con m y sigma y b mas 6)
+        g_blake con v y 4 y 8 y 12 y 16 y (del_mensaje con m y sigma y b mas 7) y (del_mensaje con m y sigma y b mas 8)
+        g_blake con v y 1 y 6 y 11 y 16 y (del_mensaje con m y sigma y b mas 9) y (del_mensaje con m y sigma y b mas 10)
+        g_blake con v y 2 y 7 y 12 y 13 y (del_mensaje con m y sigma y b mas 11) y (del_mensaje con m y sigma y b mas 12)
+        g_blake con v y 3 y 8 y 9 y 14 y (del_mensaje con m y sigma y b mas 13) y (del_mensaje con m y sigma y b mas 14)
+        g_blake con v y 4 y 5 y 10 y 15 y (del_mensaje con m y sigma y b mas 15) y (del_mensaje con m y sigma y b mas 16)
+        ronda es ronda mas 1
+    fin
+    j es 1
+    mientras j es menor o igual que 8
+        elemento j de h es o_exclusivo_cuadruple con (elemento j de h) y (o_exclusivo_cuadruple con (elemento j de v) y (elemento j mas 8 de v))
+        j es j mas 1
+    fin
+fin
+
+funcion blake2b con taller y entrada y cuantos y clave y salida y medida
+    h es region con taller y 8 y 8
+    bloque es region con taller mas 320 y 128
+    con_clave es largo de clave
+    j es 1
+    mientras j es menor o igual que 8
+        elemento j de h es iv_blake con j
+        j es j mas 1
+    fin
+    elemento 1 de h es o_exclusivo_cuadruple con (elemento 1 de h) y (16842752 mas con_clave por 256 mas medida)
+    total es cuantos
+    si con_clave es mayor que 0
+        total es total mas 128
+    fin
+    bloques es cociente con (total mas 127) y 128
+    si bloques es 0
+        bloques es 1
+    fin
+    b es 0
+    mientras b es menor que bloques
+        i es 1
+        mientras i es menor o igual que 128
+            p es b por 128 mas i menos 1
+            valor es 0
+            si con_clave es mayor que 0 y p es menor que 128
+                si p es menor que con_clave
+                    valor es elemento p mas 1 de clave
+                fin
+            si no
+                q es p
+                si con_clave es mayor que 0
+                    q es p menos 128
+                fin
+                si q es menor que cuantos
+                    valor es elemento q mas 1 de entrada
+                fin
+            fin
+            elemento i de bloque es valor
+            i es i mas 1
+        fin
+        contador es (b mas 1) por 128
+        si contador es mayor que total
+            contador es total
+        fin
+        ultimo es falso
+        si b es bloques menos 1
+            ultimo es verdadero
+        fin
+        comprime_blake con taller y contador y ultimo
+        b es b mas 1
+    fin
+    j es 0
+    mientras j es menor que medida
+        elemento j mas 1 de salida es byte_de con (elemento (cociente con j y 8) mas 1 de h) y (j resto 8)
+        j es j mas 1
+    fin
+fin
+
+funcion copia_bytes con destino y desde y origen y cuantos
+    i es 1
+    mientras i es menor o igual que cuantos
+        elemento desde mas i menos 1 de destino es elemento i de origen
+        i es i mas 1
+    fin
+fin
+
+funcion h_prima con taller y buzon y cuantos y salida y medida
+    pon_le32 con buzon y 1 y medida
+    si medida es menor o igual que 64
+        blake2b con taller y buzon y cuantos mas 4 y "" y salida y medida
+        devuelve nada
+    fin
+    v es region con taller mas 448 y 64
+    vueltas es (cociente con (medida mas 31) y 32) menos 2
+    blake2b con taller y buzon y cuantos mas 4 y "" y v y 64
+    copia_bytes con salida y 1 y v y 32
+    i es 2
+    mientras i es menor o igual que vueltas
+        blake2b con taller y v y 64 y "" y v y 64
+        copia_bytes con salida y (i menos 1) por 32 mas 1 y v y 32
+        i es i mas 1
+    fin
+    ultimo es medida menos 32 por vueltas
+    blake2b con taller y v y 64 y "" y v y ultimo
+    copia_bytes con salida y 32 por vueltas mas 1 y v y ultimo
+fin
+
+funcion blamka con a y b
+    devuelve suma_cuadruple con (suma_cuadruple con a y b) y (producto_cuadruple con 2 y (producto_cuadruple con (mitad_baja de a) y (mitad_baja de b)))
+fin
+
+funcion g_blamka con v y a y b y c y d
+    elemento a de v es blamka con (elemento a de v) y (elemento b de v)
+    elemento d de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento d de v) y (elemento a de v)) y 32
+    elemento c de v es blamka con (elemento c de v) y (elemento d de v)
+    elemento b de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento b de v) y (elemento c de v)) y 40
+    elemento a de v es blamka con (elemento a de v) y (elemento b de v)
+    elemento d de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento d de v) y (elemento a de v)) y 48
+    elemento c de v es blamka con (elemento c de v) y (elemento d de v)
+    elemento b de v es gira_cuadruple con (o_exclusivo_cuadruple con (elemento b de v) y (elemento c de v)) y 1
+fin
+
+funcion permuta con r y tira y base y en_columna
+    k es 0
+    mientras k es menor que 16
+        sitio es base mas k
+        si en_columna
+            sitio es base mas (cociente con k y 2) por 16 mas (k resto 2)
+        fin
+        elemento k mas 1 de tira es elemento sitio de r
+        k es k mas 1
+    fin
+    g_blamka con tira y 1 y 5 y 9 y 13
+    g_blamka con tira y 2 y 6 y 10 y 14
+    g_blamka con tira y 3 y 7 y 11 y 15
+    g_blamka con tira y 4 y 8 y 12 y 16
+    g_blamka con tira y 1 y 6 y 11 y 16
+    g_blamka con tira y 2 y 7 y 12 y 13
+    g_blamka con tira y 3 y 8 y 9 y 14
+    g_blamka con tira y 4 y 5 y 10 y 15
+    k es 0
+    mientras k es menor que 16
+        sitio es base mas k
+        si en_columna
+            sitio es base mas (cociente con k y 2) por 16 mas (k resto 2)
+        fin
+        elemento sitio de r es elemento k mas 1 de tira
+        k es k mas 1
+    fin
+fin
+
+funcion llena_bloque con previo y referencia y siguiente y con_xor y taller
+    r es region con taller y 128 y 8
+    copia es region con taller mas 1024 y 128 y 8
+    tira es region con taller mas 5760 y 16 y 8
+    p es region con previo y 128 y 8
+    f es region con referencia y 128 y 8
+    n es region con siguiente y 128 y 8
+    i es 1
+    mientras i es menor o igual que 128
+        elemento i de r es o_exclusivo_cuadruple con (elemento i de f) y (elemento i de p)
+        elemento i de copia es elemento i de r
+        si con_xor
+            elemento i de copia es o_exclusivo_cuadruple con (elemento i de copia) y (elemento i de n)
+        fin
+        i es i mas 1
+    fin
+    i es 0
+    mientras i es menor que 8
+        permuta con r y tira y i por 16 mas 1 y falso
+        i es i mas 1
+    fin
+    i es 0
+    mientras i es menor que 8
+        permuta con r y tira y i por 2 mas 1 y verdadero
+        i es i mas 1
+    fin
+    i es 1
+    mientras i es menor o igual que 128
+        elemento i de n es o_exclusivo_cuadruple con (elemento i de r) y (elemento i de copia)
+        i es i mas 1
+    fin
+fin
+
+funcion siguientes_direcciones con taller
+    entrada es region con taller mas 3072 y 128 y 8
+    elemento 7 de entrada es (elemento 7 de entrada) mas 1
+    llena_bloque con taller mas 4096 y taller mas 3072 y taller mas 2048 y falso y taller
+    llena_bloque con taller mas 4096 y taller mas 2048 y taller mas 2048 y falso y taller
+fin
+
+funcion llena_segmento con zona y q y vueltas y r y s y taller
+    tramo es cociente con q y 4
+    independiente es falso
+    si r es 0 y s es menor que 2
+        independiente es verdadero
+    fin
+    con_xor es verdadero
+    si r es 0
+        con_xor es falso
+    fin
+    pistas es region con taller mas 2048 y 128 y 8
+    si independiente
+        entrada es region con taller mas 3072 y 128 y 8
+        i es 1
+        mientras i es menor o igual que 128
+            elemento i de entrada es 0
+            i es i mas 1
+        fin
+        elemento 1 de entrada es r
+        elemento 3 de entrada es s
+        elemento 4 de entrada es q
+        elemento 5 de entrada es vueltas
+        elemento 6 de entrada es 2
+    fin
+    i es 0
+    si r es 0 y s es 0
+        i es 2
+        si independiente
+            siguientes_direcciones con taller
+        fin
+    fin
+    mientras i es menor que tramo
+        este es s por tramo mas i
+        previo es este menos 1
+        si este es 0
+            previo es q menos 1
+        fin
+        si independiente
+            si (i resto 128) es 0
+                siguientes_direcciones con taller
+            fin
+            azar es elemento (i resto 128) mas 1 de pistas
+        si no
+            azar es elemento 1 de (region con zona mas previo por 1024 y 1 y 8)
+        fin
+        area es q menos tramo mas i menos 1
+        si r es 0 y s es 0
+            area es i menos 1
+        si no si r es 0
+            area es s por tramo mas i menos 1
+        fin
+        bajo es mitad_baja de azar
+        x es mitad_alta de (producto_cuadruple con bajo y bajo)
+        relativa es area menos 1 menos (mitad_alta de (producto_cuadruple con area y x))
+        comienzo es 0
+        si r no es igual a 0 y s no es igual a 3
+            comienzo es (s mas 1) por tramo
+        fin
+        referencia es (comienzo mas relativa) resto q
+        llena_bloque con zona mas previo por 1024 y zona mas referencia por 1024 y zona mas este por 1024 y con_xor y taller
+        i es i mas 1
+    fin
+fin
+
+funcion argon2id con zona y bloques y vueltas y contrasena y sal y salida
+    q es 4 por (cociente con bloques y 4)
+    taller es zona mas q por 1024
+    cero es region con taller mas 4096 y 128 y 8
+    i es 1
+    mientras i es menor o igual que 128
+        elemento i de cero es 0
+        i es i mas 1
+    fin
+    blake es taller mas 5120
+    buzon es region con taller mas 6144 y 2048
+    datos es region con taller mas 6144 mas 1100 y 900
+    medida es largo de salida
+    pon_le32 con datos y 1 y 1
+    pon_le32 con datos y 5 y medida
+    pon_le32 con datos y 9 y bloques
+    pon_le32 con datos y 13 y vueltas
+    pon_le32 con datos y 17 y 19
+    pon_le32 con datos y 21 y 2
+    pon_le32 con datos y 25 y largo de contrasena
+    copia_bytes con datos y 29 y contrasena y largo de contrasena
+    sitio es 29 mas largo de contrasena
+    pon_le32 con datos y sitio y largo de sal
+    copia_bytes con datos y sitio mas 4 y sal y largo de sal
+    sitio es sitio mas 4 mas largo de sal
+    pon_le32 con datos y sitio y 0
+    pon_le32 con datos y sitio mas 4 y 0
+    blake2b con blake y datos y sitio mas 7 y "" y (region con taller mas 6148 y 64) y 64
+    j es 0
+    mientras j es menor que 900
+        elemento j mas 1 de datos es 0
+        j es j mas 1
+    fin
+    pon_le32 con buzon y 69 y 0
+    pon_le32 con buzon y 73 y 0
+    h_prima con blake y buzon y 72 y (region con zona y 1024) y 1024
+    pon_le32 con buzon y 69 y 1
+    h_prima con blake y buzon y 72 y (region con zona mas 1024 y 1024) y 1024
+    r es 0
+    mientras r es menor que vueltas
+        s es 0
+        mientras s es menor que 4
+            llena_segmento con zona y q y vueltas y r y s y taller
+            s es s mas 1
+        fin
+        r es r mas 1
+    fin
+    copia_bytes con buzon y 5 y (region con zona mas (q menos 1) por 1024 y 1024) y 1024
+    h_prima con blake y buzon y 1024 y salida y medida
+    todo es region con zona y (q mas 8) por 128 y 8
+    j es 1
+    mientras j es menor o igual que largo de todo
+        elemento j de todo es 0
+        j es j mas 1
+    fin
+fin

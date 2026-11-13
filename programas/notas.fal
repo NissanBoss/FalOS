@@ -1,3 +1,5 @@
+usa "../comun/cifrado.fal"
+
 PIDE_TICS es 3
 DUERME es 4
 LEE_TECLA es 11
@@ -5,7 +7,9 @@ PIDE_VENTANA es 12
 PON_CASILLA es 13
 GUARDA es 14
 LEE_GUARDADO es 15
+PIDE_MEMORIA es 16
 NEGADO es 0 menos 10
+SIN_MEMORIA es 0 menos 11
 
 TECLA_INTRO es 256
 TECLA_BORRA es 257
@@ -17,8 +21,10 @@ ARRIBA es 4
 ABAJO es 13
 ANCHO_NOTA es 36
 CABEN es 360
-CABECERA es 24
-VUELTAS es 20000
+CABECERA es 48
+FIRMA es 32
+BLOQUES_ARGON es 2040
+PASADAS es 3
 
 GRIS es 7
 GRIS_OSCURO es 8
@@ -29,25 +35,30 @@ AMARILLO es 14
 BLANCO es 15
 
 MESA es 807395328
+TALLER es MESA mas 2048
 DOBLE es 4294967296
 
 archivo es region con MESA y 512
 estado es region con MESA mas 512 y 16 y 8
 trabajo es region con MESA mas 640 y 16 y 8
-clave es region con MESA mas 768 y 8 y 8
+clave_chacha es region con MESA mas 768 y 8 y 8
 flujo es region con MESA mas 832 y 64
 escrito es region con MESA mas 1024 y CABEN
 secreta es region con MESA mas 1536 y 32
 repetida es region con MESA mas 1600 y 32
+claves es region con MESA mas 1664 y 64
+clave_firma es region con MESA mas 1696 y 32
+mirada es region con MESA mas 1728 y 32
+azar es region con MESA mas 1792 y 64
+mezcla es region con MESA mas 2560 y 24
 
-COMPROBANTE es "FalOS ok"
+MARCA es "NOT2"
 
 largo_nota es 0
 largo_secreta es 0
 semilla es 0
-sal_uno es 0
-sal_dos es 0
-guardadas es 0
+veces_azar es 0
+memoria_clave es 0
 fila_fin es ARRIBA
 columna_fin es 0
 
@@ -104,6 +115,12 @@ funcion aviso con texto y tinta
     texto_en con RENGLONES y 2 y texto y tinta
 fin
 
+funcion para_aqui
+    mientras verdadero
+        descansa con 100
+    fin
+fin
+
 funcion cuarto con a y b y c y d
     elemento a de trabajo es suma_doble con (elemento a de trabajo) y (elemento b de trabajo)
     elemento d de trabajo es gira_doble con (o_exclusivo con (elemento d de trabajo) y (elemento a de trabajo)) y 16
@@ -115,13 +132,13 @@ funcion cuarto con a y b y c y d
     elemento b de trabajo es gira_doble con (o_exclusivo con (elemento b de trabajo) y (elemento c de trabajo)) y 7
 fin
 
-funcion bloque con contador y n_uno y n_dos y n_tres
+funcion bloque_chacha con contador y n_uno y n_dos y n_tres
     elemento 1 de estado es 1634760805
     elemento 2 de estado es 857760878
     elemento 3 de estado es 2036477234
     elemento 4 de estado es 1797285236
     para cada i desde 1 hasta 8
-        elemento 4 mas i de estado es elemento i de clave
+        elemento 4 mas i de estado es elemento i de clave_chacha
     fin
     elemento 13 de estado es contador
     elemento 14 de estado es n_uno
@@ -153,59 +170,26 @@ funcion bloque_a_bytes
     fin
 fin
 
-funcion palabra_de con desde
+funcion palabra_le con bytes y desde
     n es 0
     para cada j desde 1 hasta 4
-        n es n por 256 mas elemento desde mas 4 menos j de archivo
+        n es n por 256 mas elemento desde mas 4 menos j de bytes
     fin
     devuelve n
-fin
-
-funcion pon_palabra_en con desde y n
-    queda es n
-    para cada j desde 0 hasta 3
-        elemento desde mas j de archivo es queda resto 256
-        queda es cociente con queda y 256
-    fin
-fin
-
-funcion deriva_clave
-    para cada i desde 1 hasta 8
-        elemento i de clave es 0
-    fin
-    i es 1
-    mientras i es menor o igual que largo_secreta
-        sitio es ((cociente con (i menos 1) y 4) resto 8) mas 1
-        peso es 1
-        repite (i menos 1) resto 4 veces
-            peso es peso por 256
-        fin
-        elemento sitio de clave es o_exclusivo con (elemento sitio de clave) y (elemento i de secreta) por peso
-        i es i mas 1
-    fin
-    vuelta es 1
-    mientras vuelta es menor o igual que VUELTAS
-        bloque con vuelta y largo_secreta y sal_uno y sal_dos
-        para cada j desde 1 hasta 8
-            elemento j de clave es o_exclusivo con (elemento j de trabajo) y (elemento j mas 8 de trabajo)
-        fin
-        vuelta es vuelta mas 1
-    fin
-    para cada i desde 1 hasta 32
-        elemento i de secreta es 0
-        elemento i de repetida es 0
-    fin
 fin
 
 funcion cifra con cuantos
     contador es 1
     hecho es 0
+    n_uno es palabra_le con archivo y 21
+    n_dos es palabra_le con archivo y 25
+    n_tres es palabra_le con archivo y 29
     mientras hecho es menor que cuantos
-        bloque con contador y 0 y guardadas y (palabra_de con 13)
+        bloque_chacha con contador y n_uno y n_dos y n_tres
         bloque_a_bytes
         j es 1
         mientras j es menor o igual que 64 y hecho es menor que cuantos
-            sitio es CABECERA menos 8 mas hecho mas 1
+            sitio es CABECERA mas hecho mas 1
             elemento sitio de archivo es o_exclusivo con (elemento sitio de archivo) y (elemento j de flujo)
             j es j mas 1
             hecho es hecho mas 1
@@ -214,20 +198,69 @@ funcion cifra con cuantos
     fin
 fin
 
-funcion comprobante_bien
-    i es 1
-    para cada letra en COMPROBANTE
-        si (elemento CABECERA menos 8 mas i de archivo) no es igual a letra
-            devuelve falso
+funcion remueve con tecla
+    comparte semilla
+    semilla es o_exclusivo con (gira_doble con semilla y 5) y ((llama_al_sistema con PIDE_TICS) mas tecla) resto DOBLE
+fin
+
+funcion saca_azar
+    comparte veces_azar
+    veces_azar es veces_azar mas 1
+    si hay_azar
+        palabras es region con MESA mas 1792 y 8 y 8
+        para cada i desde 1 hasta 8
+            elemento i de palabras es azar_del_procesador
         fin
-        i es i mas 1
+        devuelve nada
+    fin
+    trozos es region con MESA mas 2560 y 3 y 8
+    elemento 1 de trozos es semilla
+    elemento 2 de trozos es llama_al_sistema con PIDE_TICS
+    elemento 3 de trozos es veces_azar
+    blake2b con TALLER y azar y 64 y mezcla y azar y 64
+fin
+
+funcion coinciden con esperado y desde y visto y cuantos
+    distinto es 0
+    para cada i desde 1 hasta cuantos
+        distinto es distinto mas o_exclusivo con (elemento desde mas i menos 1 de esperado) y (elemento i de visto)
+    fin
+    si distinto es 0
+        devuelve verdadero
+    fin
+    devuelve falso
+fin
+
+funcion sin_azar
+    si hay_azar
+        devuelve falso
     fin
     devuelve verdadero
 fin
 
-funcion remueve con tecla
-    comparte semilla
-    semilla es o_exclusivo con (gira_doble con semilla y 5) y ((llama_al_sistema con PIDE_TICS) mas tecla) resto DOBLE
+funcion olvida_claves
+    para cada i desde 1 hasta 64
+        elemento i de claves es 0
+    fin
+    para cada i desde 1 hasta 8
+        elemento i de clave_chacha es 0
+    fin
+fin
+
+funcion deriva_claves
+    sal es region con MESA mas 4 y 16
+    argon2id con memoria_clave y BLOQUES_ARGON y PASADAS y (region con MESA mas 1536 y largo_secreta) y sal y claves
+    para cada i desde 1 hasta 8
+        elemento i de clave_chacha es palabra_le con claves y (i menos 1) por 4 mas 1
+    fin
+    para cada i desde 1 hasta 32
+        elemento i de secreta es 0
+        elemento i de repetida es 0
+    fin
+fin
+
+funcion comprobante_en con destino
+    blake2b con TALLER y "comprobante" y 11 y clave_firma y destino y 16
 fin
 
 funcion pide_contrasena con frase y destino
@@ -272,39 +305,67 @@ funcion iguales_las_dos con cuantas y otras
     devuelve verdadero
 fin
 
+funcion es_de_ahora con leidos
+    si leidos es menor que CABECERA mas FIRMA o leidos es mayor que CABECERA mas CABEN mas FIRMA
+        devuelve falso
+    fin
+    i es 1
+    para cada letra en MARCA
+        si (elemento i de archivo) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
 funcion abre_las_guardadas con leidos
-    comparte largo_secreta y sal_uno y sal_dos y guardadas y largo_nota
-    sal_uno es palabra_de con 1
-    sal_dos es palabra_de con 5
-    guardadas es palabra_de con 9
+    comparte largo_secreta y largo_nota
+    largo_nota es leidos menos CABECERA menos FIRMA
     mientras verdadero
         largo_secreta es pide_contrasena con "Tu contraseña:" y secreta
         aviso con "Calculando la clave..." y GRIS
-        deriva_clave
-        cifra con 8
-        si comprobante_bien
-            largo_nota es leidos menos CABECERA
-            cifra con largo_nota mas 8
-            copia_region con escrito y 1 y archivo y CABECERA mas 1 y largo_nota
-            devuelve nada
+        deriva_claves
+        comprobante_en con mirada
+        si coinciden con archivo y 33 y mirada y 16
+            blake2b con TALLER y archivo y CABECERA mas largo_nota y clave_firma y mirada y FIRMA
+            intacta es coinciden con archivo y CABECERA mas largo_nota mas 1 y mirada y FIRMA
+            si intacta
+                cifra con largo_nota
+                si largo_nota es mayor que 0
+                    copia_region con escrito y 1 y archivo y CABECERA mas 1 y largo_nota
+                fin
+                devuelve nada
+            fin
+            olvida_claves
+            largo_nota es 0
+            limpia_renglon con 6
+            texto_en con 6 y 3 y "Alguien ha tocado esta nota." y ROJO_CLARO
+            texto_en con 8 y 3 y "No la abro: la firma no cuadra." y GRIS
+            aviso con "Tu contraseña está bien." y GRIS
+            para_aqui
         fin
+        olvida_claves
         aviso con "No es esa. Espera un poco." y ROJO_CLARO
-        descansa con 200
-        cifra con 8
+        descansa con 100
     fin
 fin
 
 funcion elige_contrasena
-    comparte largo_secreta y sal_uno y sal_dos
+    comparte largo_secreta
     mientras verdadero
         largo_secreta es pide_contrasena con "Elige una contraseña:" y secreta
         otras es pide_contrasena con "Repítela:" y repetida
         si iguales_las_dos con largo_secreta y otras
-            sal_uno es semilla
-            remueve con 7
-            sal_dos es semilla
+            i es 1
+            para cada letra en MARCA
+                elemento i de archivo es letra
+                i es i mas 1
+            fin
+            saca_azar
+            copia_region con archivo y 5 y azar y 1 y 16
             aviso con "Calculando la clave..." y GRIS
-            deriva_clave
+            deriva_claves
             devuelve nada
         fin
         aviso con "No son iguales. Otra vez." y ROJO_CLARO
@@ -422,25 +483,20 @@ funcion borra_letra
 fin
 
 funcion guarda_nota
-    comparte guardadas
-    guardadas es (guardadas mas 1) resto DOBLE
-    pon_palabra_en con 1 y sal_uno
-    pon_palabra_en con 5 y sal_dos
-    pon_palabra_en con 9 y guardadas
-    pon_palabra_en con 13 y (llama_al_sistema con PIDE_TICS) resto DOBLE
-    i es 1
-    para cada letra en COMPROBANTE
-        elemento CABECERA menos 8 mas i de archivo es letra
-        i es i mas 1
-    fin
+    saca_azar
+    copia_region con archivo y 21 y azar y 1 y 12
+    comprobante_en con mirada
+    copia_region con archivo y 33 y mirada y 1 y 16
     si largo_nota es mayor que 0
         copia_region con archivo y CABECERA mas 1 y escrito y 1 y largo_nota
     fin
-    cifra con largo_nota mas 8
+    cifra con largo_nota
+    blake2b con TALLER y archivo y CABECERA mas largo_nota y clave_firma y mirada y FIRMA
+    copia_region con archivo y CABECERA mas largo_nota mas 1 y mirada y 1 y FIRMA
     aviso con "Esperando permiso..." y GRIS
-    respuesta es llama_al_sistema con GUARDA y 0 y CABECERA mas largo_nota
+    respuesta es llama_al_sistema con GUARDA y 0 y CABECERA mas largo_nota mas FIRMA
     si respuesta es mayor que 0
-        aviso con "Guardada, cifrada con tu clave." y VERDE_CLARO
+        aviso con "Guardada, cifrada y firmada." y VERDE_CLARO
     si no si respuesta es NEGADO
         aviso con "No me dejas guardarla." y AMARILLO
     si no
@@ -450,16 +506,28 @@ fin
 
 llama_al_sistema con PIDE_VENTANA y COLUMNAS y RENGLONES
 texto_en con 1 y 2 y "NOTAS" y AMARILLO
-texto_en con 1 y 21 y "cifradas en disco" y GRIS_OSCURO
+texto_en con 1 y 13 y "cifradas y firmadas" y GRIS_OSCURO
 para cada raya desde 1 hasta COLUMNAS
     pon con 2 y raya y GRIS_OSCURO y 196
 fin
 semilla es (llama_al_sistema con PIDE_TICS) resto DOBLE
+memoria_clave es llama_al_sistema con PIDE_MEMORIA
+si memoria_clave es SIN_MEMORIA
+    aviso con "No hay memoria para la clave." y ROJO_CLARO
+    para_aqui
+fin
 aviso con "Dame el teclado para escribir." y GRIS
 lo_leido es llama_al_sistema con LEE_GUARDADO y 0 y 512
-si lo_leido es mayor o igual que CABECERA y lo_leido es menor o igual que CABECERA mas CABEN
+si es_de_ahora con lo_leido
     abre_las_guardadas con lo_leido
 si no
+    si lo_leido es mayor que 0
+        texto_en con 10 y 3 y "La guardada es de antes del día 12." y AMARILLO
+        texto_en con 11 y 3 y "Si guardas esta, la pisas." y GRIS
+    fin
+    si sin_azar
+        texto_en con 12 y 3 y "Sin RDRAND: azar de tus teclas." y GRIS
+    fin
     elige_contrasena
 fin
 pinta_nota

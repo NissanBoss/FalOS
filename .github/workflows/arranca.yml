@@ -523,8 +523,10 @@ jobs:
           assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
           FIN
 
-      - name: Notas cifradas con tu contraseña
+      - name: Notas cifradas y firmadas con tu contraseña
         run: |
+          python3 -m venv /tmp/argon
+          /tmp/argon/bin/pip install -q argon2-cffi
           teclea() {
             for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
               echo "sendkey $letra"
@@ -545,7 +547,7 @@ jobs:
                 teclea "$clave"
                 sleep 1
               done
-              sleep 40
+              sleep 60
               teclea "$4"
               echo "sendkey end"
               sleep 3
@@ -554,7 +556,7 @@ jobs:
               teclea "deja 1"
               sleep 3
               echo quit
-            } | timeout 120 qemu-system-x86_64 -kernel sistema.bin -display none \
+            } | timeout 150 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
               -drive file=$1,format=raw,if=ide \
               -serial file:$2 -monitor stdio -no-reboot > /dev/null
             cat $2
@@ -566,12 +568,14 @@ jobs:
           cp disco.img notas.img
           abre_notas notas.img notas1.txt "gato gato" "kiwi azul"
           grep -q "notas leyó del disco: -3" notas1.txt
-          grep -q "notas guardó en el disco: 34" notas1.txt
+          grep -q "notas guardó en el disco: 90" notas1.txt
           abre_notas notas.img notas2.txt "perro gato" "otra"
-          grep -q "notas leyó del disco: 34" notas2.txt
-          grep -q "notas guardó en el disco: 39" notas2.txt
-          python3 - <<'FIN'
-          import struct
+          grep -q "notas leyó del disco: 90" notas2.txt
+          grep -q "notas guardó en el disco: 95" notas2.txt
+          cp notas.img tocada.img
+          /tmp/argon/bin/python - <<'FIN'
+          import hashlib, struct
+          from argon2.low_level import hash_secret_raw, Type
 
           def gira(x, n):
               return ((x << n) | (x >> (32 - n))) & 0xffffffff
@@ -582,37 +586,53 @@ jobs:
               s[a] = (s[a] + s[b]) & 0xffffffff; s[d] = gira(s[d] ^ s[a], 8)
               s[c] = (s[c] + s[d]) & 0xffffffff; s[b] = gira(s[b] ^ s[c], 7)
 
-          def bloque(clave, contador, n1, n2, n3):
-              estado = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574] + list(clave) + [contador, n1, n2, n3]
+          def bloque(clave, contador, nonce):
+              estado = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574] + list(struct.unpack("<8I", clave)) + [contador] + list(struct.unpack("<3I", nonce))
               s = list(estado)
               for _ in range(10):
                   cuarto(s, 0, 4, 8, 12); cuarto(s, 1, 5, 9, 13); cuarto(s, 2, 6, 10, 14); cuarto(s, 3, 7, 11, 15)
                   cuarto(s, 0, 5, 10, 15); cuarto(s, 1, 6, 11, 12); cuarto(s, 2, 7, 8, 13); cuarto(s, 3, 4, 9, 14)
-              return [(s[i] + estado[i]) & 0xffffffff for i in range(16)]
+              return struct.pack("<16I", *[(s[i] + estado[i]) & 0xffffffff for i in range(16)])
 
-          rfc = bloque(struct.unpack("<8I", bytes(range(32))), 1, 0x09000000, 0x4a000000, 0)
-          assert rfc[0] == 0xe4e7f110 and rfc[15] == 0x4e3c50a2
+          rfc = bloque(bytes(range(32)), 1, bytes.fromhex("000000090000004a00000000"))
+          assert rfc[:4] == bytes.fromhex("10f1e7e4")
 
-          def descifra(archivo, contrasena):
-              sal1, sal2, guardadas, hora = struct.unpack("<4I", archivo[:16])
-              clave = [0] * 8
-              for i, b in enumerate(contrasena):
-                  clave[(i // 4) % 8] ^= b << (8 * (i % 4))
-              for v in range(1, 20001):
-                  t = bloque(clave, v, len(contrasena), sal1, sal2)
-                  clave = [t[j] ^ t[j + 8] for j in range(8)]
-              flujo = b"".join(struct.pack("<16I", *bloque(clave, c, 0, guardadas, hora)) for c in range(1, 9))
-              return bytes(a ^ b for a, b in zip(archivo[16:], flujo))
+          def claves_de(archivo, contrasena):
+              return hash_secret_raw(contrasena, archivo[4:20], time_cost=3, memory_cost=2040,
+                                     parallelism=1, hash_len=64, type=Type.ID)
+
+          def abre(archivo, contrasena):
+              assert archivo[:4] == b"NOT2"
+              claves = claves_de(archivo, contrasena)
+              firma = claves[32:]
+              if hashlib.blake2b(b"comprobante", key=firma, digest_size=16).digest() != archivo[32:48]:
+                  return None
+              assert hashlib.blake2b(archivo[:-32], key=firma, digest_size=32).digest() == archivo[-32:]
+              flujo = b"".join(bloque(claves[:32], c, archivo[20:32]) for c in range(1, 8))
+              return bytes(a ^ b for a, b in zip(archivo[48:-32], flujo))
+
+          def sitio_de(imagen, nombre):
+              lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
+              sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+              sector, medida = sitio[nombre]
+              return sector * 512, medida
 
           imagen = open("notas.img", "rb").read()
-          lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
-          sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
-          sector, medida = sitio[b"notas.dat"]
-          archivo = imagen[sector * 512:sector * 512 + medida]
-          assert descifra(archivo, b"gato") == b"FalOS ok" + b"kiwi azul\notra\n", descifra(archivo, b"gato")
-          assert descifra(archivo, b"perro")[:8] != b"FalOS ok"
-          assert b"kiwi" not in imagen and b"azul" not in imagen
+          desde, medida = sitio_de(imagen, b"notas.dat")
+          archivo = imagen[desde:desde + medida]
+          assert abre(archivo, b"gato") == b"kiwi azul\notra\n", abre(archivo, b"gato")
+          assert abre(archivo, b"perro") is None
+          assert b"kiwi" not in imagen and b"azul" not in imagen and b"gato" not in imagen
+          tocada = bytearray(imagen)
+          tocada[desde + 50] ^= 1
+          open("tocada.img", "wb").write(tocada)
           FIN
+          abre_notas tocada.img notas3.txt "gato" "no"
+          grep -q "notas leyó del disco: 95" notas3.txt
+          if grep -q "notas pide permiso\|notas guardó" notas3.txt; then
+            echo "Ha abierto una nota que alguien habia tocado"
+            exit 1
+          fi
 
       - name: Un registro de quien toca tus cosas, y permisos para siempre
         run: |
@@ -687,3 +707,85 @@ jobs:
             exit 1
           fi
           grep -q "veces pide permiso para guardar" basura.txt
+
+      - name: Pantalla con contraseña, y bloqueada los programas no ven nada
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          arranca() {
+            imagen=$1
+            salida=$2
+            shift 2
+            {
+              sleep 4
+              echo "sendkey ret"
+              sleep 1
+              for orden in "$@"; do
+                case "$orden" in
+                  espera) sleep 20 ;;
+                  cinco_minutos) sleep 320 ;;
+                  *) teclea "$orden"; sleep 2 ;;
+                esac
+              done
+              echo quit
+            } | timeout 600 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
+              -drive file=$imagen,format=raw,if=ide \
+              -serial file:$salida -monitor stdio -no-reboot > /dev/null
+            cat $salida
+            if grep -q "  X  " $salida; then
+              echo "El cerrojo ha tumbado a FalOS"
+              exit 1
+            fi
+          }
+          cp disco.img cerrojo.img
+          arranca cerrojo.img cerrojo1.txt "cerrojo" "gato" "gato" espera "bloquea" "registro" espera
+          grep -q "cerrojo.sis guardado: 52" cerrojo1.txt
+          cp cerrojo.img recien.img
+          arranca cerrojo.img cerrojo2.txt "lanza veces" espera "gato" espera "registro" "lanza veces"
+          grep -q "cerrojo.sis leido: 52" cerrojo2.txt
+          grep -q "FalOS apunte 19 0" cerrojo2.txt
+          grep -q "FalOS apunte 18 0" cerrojo2.txt
+          test "$(grep -c "veces pide permiso para guardar" cerrojo2.txt)" = 1
+          if grep -q "veces apunte" cerrojo2.txt; then
+            echo "veces ha corrido con la pantalla bloqueada"
+            exit 1
+          fi
+          arranca cerrojo.img cerrojo3.txt "gato" espera "lanza veces" "teclado 1" cinco_minutos "deja 1" espera "gato" espera "registro"
+          grep -q "FalOS apunte 17 0" cerrojo3.txt
+          grep -q "FalOS apunte 19 0" cerrojo3.txt
+          if grep -q "veces guardó" cerrojo3.txt; then
+            echo "Una orden escrita con la pantalla bloqueada ha llegado a la consola"
+            exit 1
+          fi
+          arranca cerrojo.img cerrojo4.txt "gato" espera "sin cerrojo"
+          grep -q "cerrojo.sis olvidado: 52" cerrojo4.txt
+          arranca cerrojo.img cerrojo5.txt "registro"
+          if grep -q "cerrojo.sis leido" cerrojo5.txt; then
+            echo "Sigue pidiendo contraseña despues de quitarla"
+            exit 1
+          fi
+          /tmp/argon/bin/python - <<'FIN'
+          from argon2.low_level import hash_secret_raw, Type
+
+          def indice(nombre):
+              imagen = open(nombre, "rb").read()
+              lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
+              return imagen, {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+
+          imagen, sitio = indice("recien.img")
+          sector, medida = sitio[b"cerrojo.sis"]
+          cerrojo = imagen[sector * 512:sector * 512 + medida]
+          assert cerrojo[:4] == b"CER1" and len(cerrojo) == 52
+          huella = hash_secret_raw(b"gato", cerrojo[4:20], time_cost=3, memory_cost=2040,
+                                   parallelism=1, hash_len=32, type=Type.ID)
+          assert huella == cerrojo[20:], (huella.hex(), cerrojo[20:].hex())
+          assert b"gato" not in imagen
+          despues, sitio_despues = indice("cerrojo.img")
+          assert b"cerrojo.sis" not in sitio_despues
+          assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
+          FIN
