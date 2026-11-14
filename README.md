@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![FalOS bloqueado: pide la contraseña, y los programas siguen sin ver tus teclas](capturas/dia-12.png)
+![Copiado de la consola y pegado en cambiazo: la barra dice cuánto le queda y dónde lo pegaste](capturas/dia-13.png)
 
 ## Por qué
 
@@ -53,7 +53,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
-`sin cerrojo`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
+`sin cerrojo`, `portapapeles`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -186,6 +186,27 @@ registro
 sin cerrojo
 ```
 
+Y lo que copias solo lo ves tú. En Windows o en Linux con X11, cualquier programa
+puede leer el portapapeles cuando quiera, y también cambiarlo: hay programas que
+esperan a que copies la dirección de un monedero para poner la suya. En FalOS no
+hay ninguna llamada para leerlo ni para escribirlo. Arrastrando el ratón sobre un
+texto, en una ventana o en la consola, lo marcas; Ctrl+C lo copia y Ctrl+V lo
+pega. Esas dos teclas las atiende el núcleo, como Esc, y no le llegan a ningún
+programa. Lo que pegas le llega al que tiene el teclado como si lo escribieras
+tú, letra a letra, y nunca pulsa Intro: pegar en la consola no ejecuta nada. La
+barra dice cuántos segundos le quedan, y la barra y el registro dicen dónde lo
+pegaste. A los 30 segundos, o al bloquear la pantalla, se llena de ceros.
+`portapapeles` dice cuánto hay y de dónde, sin enseñarlo. `cambiazo` busca cómo
+leerlo o cambiarlo, e intenta pulsar Ctrl+V por ti, y no encuentra nada.
+
+```
+lanza cambiazo
+portapapeles
+teclado 1
+registro
+olvida portapapeles
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -240,7 +261,12 @@ nada. Después le cambia un bit a la nota y mira que `notas` no la abre. Pone
 contraseña a la pantalla, comprueba la huella con Argon2 y mira que la contraseña
 no está en el disco; arranca bloqueado y mira que una orden escrita entonces no
 llega a la consola, espera 5 minutos para verlo bloquearse solo, y con un
-programa esperando tu permiso, escribe `deja 1` y mira que no se lo ha dado. Da un permiso para siempre, reinicia y mira que no
+programa esperando tu permiso, escribe `deja 1` y mira que no se lo ha dado.
+Marca con el ratón una orden de la consola, la copia y la pega en la consola y
+en `cambiazo`: mira que en la consola no se ha ejecutado, que a `cambiazo` le
+han llegado esas 14 teclas y ni una más, que sus 49 intentos se han rechazado,
+que a los 30 segundos no queda nada que pegar y que al bloquear se borra. Da un
+permiso para siempre, reinicia y mira que no
 vuelve a preguntar; se lo quita y mira que pregunta. Busca el registro en el
 disco y no puede estar, y le mete un byte raro a la lista de permisos para ver
 que FalOS la tira entera en vez de creérsela.
@@ -255,11 +281,12 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 - **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
   archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 12.
+  FalOS. Es el día 13.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 4.250
-  líneas, y además el cifrado, porque la pantalla de bloqueo vive en él.
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 4.650
+  líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
+  él.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.
@@ -276,7 +303,19 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Dentro de su ventana, un programa pinta lo que quiera.** También una ventana
   falsa, con el borde de otro color. La de verdad es la de fuera, la que lleva el
   título, y esa es la que hay que mirar.
-- **Cada programa guarda 15 teclas.** Si no las lee, las siguientes se pierden.
+- **Cada programa guarda 127 teclas.** Si no las lee, las siguientes se pierden,
+  también las de un pegado.
+- **El portapapeles es de 100 letras, sin colores ni saltos de línea.** Las
+  líneas que marcas se juntan con un espacio, y por eso pegar no puede pulsar
+  Intro. Si no cabe, `portapapeles` lo dice.
+- **Solo se marca con el ratón.** Ni Mayús con las flechas ni doble clic.
+- **30 segundos, siempre.** No se puede alargar para quien copia despacio ni
+  acortar para una contraseña.
+- **El núcleo sí lo ve.** Mientras dura, está sin cifrar en su memoria, como lo
+  que sale en la pantalla. Al borrarse se llena de ceros.
+- **Un programa puede pedirte que le pegues algo.** Lo pegado va a la ventana que
+  tiene el teclado, y esa la eliges tú: si `disfraz` te pide que pegues tu
+  contraseña y se la pegas, la tiene. El título de la ventana dice quién es.
 - **Solo ratón PS/2.** Es el que trae QEMU. Al hacer clic en su ventana, QEMU se
   queda con el ratón, y lo suelta con la combinación que pone en su título. Ni
   USB ni pantallas táctiles.
@@ -285,7 +324,7 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **La letra tiene 125 caracteres.** El español, las líneas de las cajas y poco más.
 - **El programa del teclado ve todo lo que escribes**, y ahora también cómo
   mueves el ratón. Está en su caja y no puede hacer nada más, pero si alguien lo
-  cambiara por otro, lo leería todo.
+  cambiara por otro, lo leería todo, y podría pulsar Ctrl+V por ti.
 - **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
   de ahora, y el formato es uno de texto propio: ni FAT, ni nada que escriba
   otro sistema.
@@ -384,8 +423,9 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   idea de seguridad de memoria. Está mucho más avanzado; FalOS se construye
   desde cero y a la vista, para que se entienda cada paso.
 - [Qubes OS](https://www.qubes-os.org) aísla con máquinas virtuales sobre Xen
-  y Linux, y de él salen los bordes de colores. FalOS busca ese aislamiento en
-  el diseño del propio núcleo, sin máquinas virtuales.
+  y Linux, y de él salen los bordes de colores y la idea del portapapeles: entre
+  dos cajas, lo copiado solo pasa con Ctrl+Mayús+C y Ctrl+Mayús+V. FalOS busca
+  ese aislamiento en el diseño del propio núcleo, sin máquinas virtuales.
 
 ## Licencia
 

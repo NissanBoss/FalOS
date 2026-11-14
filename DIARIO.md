@@ -2,6 +2,66 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 13: lo que copias solo lo ves tú, y se borra solo
+
+![Copiado de la consola y pegado en cambiazo: la barra dice cuánto le queda y dónde lo pegaste](capturas/dia-13.png)
+
+**Lo que hay.** Copiar y pegar. Arrastrando el ratón sobre un texto, en una
+ventana o en la consola, lo marcas; Ctrl+C lo copia y Ctrl+V lo pega en la
+ventana que tiene el teclado, como si lo escribieras tú. Nada más copiar, la
+barra de arriba dice cuántos segundos le quedan, y a los 30 se llena de ceros.
+Al bloquear la pantalla, también. Al pegar, la barra dice dónde, y el registro
+apunta qué copiaste, de dónde y en qué ventana lo pegaste.
+
+```
+lanza cambiazo
+portapapeles
+teclado 1
+registro
+olvida portapapeles
+```
+
+`portapapeles` dice cuántas letras hay, de dónde salen y cuánto les queda, pero
+no las enseña: para verlas, pégalas.
+
+![El registro: qué copiaste, dónde lo pegaste y cuándo se borró solo](capturas/dia-13-registro.png)
+
+**Lo que no hay, a propósito.** Una llamada para leer el portapapeles, o para
+escribirlo. En Windows o en Linux con X11, cualquier programa lo lee cuando
+quiere, sin que lo sepas, y lo cambia: hay programas que esperan a que copies la
+dirección de un monedero para poner la suya. Aquí, a un programa solo le llega
+lo que tú pegas en su ventana, cuando lo pegas. Ctrl+C y Ctrl+V los atiende el
+núcleo, como Esc, y no le llegan a ningún programa. `cambiazo` lo intenta: pulsa
+Ctrl+V haciéndose pasar por el teclado, y prueba todas las llamadas de la 17 a la
+64 por si alguna lee lo copiado. Las 49 vuelven rechazadas.
+
+Y pegar nunca pulsa Intro. Hay webs que esconden un salto de línea en lo que
+copias para que, al pegarlo en una terminal, se ejecute sin que lo veas. En
+FalOS las líneas que marcas se juntan con un espacio, así que lo pegado se queda
+en la consola esperando a que tú le des a Intro.
+
+**Lo que se aprende.** El teclado no sabía qué era Ctrl. Ahora el programa del
+teclado se fija en cuándo lo pulsas y lo sueltas, los dos, el de la izquierda y
+el de la derecha, y con C y V manda dos teclas nuevas que el núcleo se queda.
+Copiar no necesita al programa: el texto de cada ventana ya lo guarda el núcleo,
+porque el programa solo le manda letras. Y la cola de teclas de cada programa
+pasa de 15 a 127, porque un pegado de 100 letras no cabía.
+
+**La seguridad.** La prueba automática marca con el ratón una orden de la
+consola, la copia y la pega dos veces: en la consola, donde mira que no se ha
+ejecutado, y en `cambiazo`, que tiene que recibir esas 14 teclas y ni una más.
+Mira que sus 49 intentos se han rechazado, espera 30 segundos y comprueba que ya
+no hay nada que pegar. Luego pone contraseña, copia, bloquea, abre y mira que
+tampoco.
+
+**Lo que costó.** Mover el ratón en la prueba. El monitor de QEMU mueve el
+ratón 1 a 1, pero si le pides un salto más grande que la pantalla, lo que sobra
+se queda esperando y se come los movimientos siguientes. La prueba lo mueve a
+trozos de 100. Copiar encima de algo ya copiado apuntaba en el registro
+"borraste el portapapeles", que no habías hecho tú. Y una variable `lleno`, que
+es lo mismo que la constante `LLENO` del disco, porque en Fal las mayúsculas no
+cuentan: el compilador avisó.
+
 ## Día 12: FalOS pide contraseña, y tus notas ya no se pueden tocar sin que lo sepas
 
 ![FalOS bloqueado: pide la contraseña, y los programas siguen sin ver tus teclas](capturas/dia-12.png)

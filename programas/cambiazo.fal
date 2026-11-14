@@ -1,0 +1,35 @@
+MANDA_LETRA es 1
+DUERME es 4
+ENTREGA es 9
+LEE_TECLA es 11
+TECLA_PEGA es 267
+RECHAZADA es 0 menos 1
+
+escribe "quiero cambiarte lo que copias"
+llama_al_sistema con DUERME y 100
+escribe "pulso Ctrl+V por ti: " sin salto
+si (llama_al_sistema con ENTREGA y TECLA_PEGA) es 0
+    escribe "entra"
+si no
+    escribe "no entra"
+fin
+halladas es 0
+para cada llamada desde 17 hasta 64
+    si (llama_al_sistema con llamada) no es igual a RECHAZADA
+        halladas es halladas mas 1
+    fin
+fin
+escribe "llamadas para el portapapeles"
+escribe "de la 17 a la 64: " sin salto
+escribe halladas
+escribe "solo veo lo que pegues aquí:"
+mientras verdadero
+    tecla es llama_al_sistema con LEE_TECLA
+    si tecla es 0
+        llama_al_sistema con DUERME y 5
+    si no si tecla es mayor o igual que 32 y tecla es menor que 127
+        llama_al_sistema con MANDA_LETRA y tecla
+    si no si tecla es menor que 256
+        llama_al_sistema con MANDA_LETRA y 63
+    fin
+fin

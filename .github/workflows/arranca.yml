@@ -789,3 +789,136 @@ jobs:
           assert b"cerrojo.sis" not in sitio_despues
           assert despues[sector * 512:(sector + 1) * 512] == bytes(512)
           FIN
+
+      - name: Copiar y pegar solo cuando tu lo pides, y que nadie lea lo que copias
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          x=480
+          y=300
+          raton() {
+            dx=$(( $1 - x ))
+            dy=$(( $2 - y ))
+            while [ $dx -ne 0 ] || [ $dy -ne 0 ]; do
+              px=$dx
+              py=$dy
+              [ $px -gt 100 ] && px=100
+              [ $px -lt -100 ] && px=-100
+              [ $py -gt 100 ] && py=100
+              [ $py -lt -100 ] && py=-100
+              echo "mouse_move $px $py"
+              sleep 0.15
+              dx=$(( dx - px ))
+              dy=$(( dy - py ))
+            done
+            x=$1
+            y=$2
+            sleep 0.3
+          }
+          marca_la_orden() {
+            raton 30 60
+            echo "mouse_button 1"
+            sleep 0.3
+            raton 186 60
+            echo "mouse_button 0"
+            sleep 0.3
+            echo "sendkey ctrl-c"
+            sleep 0.5
+          }
+          {
+            sleep 4
+            teclea "limpia"
+            sleep 1
+            teclea "lanza cambiazo"
+            sleep 4
+            marca_la_orden
+            echo "sendkey ctrl-v"
+            sleep 2
+            for borrar in $(seq 14); do
+              echo "sendkey backspace"
+              sleep 0.1
+            done
+            sleep 1
+            teclea "teclado 1"
+            sleep 1
+            echo "sendkey ctrl-v"
+            sleep 2
+            echo "sendkey esc"
+            sleep 32
+            echo "sendkey ctrl-v"
+            sleep 1
+            teclea "registro"
+            sleep 1
+            teclea "para 1"
+            teclea "para 2"
+            sleep 1
+            echo quit
+          } | timeout 120 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:copia.txt -monitor stdio -no-reboot > /dev/null
+          cat copia.txt
+          if grep -q "  X  " copia.txt; then
+            echo "Copiar y pegar ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "portapapeles: copiaste 14 de la consola" copia.txt
+          grep -q "portapapeles: pegaste 14 en la consola" copia.txt
+          grep -q "portapapeles: pegaste 14 en cambiazo" copia.txt
+          test "$(grep -c "portapapeles: pegaste" copia.txt)" = 2
+          grep -q "cambiazo cerrado con 0 preguntas y 49 rechazadas" copia.txt
+          grep -q "cambiazo recibió 14 teclas" copia.txt
+          if [ "$(grep -c "cambiazo cerrado" copia.txt)" != 1 ]; then
+            echo "Pegar en la consola ha pulsado Intro"
+            exit 1
+          fi
+          grep -q "portapapeles: borrado, 14 letras a ceros" copia.txt
+          grep -q "portapapeles: vacío al pegar" copia.txt
+          grep -q "FalOS apunte 23 1" copia.txt
+          grep -q "la consola apunte 21 14" copia.txt
+          grep -q "cambiazo apunte 22 14" copia.txt
+          cp disco.img pegado.img
+          {
+            sleep 4
+            teclea "limpia"
+            sleep 1
+            teclea "lanza cambiazo"
+            sleep 4
+            teclea "cerrojo"
+            sleep 2
+            teclea "gato"
+            sleep 20
+            teclea "gato"
+            sleep 20
+            marca_la_orden
+            teclea "bloquea"
+            sleep 2
+            echo "sendkey ctrl-v"
+            sleep 1
+            teclea "gato"
+            sleep 20
+            echo "sendkey ctrl-v"
+            sleep 1
+            teclea "registro"
+            sleep 1
+            echo quit
+          } | timeout 180 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
+            -drive file=pegado.img,format=raw,if=ide \
+            -serial file:bloqueo.txt -monitor stdio -no-reboot > /dev/null
+          cat bloqueo.txt
+          if grep -q "  X  " bloqueo.txt; then
+            echo "Bloquear con algo copiado ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "portapapeles: copiaste 14 de la consola" bloqueo.txt
+          grep -q "portapapeles: borrado, 14 letras a ceros" bloqueo.txt
+          grep -q "FalOS apunte 23 2" bloqueo.txt
+          test "$(grep -c "portapapeles: vacío al pegar" bloqueo.txt)" = 1
+          if grep -q "portapapeles: pegaste" bloqueo.txt; then
+            echo "Se ha pegado algo con la pantalla bloqueada o despues"
+            exit 1
+          fi

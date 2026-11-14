@@ -56,6 +56,7 @@ funcion limpia
     para cada i desde 1 hasta ANCHO por ABAJO
         elemento i de pantalla es color por 256 mas 32
     fin
+    olvida_seleccion_de con CONSOLA
     ve_a con 1 y 1
 fin
 
@@ -98,6 +99,7 @@ funcion sube_todo
     para cada i desde ANCHO por (ABAJO menos 1) mas 1 hasta ANCHO por ABAJO
         elemento i de pantalla es color por 256 mas 32
     fin
+    olvida_seleccion_de con CONSOLA
     elemento SUBIDAS de control es (elemento SUBIDAS de control) mas 1
 fin
 
@@ -499,7 +501,7 @@ YA_ESTA es 32
 RELOJ es 64
 RELOJ_ORDEN es 67
 TICS_POR_SEGUNDO es 100
-CAPACIDAD es 64
+CAPACIDAD es 128
 TODAS_ABIERTAS es 248
 SIN_TECLADO es 250
 ESCLAVO_ABIERTO es 239
@@ -517,6 +519,8 @@ TECLA_SUPRIME es 262
 TECLA_ARRIBA es 263
 TECLA_ABAJO es 264
 TECLA_ESCAPE es 265
+TECLA_COPIA es 266
+TECLA_PEGA es 267
 
 llegadas es region con pide_pagina y CAPACIDAD por 8 y 8
 entra es 0
@@ -662,7 +666,7 @@ avisos es region con pide_pagina y 512 y 8
 paciencia_gastada es region con pide_pagina y 512 y 8
 cerrada_en es region con pide_pagina y 512 y 8
 reinicios_de es region con pide_pagina y 512 y 8
-COLA_TECLAS es 16
+COLA_TECLAS es 128
 teclas_de es region con pide_pagina y 512 y 8
 entran_de es region con pide_pagina y 512 y 8
 salen_de es region con pide_pagina y 512 y 8
@@ -702,6 +706,32 @@ R_SE_BLOQUEO es 17
 R_ABRISTE es 18
 R_MALA es 19
 R_SIN_CERROJO es 20
+R_COPIASTE es 21
+R_PEGASTE es 22
+R_SE_BORRO es 23
+R_VACIASTE es 24
+
+CUPO_PORTAPAPELES es 100
+PLAZO_PORTAPAPELES es 3000
+AVISO_PEGADO es 300
+A_MANO es 0
+POR_TIEMPO es 1
+AL_BLOQUEAR es 2
+portapapeles_en es pide_pagina
+portapapeles es region con portapapeles_en y CUPO_PORTAPAPELES
+copiado_nombre_en es portapapeles_en mas 512
+copiado_nombre es region con copiado_nombre_en y 32
+copiadas es 0
+no_cabia es falso
+copiado_tinta es BLANCO
+copiado_mide es 0
+borra_portapapeles_en es 0
+pegado_en es 0
+aviso_pegado_hasta es 0
+sel_de es 0
+sel_ancla es 0
+sel_punta es 0
+seleccionando es falso
 
 TOPE_SIEMPRE es 512
 siempre_en es pide_pagina
@@ -909,6 +939,7 @@ funcion limpia_ventana con t
     fin
     elemento t de columna_de es 1
     elemento t de fila_de_ventana es 1
+    olvida_seleccion_de con t
 fin
 
 funcion abre_ventana con t
@@ -982,6 +1013,7 @@ funcion quita_ventana con t
     si agarrada es t
         agarrada es 0
     fin
+    olvida_seleccion_de con t
     ensucia
 fin
 
@@ -998,6 +1030,7 @@ funcion salto_en_ventana con t
         para cada c desde 1 hasta columnas
             elemento (renglones menos 1) por columnas mas c de texto es GRIS por 256 mas 32
         fin
+        olvida_seleccion_de con t
     fin
     ensucia
 fin
@@ -1139,7 +1172,10 @@ funcion compone
             pinta_ventana con (elemento i de encima)
             i es i mas 1
         fin
+        pinta_seleccion
         pinta_aviso_disco
+        pinta_aviso_pegado
+        pinta_portapapeles
     fin
     pinta_reloj
     sitio es cursor_sitio
@@ -1241,6 +1277,256 @@ funcion pinta_reloj
     pon_texto_en_vista con 1 y 67 y "UTC" y tinta
 fin
 
+funcion pinta_seleccion
+    si sel_de es 0
+        devuelve nada
+    fin
+    desde es sel_ancla
+    hasta es sel_punta
+    si hasta es menor que desde
+        desde es sel_punta
+        hasta es sel_ancla
+    fin
+    dueno es 0
+    columnas es ANCHO
+    arriba es 0
+    izquierda es 0
+    si sel_de no es igual a CONSOLA
+        si (elemento sel_de de ventana_de) es SIN_VENTANA
+            devuelve nada
+        fin
+        dueno es sel_de
+        columnas es elemento sel_de de anchos
+        arriba es elemento sel_de de ventana_y
+        izquierda es elemento sel_de de ventana_x
+    fin
+    k es desde
+    mientras k es menor o igual que hasta
+        renglon es arriba mas (cociente con k y columnas) mas 1
+        c es izquierda mas (k resto columnas) mas 1
+        si (ventana_en con renglon y c) es dueno
+            casilla es (renglon menos 1) por ANCHO mas c
+            valor es elemento casilla de lo_que_se_ve
+            atributo es cociente con valor y 256
+            al_reves es (atributo resto 16) por 16 mas (cociente con atributo y 16)
+            elemento casilla de lo_que_se_ve es al_reves por 256 mas (valor resto 256)
+        fin
+        k es k mas 1
+    fin
+fin
+
+funcion tinta_de_sitio con t
+    si t es CONSOLA
+        devuelve BLANCO
+    fin
+    devuelve color_de con t
+fin
+
+funcion nombre_de_sitio con t
+    si t es CONSOLA
+        devuelve "la consola"
+    fin
+    devuelve nombre_de con t
+fin
+
+funcion pinta_aviso_pegado
+    si aviso_pegado_hasta es 0
+        devuelve nada
+    fin
+    marca es (AMARILLO por 16 mas NEGRO) por 256
+    pon_en_vista con 1 y 24 y (tinta_de_sitio con pegado_en) por 16 por 256 mas 32
+    pon_texto_en_vista con 1 y 25 y " pegaste en " y marca
+    nombre es nombre_de_sitio con pegado_en
+    pon_texto_en_vista con 1 y 37 y nombre y marca
+    pon_en_vista con 1 y 37 mas largo de nombre y marca mas 32
+fin
+
+funcion pinta_portapapeles
+    si copiadas es 0
+        devuelve nada
+    fin
+    quedan es entre_limites con (cociente con (borra_portapapeles_en menos tics mas 99) y TICS_POR_SEGUNDO) y 1 y 99
+    marca es (CIAN_CLARO por 16 mas NEGRO) por 256
+    pon_en_vista con 1 y 9 y copiado_tinta por 16 por 256 mas 32
+    pon_texto_en_vista con 1 y 10 y " copiado " y marca
+    pon_en_vista con 1 y 19 y marca mas 48 mas (cociente con quedan y 10)
+    pon_en_vista con 1 y 20 y marca mas 48 mas (quedan resto 10)
+    pon_texto_en_vista con 1 y 21 y " s " y marca
+fin
+
+funcion copia_seleccion
+    comparte copiadas y copiado_tinta y copiado_mide y borra_portapapeles_en y no_cabia
+    si sel_de es 0
+        devuelve nada
+    fin
+    desde es sel_ancla
+    hasta es sel_punta
+    si hasta es menor que desde
+        desde es sel_punta
+        hasta es sel_ancla
+    fin
+    hoja es pantalla
+    columnas es ANCHO
+    si sel_de no es igual a CONSOLA
+        hoja es texto_de con sel_de
+        columnas es elemento sel_de de anchos
+    fin
+    n es 0
+    ultima_letra es 0
+    saltando es verdadero
+    k es desde
+    mientras k es menor o igual que hasta y n es menor que CUPO_PORTAPAPELES
+        letra es (elemento k mas 1 de hoja) resto 256
+        si letra es menor o igual que 32
+            si no saltando
+                n es n mas 1
+                elemento n de portapapeles es 32
+            fin
+        si no
+            n es n mas 1
+            elemento n de portapapeles es letra
+            ultima_letra es n
+            saltando es falso
+        fin
+        si (k resto columnas) es columnas menos 1 y k es menor que hasta
+            n es ultima_letra
+            si n es mayor que 0
+                n es n mas 1
+                elemento n de portapapeles es 32
+            fin
+            saltando es verdadero
+        fin
+        k es k mas 1
+    fin
+    no_cabia es falso
+    mientras k es menor o igual que hasta
+        si ((elemento k mas 1 de hoja) resto 256) es mayor que 32
+            no_cabia es verdadero
+        fin
+        k es k mas 1
+    fin
+    i es ultima_letra mas 1
+    mientras i es menor o igual que CUPO_PORTAPAPELES
+        elemento i de portapapeles es 0
+        i es i mas 1
+    fin
+    nombre es nombre_de_sitio con sel_de
+    copiado_tinta es tinta_de_sitio con sel_de
+    copiado_mide es entre_limites con (largo de nombre) y 0 y 32
+    i es 1
+    mientras i es menor o igual que copiado_mide
+        elemento i de copiado_nombre es elemento i de nombre
+        i es i mas 1
+    fin
+    olvida_seleccion
+    copiadas es ultima_letra
+    si ultima_letra es 0
+        borra_portapapeles_en es 0
+        devuelve nada
+    fin
+    borra_portapapeles_en es tics mas PLAZO_PORTAPAPELES
+    apunta con R_COPIASTE y nombre y copiado_tinta y copiadas
+    escribe "portapapeles: copiaste " sin salto
+    escribe copiadas sin salto
+    escribe " de " sin salto
+    al_serie con nombre
+    escribe ""
+    ensucia
+fin
+
+funcion pega
+    comparte entra y aviso_pegado_hasta y pegado_en
+    si copiadas es 0
+        escribe "portapapeles: vacío al pegar"
+        devuelve nada
+    fin
+    destino es foco
+    n es 0
+    si destino es CONSOLA
+        sin_sitio es falso
+        mientras n es menor que copiadas y no sin_sitio
+            siguiente es (entra mas 1) resto CAPACIDAD
+            si siguiente es sale
+                sin_sitio es verdadero
+            si no
+                elemento entra mas 1 de llegadas es elemento n mas 1 de portapapeles
+                entra es siguiente
+                n es n mas 1
+            fin
+        fin
+    si no si (elemento destino de ventana_de) es VENTANA_VIVA
+        mientras n es menor que copiadas y (guarda_tecla_de con destino y (elemento n mas 1 de portapapeles)) es 0
+            n es n mas 1
+        fin
+    si no
+        devuelve nada
+    fin
+    pegado_en es destino
+    aviso_pegado_hasta es tics mas AVISO_PEGADO
+    apunta con R_PEGASTE y (nombre_de_sitio con destino) y (tinta_de_sitio con destino) y n
+    escribe "portapapeles: pegaste " sin salto
+    escribe n sin salto
+    escribe " en " sin salto
+    al_serie con (nombre_de_sitio con destino)
+    escribe ""
+    ensucia
+fin
+
+funcion vacia_portapapeles con por_que
+    comparte copiadas y borra_portapapeles_en
+    habia es copiadas
+    i es 1
+    mientras i es menor o igual que CUPO_PORTAPAPELES
+        elemento i de portapapeles es 0
+        i es i mas 1
+    fin
+    copiadas es 0
+    borra_portapapeles_en es 0
+    para cada j desde 1 hasta 32
+        elemento j de copiado_nombre es 0
+    fin
+    si habia es 0
+        devuelve nada
+    fin
+    si por_que es A_MANO
+        apunta con R_VACIASTE y "FalOS" y BLANCO y habia
+    si no
+        apunta con R_SE_BORRO y "FalOS" y BLANCO y por_que
+    fin
+    escribe "portapapeles: borrado, " sin salto
+    escribe habia sin salto
+    escribe " letras a ceros"
+    ensucia
+fin
+
+funcion ensena_portapapeles
+    si copiadas es 0
+        pinta_linea con "  El portapapeles está vacío."
+    si no
+        pinta con "  Hay "
+        pinta_cuantos con copiadas
+        si copiadas es 1
+            pinta con " letra"
+        si no
+            pinta con " letras"
+        fin
+        pinta con " que copiaste de "
+        pinta_de con (region con copiado_nombre_en y copiado_mide) y copiado_tinta
+        pinta con ". Se borra solo en "
+        pinta_cuantos con (entre_limites con (cociente con (borra_portapapeles_en menos tics mas 99) y TICS_POR_SEGUNDO) y 1 y 99)
+        pinta_linea con " s."
+        si no_cabia
+            pinta_linea con "  Lo que marcaste no cabía: copié las 100 primeras."
+        fin
+        pinta_linea con "  No te enseño qué es: lo verás al pegarlo con Ctrl+V."
+    fin
+    pon_color con GRIS_OSCURO y NEGRO
+    pinta_linea con "  Ningún programa lo puede leer ni cambiar. Solo le llega lo que"
+    pinta_linea con "  tú pegas, en la ventana que tiene el teclado, y nunca pulsa Intro."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
 funcion cierra_desde_la_ventana con t
     quita_ventana con t
     estado es elemento t de estados_tarea
@@ -1254,7 +1540,11 @@ funcion pulsa_en con renglon y c
     t es ventana_en con renglon y c
     antes es foco
     foco es CONSOLA
+    olvida_seleccion
     si t es 0
+        si renglon es mayor que 1
+            empieza_seleccion con CONSOLA y renglon y c
+        fin
         devuelve nada
     fin
     vx es elemento t de ventana_x
@@ -1273,6 +1563,43 @@ funcion pulsa_en con renglon y c
     si renglon es (elemento t de ventana_y)
         agarrada es t
         agarre es c menos vx
+    si no si c es mayor que vx y c es menor que vx mas va menos 1 y renglon es menor que (elemento t de ventana_y) mas (alto_de_ventana con t) menos 1
+        empieza_seleccion con t y renglon y c
+    fin
+fin
+
+funcion sitio_en_seleccion con renglon y c
+    si sel_de es CONSOLA
+        r es entre_limites con renglon y 2 y ALTO
+        k es entre_limites con c y 1 y ANCHO
+        devuelve (r menos 1) por ANCHO mas k menos 1
+    fin
+    columnas es elemento sel_de de anchos
+    r es entre_limites con renglon menos (elemento sel_de de ventana_y) y 1 y (elemento sel_de de altos)
+    k es entre_limites con c menos (elemento sel_de de ventana_x) y 1 y columnas
+    devuelve (r menos 1) por columnas mas k menos 1
+fin
+
+funcion empieza_seleccion con t y renglon y c
+    comparte sel_de y sel_ancla y sel_punta y seleccionando
+    sel_de es t
+    sel_ancla es sitio_en_seleccion con renglon y c
+    sel_punta es sel_ancla
+    seleccionando es verdadero
+fin
+
+funcion olvida_seleccion
+    comparte sel_de y seleccionando
+    si sel_de no es igual a 0
+        ensucia
+    fin
+    sel_de es 0
+    seleccionando es falso
+fin
+
+funcion olvida_seleccion_de con t
+    si sel_de es t
+        olvida_seleccion
     fin
 fin
 
@@ -1288,7 +1615,7 @@ funcion arrastra_a con renglon y c
 fin
 
 funcion recibe_raton con a y b
-    comparte raton_x y raton_y y raton_visto y botones_antes y agarrada y ultima_actividad
+    comparte raton_x y raton_y y raton_visto y botones_antes y agarrada y ultima_actividad y sel_punta y sel_de y seleccionando
     si actual no es igual a TAREA_TECLADO
         devuelve rechaza_a_actual
     fin
@@ -1314,8 +1641,16 @@ funcion recibe_raton con a y b
         pulsa_en con renglon y c
     si no si pulsado y agarrada no es igual a 0
         arrastra_a con renglon y c
+    si no si pulsado y seleccionando
+        sel_punta es sitio_en_seleccion con renglon y c
     si no si no pulsado
         agarrada es 0
+        si seleccionando
+            seleccionando es falso
+            si sel_punta es sel_ancla
+                sel_de es 0
+            fin
+        fin
     fin
     ensucia
     devuelve 0
@@ -1527,13 +1862,25 @@ funcion recibe_tecla con tecla
     si actual no es igual a TAREA_TECLADO
         devuelve rechaza_a_actual
     fin
-    si tecla es menor que 1 o tecla es mayor que TECLA_ESCAPE
+    si tecla es menor que 1 o tecla es mayor que TECLA_PEGA
         devuelve RECHAZADA
     fin
     ultima_actividad es tics
     si tecla es TECLA_ESCAPE
         foco es CONSOLA
         ensucia
+        devuelve 0
+    fin
+    si tecla es TECLA_COPIA
+        si no bloqueado
+            copia_seleccion
+        fin
+        devuelve 0
+    fin
+    si tecla es TECLA_PEGA
+        si no bloqueado
+            pega
+        fin
         devuelve 0
     fin
     si foco no es igual a CONSOLA y no bloqueado
@@ -1659,7 +2006,7 @@ funcion al_llamar
     si no si numero es GUARDA o numero es LEE_GUARDADO
         elemento EN_RAX de marco es encarga con numero y a y (elemento EN_RSI de marco)
     si no
-        elemento EN_RAX de marco es 0 menos 1
+        elemento EN_RAX de marco es rechaza_a_actual
     fin
 fin
 
@@ -1793,7 +2140,7 @@ funcion vigila con t
 fin
 
 funcion al_tic
-    comparte tics y tics_dormido y pantalla_sucia y aviso_disco_hasta
+    comparte tics y tics_dormido y pantalla_sucia y aviso_disco_hasta y aviso_pegado_hasta
     tics es tics mas 1
     si (tics resto TICS_POR_SEGUNDO) es 0
         mira_el_reloj
@@ -1801,6 +2148,17 @@ funcion al_tic
     si aviso_disco_hasta no es igual a 0 y tics es mayor o igual que aviso_disco_hasta
         aviso_disco_hasta es 0
         pantalla_sucia es verdadero
+    fin
+    si aviso_pegado_hasta no es igual a 0 y tics es mayor o igual que aviso_pegado_hasta
+        aviso_pegado_hasta es 0
+        pantalla_sucia es verdadero
+    fin
+    si borra_portapapeles_en no es igual a 0
+        si tics es mayor o igual que borra_portapapeles_en
+            vacia_portapapeles con POR_TIEMPO
+        si no si (tics resto TICS_POR_SEGUNDO) es 0
+            pantalla_sucia es verdadero
+        fin
     fin
     elemento actual de tiempo_de es (elemento actual de tiempo_de) mas 1
     si actual es CONSOLA y esperando
@@ -2104,6 +2462,12 @@ funcion ejecuta
         orden_disco
     si no si empieza_por con "lee "
         lee_archivo
+    si no si es_orden con "portapapeles"
+        ensena_portapapeles
+    si no si es_orden con "olvida portapapeles"
+        vacia_portapapeles con A_MANO
+        pinta_linea con "  Borrado: donde estaba solo quedan ceros."
+        pinta_linea con ""
     si no si empieza_por con "olvida "
         olvida
     si no si empieza_por con "deja siempre "
@@ -2164,6 +2528,12 @@ funcion ayuda
     pinta_linea con ""
     pinta_linea con "  Con el ratón, una ventana se mueve arrastrando su título, se cierra"
     pinta_linea con "  con la x roja, y un clic en ella le da el teclado."
+    pinta_linea con ""
+    pinta_linea con "  Arrastrando el ratón sobre un texto lo marcas. Ctrl+C lo copia y"
+    pinta_linea con "  Ctrl+V lo pega en la ventana que tiene el teclado. Se borra solo a"
+    pinta_linea con "  los 30 segundos, y ningún programa lo puede leer ni cambiar."
+    pinta_linea con "  portapapeles   cuánto hay copiado, sin enseñarlo"
+    pinta_linea con "  olvida portapapeles   lo borra ya"
     pinta_linea con ""
 fin
 
@@ -3597,6 +3967,9 @@ funcion es_tuya con clase
     si clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
         devuelve verdadero
     fin
+    si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE
+        devuelve verdadero
+    fin
     devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
 fin
 
@@ -3702,6 +4075,22 @@ funcion pinta_apunte con k
         pinta_de con "alguien probó una contraseña mala" y ROJO_CLARO
     si no si clase es R_SIN_CERROJO
         pinta con "quitaste la contraseña de la pantalla"
+    si no si clase es R_COPIASTE
+        pinta con "copiaste "
+        pinta_cuantos con n
+        pinta con " letras de "
+        pinta_de con nombre y tinta
+    si no si clase es R_PEGASTE
+        pinta con "pegaste "
+        pinta_cuantos con n
+        pinta con " letras en "
+        pinta_de con nombre y tinta
+    si no si clase es R_VACIASTE
+        pinta con "borraste el portapapeles"
+    si no si clase es R_SE_BORRO y n es AL_BLOQUEAR
+        pinta con "borró el portapapeles al bloquear"
+    si no si clase es R_SE_BORRO
+        pinta con "borró el portapapeles: pasaron 30 s"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -3906,6 +4295,7 @@ funcion bloquea_ya con por_que
     bloqueado es verdadero
     foco es CONSOLA
     agarrada es 0
+    olvida_seleccion
     olvida_lo_escrito
     modo_clave es CLAVE_ABRE
     mensaje_cerrojo es NADA_QUE_DECIR
@@ -3915,6 +4305,7 @@ funcion bloquea_ya con por_que
     si no si por_que es POR_QUIETO
         apunta con R_SE_BLOQUEO y "FalOS" y BLANCO y 0
     fin
+    vacia_portapapeles con AL_BLOQUEAR
     ensucia
 fin
 
@@ -4203,7 +4594,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 12"
+    pinta con "día 13"
     pon_color con GRIS y NEGRO
 fin
 
@@ -4237,6 +4628,7 @@ funcion portada
     pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
     pinta_linea con "  Y registro te dice qué programa ha tocado tus cosas, y cuándo."
     pinta_linea con "  Con cerrojo, la pantalla pide contraseña para entrar."
+    pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO

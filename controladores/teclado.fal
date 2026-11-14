@@ -18,6 +18,8 @@ TECLA_SUPRIME es 262
 TECLA_ARRIBA es 263
 TECLA_ABAJO es 264
 TECLA_ESCAPE es 265
+TECLA_COPIA es 266
+TECLA_PEGA es 267
 
 TECLAS es "~~1234567890'~~~qwertyuiop~+~~asdfghjkl~~~~~zxcvbnm,.-~*~ "
 TECLAS_MAYUS es "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
@@ -26,6 +28,7 @@ mayus es falso
 bloq_mayus es falso
 tilde es 0
 altgr es falso
+control es falso
 prefijo es falso
 recibidos es 0
 primero es 0
@@ -49,7 +52,7 @@ funcion teclea con c
 fin
 
 funcion atiende con codigo
-    comparte mayus y bloq_mayus y prefijo
+    comparte mayus y bloq_mayus y prefijo y control
     extendida es prefijo
     prefijo es falso
     si codigo es 224
@@ -60,6 +63,10 @@ funcion atiende con codigo
         mayus es verdadero
     si no si codigo es 170 o codigo es 182
         mayus es falso
+    si no si codigo es 29
+        control es verdadero
+    si no si codigo es 157
+        control es falso
     si no si codigo es 58
         bloq_mayus es no bloq_mayus
     si no si codigo es 28
@@ -68,6 +75,12 @@ funcion atiende con codigo
         manda con TECLA_BORRA
     si no si codigo es 1
         manda con TECLA_ESCAPE
+    si no si control
+        si codigo es 46
+            manda con TECLA_COPIA
+        si no si codigo es 47
+            manda con TECLA_PEGA
+        fin
     si no si altgr
         si codigo es menor que 128
             teclea con (con_altgr con codigo)
@@ -80,8 +93,12 @@ funcion atiende con codigo
 fin
 
 funcion atiende_extendida con codigo
-    comparte altgr
-    si codigo es 56
+    comparte altgr y control
+    si codigo es 29
+        control es verdadero
+    si no si codigo es 157
+        control es falso
+    si no si codigo es 56
         altgr es verdadero
     si no si codigo es 184
         altgr es falso
