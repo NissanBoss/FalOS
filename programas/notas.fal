@@ -10,6 +10,8 @@ LEE_GUARDADO es 15
 PIDE_MEMORIA es 16
 NEGADO es 0 menos 10
 SIN_MEMORIA es 0 menos 11
+TOCADO es 0 menos 13
+SIN_CIFRAR es 0 menos 14
 
 TECLA_INTRO es 256
 TECLA_BORRA es 257
@@ -518,6 +520,11 @@ si memoria_clave es SIN_MEMORIA
 fin
 aviso con "Dame el teclado para escribir." y GRIS
 lo_leido es llama_al_sistema con LEE_GUARDADO y 0 y 512
+si lo_leido es TOCADO o lo_leido es SIN_CIFRAR
+    texto_en con 6 y 3 y "Alguien ha tocado esta nota." y ROJO_CLARO
+    aviso con "No la piso. Mira registro." y GRIS
+    para_aqui
+fin
 si es_de_ahora con lo_leido
     abre_las_guardadas con lo_leido
 si no

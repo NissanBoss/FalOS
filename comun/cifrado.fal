@@ -402,3 +402,76 @@ funcion argon2id con zona y bloques y vueltas y contrasena y sal y salida
         j es j mas 1
     fin
 fin
+
+funcion le32_de con bytes y desde
+    n es 0
+    k es 4
+    mientras k es mayor que 0
+        n es n por 256 mas elemento desde mas k menos 1 de bytes
+        k es k menos 1
+    fin
+    devuelve n
+fin
+
+funcion cuarto_de_vuelta con w y a y b y c y d
+    elemento a de w es suma_doble con (elemento a de w) y (elemento b de w)
+    elemento d de w es gira_doble con (o_exclusivo con (elemento d de w) y (elemento a de w)) y 16
+    elemento c de w es suma_doble con (elemento c de w) y (elemento d de w)
+    elemento b de w es gira_doble con (o_exclusivo con (elemento b de w) y (elemento c de w)) y 12
+    elemento a de w es suma_doble con (elemento a de w) y (elemento b de w)
+    elemento d de w es gira_doble con (o_exclusivo con (elemento d de w) y (elemento a de w)) y 8
+    elemento c de w es suma_doble con (elemento c de w) y (elemento d de w)
+    elemento b de w es gira_doble con (o_exclusivo con (elemento b de w) y (elemento c de w)) y 7
+fin
+
+funcion chacha20 con taller y clave y nonce y datos y desde y cuantos
+    base es region con taller y 16 y 8
+    w es region con taller mas 128 y 16 y 8
+    elemento 1 de base es 1634760805
+    elemento 2 de base es 857760878
+    elemento 3 de base es 2036477234
+    elemento 4 de base es 1797285236
+    i es 1
+    mientras i es menor o igual que 8
+        elemento 4 mas i de base es le32_de con clave y (i menos 1) por 4 mas 1
+        i es i mas 1
+    fin
+    elemento 13 de base es 1
+    elemento 14 de base es le32_de con nonce y 1
+    elemento 15 de base es le32_de con nonce y 5
+    elemento 16 de base es le32_de con nonce y 9
+    hecho es 0
+    mientras hecho es menor que cuantos
+        copia_region con w y 1 y base y 1 y 16
+        repite 10 veces
+            cuarto_de_vuelta con w y 1 y 5 y 9 y 13
+            cuarto_de_vuelta con w y 2 y 6 y 10 y 14
+            cuarto_de_vuelta con w y 3 y 7 y 11 y 15
+            cuarto_de_vuelta con w y 4 y 8 y 12 y 16
+            cuarto_de_vuelta con w y 1 y 6 y 11 y 16
+            cuarto_de_vuelta con w y 2 y 7 y 12 y 13
+            cuarto_de_vuelta con w y 3 y 8 y 9 y 14
+            cuarto_de_vuelta con w y 4 y 5 y 10 y 15
+        fin
+        i es 1
+        mientras i es menor o igual que 16
+            queda es suma_doble con (elemento i de w) y (elemento i de base)
+            k es 0
+            mientras k es menor que 4 y hecho es menor que cuantos
+                sitio es desde mas hecho
+                elemento sitio de datos es o_exclusivo con (elemento sitio de datos) y (queda resto 256)
+                queda es cociente con queda y 256
+                hecho es hecho mas 1
+                k es k mas 1
+            fin
+            i es i mas 1
+        fin
+        elemento 13 de base es (elemento 13 de base) mas 1
+    fin
+    i es 1
+    mientras i es menor o igual que 16
+        elemento i de base es 0
+        elemento i de w es 0
+        i es i mas 1
+    fin
+fin

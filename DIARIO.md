@@ -2,6 +2,73 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 14: lo que guardan los programas va cifrado, y el invitado no deja rastro
+
+![Modo invitado: veces guarda, pero solo en memoria, y el disco no se toca](capturas/dia-14.png)
+
+**Lo que hay.** Todo lo que guarda un programa va cifrado, cada uno con su
+clave, sin que el programa lo pida ni lo pueda evitar. Y un modo invitado:
+`invitado`, o Intro sin escribir nada en la pantalla de bloqueo, y desde ese
+momento no se escribe nada en el disco.
+
+```
+lanza veces
+deja 1
+lee veces.dat
+invitado
+```
+
+FalOS tiene una llave de 32 bytes, sacada del azar del procesador. De ella sale
+la clave de cada programa: BLAKE2b con la llave, de "guardado:" y su nombre. Son
+64 bytes: 32 para cifrar con ChaCha20 y 32 para firmar. Cada guardado lleva
+delante "FAL1" y un número que no se repite, y detrás la firma: 48 bytes más.
+Por eso un programa ahora guarda hasta 464 bytes y no 512.
+
+Al leer, si la firma no cuadra, el programa no recibe nada y el registro lo
+apunta en rojo. Si el archivo ni siquiera va cifrado, tampoco se lo da: no hay
+forma de que esté ahí sin que alguien lo haya puesto a mano.
+
+![El registro: veces pidió su archivo, estaba tocado y no se lo di](capturas/dia-14-registro.png)
+
+**Y la contraseña.** Argon2id ahora da 64 bytes en vez de 32. La primera mitad
+sigue siendo la huella con la que se comprueba la contraseña. La segunda se
+mezcla con la llave, y eso es lo que va al disco, en `cerrojo.sis`. Sin la
+contraseña no hay llave, y sin llave lo guardado es ruido. Sin contraseña, la
+llave va en `llave.sis` tal cual, y al poner `cerrojo` ese archivo se llena de
+ceros.
+
+**El modo invitado.** Cierra los programas, olvida la llave, el registro, el
+portapapeles y las órdenes que escribiste, y a partir de ahí lo que guarden los
+programas va a ocho huecos en la memoria del núcleo. Al disco no llega nada: la
+petición se para antes de salir del núcleo. Se vuelve reiniciando, y `reinicia`
+llena antes esos huecos de ceros.
+
+![La pantalla de bloqueo: Intro sin escribir nada entra como invitado](capturas/dia-14-bloqueo.png)
+
+**La seguridad.** La prueba automática guarda con `veces`, saca la llave de
+`llave.sis` y descifra el archivo en Python, con un ChaCha20 propio y el BLAKE2b
+de la biblioteca estándar: tiene que salir lo mismo, y con la clave de
+`serpiente` no tiene que salir nada. Cambia un bit y mira que `veces` no recibe
+nada; pone un archivo sin cifrar y lo mismo. Pone contraseña, saca la llave con
+la biblioteca de referencia de Argon2 y comprueba que es la de antes y que
+`llave.sis` ya no está. Y entra como invitado dos veces, con la orden y desde la
+pantalla de bloqueo, guarda, lee, borra, intenta poner contraseña, y compara el
+disco entero byte a byte con el de antes: idéntico.
+
+**Lo que se aprende.** Hay dos sitios donde cifrar: en cada programa, como hace
+`notas`, o en el núcleo, para todos. En el programa, uno que no se moleste guarda
+en claro. En el núcleo, el programa ni se entera y no se lo puede saltar. `notas`
+sigue con su cifrado, así que ahora va cifrada dos veces: con tu contraseña y con
+la llave. Y si el núcleo le dice que alguien ha tocado su archivo, no lo pisa.
+
+**Lo que costó.** El programa del disco no escribe más de 512 bytes, y el cifrado
+añade 48. Subir ese tope tocaba el formato del disco, así que baja el de los
+programas. Y el buzón que el núcleo comparte con el programa del disco: si se
+cifra ahí mismo, el programa del disco ve el texto en claro un instante. Se cifra
+en una página aparte del núcleo, y al buzón solo llega lo cifrado. La prueba de
+la contraseña del día 12 pulsaba Intro nada más arrancar, y ahora eso, en la
+pantalla de bloqueo, es entrar como invitado.
+
 ## Día 13: lo que copias solo lo ves tú, y se borra solo
 
 ![Copiado de la consola y pegado en cambiazo: la barra dice cuánto le queda y dónde lo pegaste](capturas/dia-13.png)

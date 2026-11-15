@@ -613,10 +613,16 @@ LLENO es 0 menos 7
 PROHIBIDO es 0 menos 8
 NEGADO es 0 menos 10
 SIN_MEMORIA es 0 menos 11
+SIN_LLAVE es 0 menos 12
+TOCADO es 0 menos 13
+SIN_CIFRAR es 0 menos 14
+EN_INVITADO es 0 menos 15
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
 TOPE_GUARDADO es 512
+TOPE_CIFRABLE es 464
+SOBRE_GUARDADO es 48
 NOMBRE_EN_DISCO es 32
 DISCO_SIN_PEDIR es 0
 DISCO_PEDIDO es 1
@@ -710,6 +716,31 @@ R_COPIASTE es 21
 R_PEGASTE es 22
 R_SE_BORRO es 23
 R_VACIASTE es 24
+R_INVITADO es 25
+R_TOCADO es 26
+R_SIN_CIFRAR es 27
+R_GUARDO_MEMORIA es 28
+R_LEYO_MEMORIA es 29
+
+TOPE_LLAVE es 36
+MARCA_LLAVE es "LLA1"
+MARCA_GUARDADO es "FAL1"
+PARA_DERIVAR es "guardado:"
+llave_en es pide_pagina
+llave es region con llave_en y 32
+claves_programa es region con llave_en mas 64 y 64
+firma_vista es region con llave_en mas 160 y 32
+taller_llave es llave_en mas 1024
+taller_chacha es llave_en mas 2048
+claro_en es pide_pagina
+hay_llave es falso
+invitado es falso
+HUECOS es 8
+huecos_en es pide_pagina
+huecos_nombres es region con huecos_en y HUECOS por 32
+huecos_mide es region con huecos_en mas 512 y HUECOS y 8
+huecos_nombre_mide es region con huecos_en mas 640 y HUECOS y 8
+huecos_datos_en es pide_pagina
 
 CUPO_PORTAPAPELES es 100
 PLAZO_PORTAPAPELES es 3000
@@ -738,8 +769,9 @@ siempre_en es pide_pagina
 siempre es region con siempre_en y TOPE_SIEMPRE
 siempre_mide es 0
 
-TOPE_CERROJO es 52
-MARCA_CERROJO es "CER1"
+TOPE_CERROJO es 84
+VIEJO_CERROJO es 52
+MARCA_CERROJO es "CER2"
 BLOQUES_CERROJO es 2040
 PASADAS_CERROJO es 3
 PLAZO_BLOQUEO es 30000
@@ -758,7 +790,7 @@ cerrojo es region con cerrojo_en y TOPE_CERROJO
 clave_en es pide_pagina
 clave_escrita es region con clave_en y 32
 clave_primera es region con clave_en mas 64 y 32
-comprobada es region con clave_en mas 128 y 32
+comprobada es region con clave_en mas 128 y 64
 azar_en es clave_en mas 192
 taller_cerrojo es clave_en mas 1024
 memoria_cerrojo es pide_dos_megas
@@ -1176,6 +1208,7 @@ funcion compone
         pinta_aviso_disco
         pinta_aviso_pegado
         pinta_portapapeles
+        pinta_invitado
     fin
     pinta_reloj
     sitio es cursor_sitio
@@ -1239,6 +1272,7 @@ funcion pinta_cerrojo
         i es i mas 1
     fin
     pon_en_vista con 12 y 37 mas clave_mide y (NEGRO por 16 mas CIAN_CLARO) por 256 mas 95
+    pon_frase_en_vista con 16 y 18 y "Intro sin escribir nada: entrar como invitado." y (NEGRO por 16 mas MAGENTA_CLARO) por 256
     si mensaje_cerrojo es NO_ES_ESA
         pon_frase_en_vista con 14 y 37 y "No es esa." y (NEGRO por 16 mas ROJO_CLARO) por 256
     si no si mensaje_cerrojo es COMPROBANDO
@@ -1246,6 +1280,13 @@ funcion pinta_cerrojo
     fin
     pon_frase_en_vista con 18 y 12 y "Los programas siguen, pero no ven tus teclas ni tu ratón," y (NEGRO por 16 mas GRIS_OSCURO) por 256
     pon_frase_en_vista con 19 y 12 y "y lo que pintan no sale hasta que vuelvas." y (NEGRO por 16 mas GRIS_OSCURO) por 256
+fin
+
+funcion pinta_invitado
+    si no invitado
+        devuelve nada
+    fin
+    pon_texto_en_vista con 1 y 50 y " invitado " y (MAGENTA_CLARO por 16 mas NEGRO) por 256
 fin
 
 funcion pinta_aviso_disco
@@ -1257,7 +1298,11 @@ funcion pinta_aviso_disco
     pon_en_vista con 1 y 25 y marca mas 32
     nombre es nombre_de con disco_lo_usa
     pon_texto_en_vista con 1 y 26 y nombre y marca
-    si disco_guardaba
+    si disco_guardaba y invitado
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " guarda en memoria " y marca
+    si no si invitado
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " lee de la memoria " y marca
+    si no si disco_guardaba
         pon_texto_en_vista con 1 y 26 mas largo de nombre y " escribe en el disco " y marca
     si no
         pon_texto_en_vista con 1 y 26 mas largo de nombre y " lee del disco " y marca
@@ -1949,6 +1994,9 @@ funcion encarga con pedido y desde y cuantos
     si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que TOPE_GUARDADO o desde mas cuantos es mayor que PAGINA
         devuelve RECHAZADA
     fin
+    si pedido es GUARDA y cuantos es mayor que TOPE_CIFRABLE
+        devuelve RECHAZADA
+    fin
     elemento t de pedido_de es pedido
     elemento t de desde_de es desde
     elemento t de cuantos_de es cuantos
@@ -2488,6 +2536,8 @@ funcion ejecuta
         orden_bloquea
     si no si es_orden con "sin cerrojo"
         quita_cerrojo
+    si no si es_orden con "invitado"
+        orden_invitado
     si no
         no_conozco
     fin
@@ -2522,6 +2572,7 @@ funcion ayuda
     pinta_linea con "  cerrojo        pon o cambia la contraseña de la pantalla"
     pinta_linea con "  bloquea        bloquea ya. Solo, a los 5 minutos sin tocarme"
     pinta_linea con "  sin cerrojo    quita la contraseña"
+    pinta_linea con "  invitado       nada se escribe en el disco hasta que reinicies"
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
@@ -2781,6 +2832,9 @@ funcion protegido con frase y si_esta
 fin
 
 funcion reinicia
+    desactiva_interrupciones
+    vacia_memoria_invitado
+    olvida_llave
     pon_en_puerto con 100 y 254
     congela
 fin
@@ -3589,6 +3643,9 @@ fin
 
 funcion pide_al_disco con peticion
     comparte peticion_abierta y disco_listo y esperando
+    si invitado y (peticion es ORDEN_GUARDA o peticion es ORDEN_OLVIDA)
+        devuelve EN_INVITADO
+    fin
     recoge_tareas con falso
     desactiva_interrupciones
     disco_listo es falso
@@ -3623,6 +3680,8 @@ funcion fallo_de_disco con motivo
         pinta_linea con "  El índice del disco está lleno."
     si no si motivo es PROHIBIDO
         pinta_linea con "  Ese nombre no vale."
+    si no si motivo es EN_INVITADO
+        pinta_linea con "  En modo invitado no escribo nada en el disco."
     si no
         pinta_linea con "  El programa del disco ha caído antes de contestar."
     fin
@@ -3680,22 +3739,355 @@ funcion haz_encargo con t
     si largo de nombre mas 4 es mayor que NOMBRE_EN_DISCO
         devuelve NO_ESTA
     fin
-    si (elemento t de pedido_de) es LEE_GUARDADO
-        traido es pide_archivo con nombre y ".dat" y 0
-        si traido es mayor que cuantos
-            traido es cuantos
+    lee es (elemento t de pedido_de) es LEE_GUARDADO
+    si invitado y lee
+        devuelve lee_de_memoria con nombre y suya y cuantos
+    si no si invitado
+        devuelve guarda_en_memoria con nombre y suya y cuantos
+    si no si lee
+        devuelve lee_cifrado con nombre y suya y cuantos
+    fin
+    devuelve guarda_cifrado con nombre y suya y cuantos
+fin
+
+funcion nueva_llave
+    comparte hay_llave
+    saca_sal con llave y 1
+    saca_sal con llave y 17
+    hay_llave es verdadero
+fin
+
+funcion olvida_llave
+    comparte hay_llave
+    para cada i desde 1 hasta 32
+        elemento i de llave es 0
+    fin
+    hay_llave es falso
+fin
+
+funcion olvida_claves_programa
+    para cada i desde 1 hasta 64
+        elemento i de claves_programa es 0
+    fin
+    para cada i desde 1 hasta 32
+        elemento i de firma_vista es 0
+    fin
+fin
+
+funcion borra_claro con cuantos
+    claro es region con claro_en y PAGINA
+    i es 1
+    mientras i es menor o igual que cuantos
+        elemento i de claro es 0
+        i es i mas 1
+    fin
+fin
+
+funcion deriva_claves_de con nombre
+    mensaje es region con llave_en mas 192 y 64
+    i es 0
+    para cada b en PARA_DERIVAR
+        i es i mas 1
+        elemento i de mensaje es b
+    fin
+    para cada b en nombre
+        i es i mas 1
+        elemento i de mensaje es b
+    fin
+    blake2b con taller_llave y mensaje y i y llave y claves_programa y 64
+    para cada j desde 1 hasta 64
+        elemento j de mensaje es 0
+    fin
+fin
+
+funcion guarda_llave
+    buzon es nombre_al_buzon con "llave" y ".sis"
+    elemento 41 de buzon es 0
+    elemento 42 de buzon es TOPE_LLAVE
+    i es 513
+    para cada letra en MARCA_LLAVE
+        elemento i de buzon es letra
+        i es i mas 1
+    fin
+    copia_region con buzon y 517 y llave y 1 y 32
+    respuesta es pide_al_disco con ORDEN_GUARDA
+    para cada j desde 513 hasta 512 mas TOPE_LLAVE
+        elemento j de buzon es 0
+    fin
+    al_serie con "llave.sis guardado: "
+    escribe respuesta
+    devuelve respuesta
+fin
+
+funcion lee_llave
+    comparte hay_llave
+    si hay_cerrojo
+        devuelve nada
+    fin
+    traido es pide_archivo con "llave" y ".sis" y 0
+    si traido es NO_ESTA
+        devuelve nada
+    fin
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    bien es traido es TOPE_LLAVE
+    i es 1
+    para cada letra en MARCA_LLAVE
+        si bien y (elemento i de buzon) no es igual a letra
+            bien es falso
         fin
-        si traido es mayor que 0
-            buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
-            copia_region con suya y 1 y buzon y 1 y traido
+        i es i mas 1
+    fin
+    al_serie con "llave.sis leido: "
+    escribe traido
+    si no bien
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No entiendo llave.sis. Lo que guardaron los programas antes no"
+        pinta_linea con "  se podrá abrir, y lo nuevo irá con una llave nueva."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    copia_region con llave y 1 y buzon y 5 y 32
+    para cada j desde 1 hasta TOPE_LLAVE
+        elemento j de buzon es 0
+    fin
+    hay_llave es verdadero
+fin
+
+funcion guarda_cifrado con nombre y suya y cuantos
+    si no hay_llave
+        si hay_cerrojo
+            devuelve SIN_LLAVE
         fin
+        nueva_llave
+        hecho es guarda_llave
+        si hecho es menor que 0
+            olvida_llave
+            devuelve hecho
+        fin
+    fin
+    claro es region con claro_en y PAGINA
+    total es cuantos mas SOBRE_GUARDADO
+    i es 1
+    para cada letra en MARCA_GUARDADO
+        elemento i de claro es letra
+        i es i mas 1
+    fin
+    saca_sal con claro y 5
+    copia_region con claro y 17 y suya y 1 y cuantos
+    deriva_claves_de con nombre
+    chacha20 con taller_chacha y claves_programa y (region con claro_en mas 4 y 12) y claro y 17 y cuantos
+    blake2b con taller_llave y claro y 16 mas cuantos y (region con llave_en mas 96 y 32) y (region con claro_en mas 16 mas cuantos y 32) y 32
+    olvida_claves_programa
+    buzon es nombre_al_buzon con nombre y ".dat"
+    elemento 41 de buzon es cociente con total y 256
+    elemento 42 de buzon es total resto 256
+    copia_region con buzon y 513 y claro y 1 y total
+    borra_claro con total
+    hecho es pide_al_disco con ORDEN_GUARDA
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    devuelve cuantos
+fin
+
+funcion es_de_los_nuestros con buzon y traido
+    si traido es menor que SOBRE_GUARDADO o traido es mayor que TOPE_CIFRABLE mas SOBRE_GUARDADO
+        devuelve falso
+    fin
+    i es 1
+    para cada letra en MARCA_GUARDADO
+        si (elemento i de buzon) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion lee_cifrado con nombre y suya y cuantos
+    traido es pide_archivo con nombre y ".dat" y 0
+    si traido es menor que 0
         devuelve traido
     fin
-    buzon es nombre_al_buzon con nombre y ".dat"
-    elemento 41 de buzon es cociente con cuantos y 256
-    elemento 42 de buzon es cuantos resto 256
-    copia_region con buzon y 513 y suya y 1 y cuantos
-    devuelve pide_al_disco con ORDEN_GUARDA
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    si no (es_de_los_nuestros con buzon y traido)
+        devuelve SIN_CIFRAR
+    fin
+    si no hay_llave
+        devuelve SIN_LLAVE
+    fin
+    claro es region con claro_en y PAGINA
+    copia_region con claro y 1 y buzon y 1 y traido
+    largo es traido menos SOBRE_GUARDADO
+    deriva_claves_de con nombre
+    blake2b con taller_llave y claro y 16 mas largo y (region con llave_en mas 96 y 32) y firma_vista y 32
+    distinto es 0
+    para cada i desde 1 hasta 32
+        distinto es distinto mas o_exclusivo con (elemento i de firma_vista) y (elemento 16 mas largo mas i de claro)
+    fin
+    si distinto no es igual a 0
+        olvida_claves_programa
+        borra_claro con traido
+        devuelve TOCADO
+    fin
+    chacha20 con taller_chacha y claves_programa y (region con claro_en mas 4 y 12) y claro y 17 y largo
+    olvida_claves_programa
+    dados es largo
+    si dados es mayor que cuantos
+        dados es cuantos
+    fin
+    copia_region con suya y 1 y claro y 17 y dados
+    borra_claro con traido
+    devuelve dados
+fin
+
+funcion hueco_de con nombre y crea
+    cuantas es largo de nombre
+    para cada k desde 1 hasta HUECOS
+        si (elemento k de huecos_nombre_mide) es cuantas
+            mismo es verdadero
+            para cada i desde 1 hasta cuantas
+                si (elemento (k menos 1) por 32 mas i de huecos_nombres) no es igual a (elemento i de nombre)
+                    mismo es falso
+                fin
+            fin
+            si mismo
+                devuelve k
+            fin
+        fin
+    fin
+    si no crea
+        devuelve 0
+    fin
+    para cada k desde 1 hasta HUECOS
+        si (elemento k de huecos_nombre_mide) es 0
+            para cada i desde 1 hasta cuantas
+                elemento (k menos 1) por 32 mas i de huecos_nombres es elemento i de nombre
+            fin
+            elemento k de huecos_nombre_mide es cuantas
+            devuelve k
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion guarda_en_memoria con nombre y suya y cuantos
+    k es hueco_de con nombre y verdadero
+    si k es 0
+        devuelve LLENO
+    fin
+    hueco es region con huecos_datos_en mas (k menos 1) por TOPE_CIFRABLE y TOPE_CIFRABLE
+    para cada i desde 1 hasta TOPE_CIFRABLE
+        elemento i de hueco es 0
+    fin
+    copia_region con hueco y 1 y suya y 1 y cuantos
+    elemento k de huecos_mide es cuantos
+    devuelve cuantos
+fin
+
+funcion lee_de_memoria con nombre y suya y cuantos
+    k es hueco_de con nombre y falso
+    si k es 0
+        devuelve NO_ESTA
+    fin
+    dados es elemento k de huecos_mide
+    si dados es mayor que cuantos
+        dados es cuantos
+    fin
+    copia_region con suya y 1 y (region con huecos_datos_en mas (k menos 1) por TOPE_CIFRABLE y TOPE_CIFRABLE) y 1 y dados
+    devuelve dados
+fin
+
+funcion olvida_de_memoria con nombre
+    k es hueco_de con nombre y falso
+    si k es 0
+        devuelve NO_ESTA
+    fin
+    habia es elemento k de huecos_mide
+    hueco es region con huecos_datos_en mas (k menos 1) por TOPE_CIFRABLE y TOPE_CIFRABLE
+    para cada i desde 1 hasta TOPE_CIFRABLE
+        elemento i de hueco es 0
+    fin
+    para cada i desde 1 hasta 32
+        elemento (k menos 1) por 32 mas i de huecos_nombres es 0
+    fin
+    elemento k de huecos_mide es 0
+    elemento k de huecos_nombre_mide es 0
+    devuelve habia
+fin
+
+funcion vacia_memoria_invitado
+    indice es region con huecos_en y PAGINA
+    datos_aparte es region con huecos_datos_en y PAGINA
+    i es 1
+    mientras i es menor o igual que PAGINA
+        elemento i de indice es 0
+        elemento i de datos_aparte es 0
+        i es i mas 1
+    fin
+fin
+
+funcion entra_invitado
+    comparte invitado y bloqueado y modo_clave y mensaje_cerrojo y apuntados y guardadas y mirando y foco y agarrada
+    desactiva_interrupciones
+    para cada t desde 1 hasta MAX_TAREAS
+        estado es elemento t de estados_tarea
+        si estado no es igual a SIN_USAR y estado no es igual a CERRADA
+            cierra_tarea con t y LA_PARARON
+        fin
+        si (elemento t de ventana_de) no es igual a SIN_VENTANA
+            quita_ventana con t
+        fin
+    fin
+    olvida_llave
+    olvida_seleccion
+    vacia_portapapeles con AL_BLOQUEAR
+    invitado es verdadero
+    bloqueado es falso
+    modo_clave es SIN_CLAVE
+    mensaje_cerrojo es NADA_QUE_DECIR
+    foco es CONSOLA
+    agarrada es 0
+    para cada i desde 1 hasta 512
+        elemento i de apuntes es 0
+    fin
+    i es 1
+    mientras i es menor o igual que 4096
+        elemento i de apuntes_nombres es 0
+        i es i mas 1
+    fin
+    apuntados es 0
+    apunta con R_INVITADO y "FalOS" y BLANCO y 0
+    activa_interrupciones
+    recoge_tareas con falso
+    para cada i desde 1 hasta CUPO_HISTORIAL por 80
+        elemento i de historial es 0
+    fin
+    guardadas es 0
+    mirando es 1
+    limpia
+    barra
+    ve_a con 3 y 1
+    pon_color con MAGENTA_CLARO y NEGRO
+    pinta_linea con "  Modo invitado."
+    pon_color con GRIS y NEGRO
+    pinta_linea con "  No escribo nada en el disco: lo que guarden los programas vive en"
+    pinta_linea con "  memoria, y al reiniciar no queda nada. Lo de antes sigue cifrado,"
+    pinta_linea con "  y sin la contraseña no hay forma de abrirlo."
+    pinta_linea con "  Para volver a lo tuyo, reinicia."
+    pinta_linea con ""
+    escribe "modo invitado"
+    ensucia
+fin
+
+funcion orden_invitado
+    si invitado
+        pinta_linea con "  Ya estás en modo invitado."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    entra_invitado
 fin
 
 funcion atiende_encargos
@@ -3705,7 +4097,7 @@ funcion atiende_encargos
         si (elemento t de estados_tarea) es CON_EL_DISCO
             pedido es elemento t de pedido_de
             permiso es elemento t de permiso_disco
-            si pedido es GUARDA y permiso es DISCO_SIN_PEDIR y (esta_siempre con (nombre_de con t)) es mayor que 0
+            si pedido es GUARDA y permiso es DISCO_SIN_PEDIR y no invitado y (esta_siempre con (nombre_de con t)) es mayor que 0
                 elemento t de permiso_disco es DISCO_SI
                 permiso es DISCO_SI
             fin
@@ -3730,15 +4122,27 @@ funcion termina_encargo con t y hecho
         aviso_disco_hasta es tics mas 3 por TICS_POR_SEGUNDO
         ensucia
     fin
-    si (elemento t de pedido_de) es GUARDA
+    si (elemento t de pedido_de) es GUARDA y invitado
+        escribe " guardó en la memoria: " sin salto
+    si no si (elemento t de pedido_de) es GUARDA
         escribe " guardó en el disco: " sin salto
+    si no si invitado
+        escribe " leyó de la memoria: " sin salto
     si no
         escribe " leyó del disco: " sin salto
     fin
     escribe hecho
     desactiva_interrupciones
-    si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0
+    si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0 y invitado
+        apunta_de con R_GUARDO_MEMORIA y t y hecho
+    si no si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0
         apunta_de con R_GUARDO y t y hecho
+    si no si hecho es TOCADO
+        apunta_de con R_TOCADO y t y 0
+    si no si hecho es SIN_CIFRAR
+        apunta_de con R_SIN_CIFRAR y t y 0
+    si no si hecho es mayor o igual que 0 y invitado
+        apunta_de con R_LEYO_MEMORIA y t y hecho
     si no si (elemento t de pedido_de) es GUARDA y hecho es NEGADO
         apunta_de con R_NEGADO y t y 0
     si no si hecho es mayor o igual que 0
@@ -3765,9 +4169,13 @@ funcion pide_permiso_de con t
     pon_color con BLANCO y NEGRO
     pinta con " quiere guardar "
     pinta_numero con (elemento t de cuantos_de)
-    pinta con " bytes en el disco, en "
-    pinta con (nombre_de con t)
-    pinta_linea con ".dat."
+    si invitado
+        pinta_linea con " bytes, solo en memoria."
+    si no
+        pinta con " bytes en el disco, en "
+        pinta con (nombre_de con t)
+        pinta_linea con ".dat, cifrados."
+    fin
     pon_color con GRIS y NEGRO
     pinta con "  Si le dejas: deja "
     pinta_numero con t
@@ -3784,8 +4192,9 @@ funcion pide_permiso_de con t
     redibuja
 fin
 
-funcion decide_guardar con primera y permiso y para_siempre
+funcion decide_guardar con primera y permiso y pide_siempre
     comparte hay_encargos
+    para_siempre es pide_siempre y no invitado
     t es numero_entre con primera y escritas
     bien es t es mayor o igual que 1 y t es menor o igual que MAX_TAREAS
     si bien
@@ -3841,7 +4250,15 @@ funcion decide_guardar con primera y permiso y para_siempre
     si no si permiso es DISCO_SI
         pon_color con VERDE_CLARO y NEGRO
         pinta con nombre
-        pinta_linea con " puede guardar en su archivo hasta que se cierre."
+        si invitado
+            pinta_linea con " puede guardar en memoria hasta que se cierre."
+        si no
+            pinta_linea con " puede guardar en su archivo hasta que se cierre."
+        fin
+        si pide_siempre y invitado
+            pon_color con GRIS y NEGRO
+            pinta_linea con "  En modo invitado no apunto nada para siempre."
+        fin
     si no
         pon_color con ROJO_CLARO y NEGRO
         pinta con nombre
@@ -3859,7 +4276,11 @@ fin
 funcion olvida
     nombre es trozo_de_orden con 8
     nombre_al_buzon con nombre y ".dat"
-    respuesta es pide_al_disco con ORDEN_OLVIDA
+    si invitado
+        respuesta es olvida_de_memoria con nombre
+    si no
+        respuesta es pide_al_disco con ORDEN_OLVIDA
+    fin
     si respuesta es NO_ESTA
         pinta con "  "
         pinta con nombre
@@ -3967,7 +4388,7 @@ funcion es_tuya con clase
     si clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
         devuelve verdadero
     fin
-    si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE
+    si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE o clase es R_INVITADO
         devuelve verdadero
     fin
     devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
@@ -4091,6 +4512,20 @@ funcion pinta_apunte con k
         pinta con "borró el portapapeles al bloquear"
     si no si clase es R_SE_BORRO
         pinta con "borró el portapapeles: pasaron 30 s"
+    si no si clase es R_INVITADO
+        pinta con "entraste como invitado: nada se escribe en el disco"
+    si no si clase es R_TOCADO
+        pinta_de con "pidió su archivo; estaba tocado y no se lo di" y ROJO_CLARO
+    si no si clase es R_SIN_CIFRAR
+        pinta_de con "pidió su archivo; no iba cifrado y no se lo di" y ROJO_CLARO
+    si no si clase es R_GUARDO_MEMORIA
+        pinta con "guardó "
+        pinta_cuantos con n
+        pinta con " bytes, solo en memoria"
+    si no si clase es R_LEYO_MEMORIA
+        pinta con "leyó "
+        pinta_cuantos con n
+        pinta con " bytes de la memoria"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -4278,6 +4713,8 @@ funcion olvida_lo_escrito
     para cada i desde 1 hasta 32
         elemento i de clave_escrita es 0
         elemento i de clave_primera es 0
+    fin
+    para cada i desde 1 hasta 64
         elemento i de comprobada es 0
     fin
     clave_mide es 0
@@ -4286,7 +4723,7 @@ fin
 
 funcion bloquea_ya con por_que
     comparte bloqueado y foco y agarrada y modo_clave y mensaje_cerrojo y malas y cortado
-    si bloqueado o no hay_cerrojo
+    si bloqueado o no hay_cerrojo o invitado
         devuelve nada
     fin
     si modo_clave es CLAVE_NUEVA o modo_clave es CLAVE_REPITE
@@ -4342,6 +4779,11 @@ fin
 
 funcion pon_cerrojo
     comparte modo_clave
+    si invitado
+        pinta_linea con "  En modo invitado no se toca la contraseña."
+        pinta_linea con ""
+        devuelve nada
+    fin
     si memoria_cerrojo es 0
         pinta_linea con "  No me quedan 2 MB seguidos para Argon2id, así que no puedo."
         pinta_linea con ""
@@ -4355,6 +4797,11 @@ funcion pon_cerrojo
 fin
 
 funcion orden_bloquea
+    si invitado
+        pinta_linea con "  En modo invitado no hay nada tuyo que bloquear."
+        pinta_linea con ""
+        devuelve nada
+    fin
     si no hay_cerrojo
         pinta_linea con "  Primero ponle contraseña: cerrojo."
         pinta_linea con ""
@@ -4367,10 +4814,23 @@ fin
 
 funcion quita_cerrojo
     comparte hay_cerrojo
+    si invitado
+        pinta_linea con "  En modo invitado no se toca la contraseña."
+        pinta_linea con ""
+        devuelve nada
+    fin
     si no hay_cerrojo
         pinta_linea con "  La pantalla no tiene contraseña."
         pinta_linea con ""
         devuelve nada
+    fin
+    si hay_llave
+        hecho es guarda_llave
+        si hecho es menor que 0
+            fallo_de_disco con hecho
+            pinta_linea con "  No he podido dejar la llave en el disco, así que la dejo puesta."
+            devuelve nada
+        fin
     fin
     nombre_al_buzon con "cerrojo" y ".sis"
     respuesta es pide_al_disco con ORDEN_OLVIDA
@@ -4388,6 +4848,12 @@ funcion quita_cerrojo
     apunta con R_SIN_CERROJO y "FalOS" y BLANCO y 0
     activa_interrupciones
     pinta_linea con "  Quitada, y su huella borrada del disco con ceros."
+    si hay_llave
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  Lo guardado sigue cifrado, pero la llave queda en el disco sin"
+        pinta_linea con "  contraseña: quien se lleve el disco lo puede abrir."
+        pon_color con GRIS y NEGRO
+    fin
     pinta_linea con ""
 fin
 
@@ -4400,7 +4866,14 @@ funcion guarda_cerrojo
         i es i mas 1
     fin
     saca_sal con fichero y 5
-    huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 32)
+    huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 64)
+    estrenada es no hay_llave
+    si estrenada
+        nueva_llave
+    fin
+    para cada i desde 1 hasta 32
+        elemento 52 mas i de fichero es o_exclusivo con (elemento 52 mas i de fichero) y (elemento i de llave)
+    fin
     buzon es nombre_al_buzon con "cerrojo" y ".sis"
     elemento 41 de buzon es 0
     elemento 42 de buzon es TOPE_CERROJO
@@ -4408,32 +4881,64 @@ funcion guarda_cerrojo
     respuesta es pide_al_disco con ORDEN_GUARDA
     al_serie con "cerrojo.sis guardado: "
     escribe respuesta
+    para cada i desde 1 hasta TOPE_CERROJO
+        elemento 512 mas i de buzon es 0
+    fin
     si respuesta es menor que 0
+        si estrenada
+            olvida_llave
+        fin
+        para cada i desde 1 hasta TOPE_CERROJO
+            elemento i de fichero es 0
+        fin
         fallo_de_disco con respuesta
         pinta_linea con "  No la he guardado, así que todo sigue como estaba."
         devuelve nada
     fin
     copia_region con cerrojo y 1 y fichero y 1 y TOPE_CERROJO
+    para cada i desde 1 hasta TOPE_CERROJO
+        elemento i de fichero es 0
+    fin
     hay_cerrojo es verdadero
+    nombre_al_buzon con "llave" y ".sis"
+    sobra es pide_al_disco con ORDEN_OLVIDA
+    si sobra no es igual a NO_ESTA
+        al_serie con "llave.sis olvidado: "
+        escribe sobra
+    fin
     desactiva_interrupciones
     apunta con R_CERROJO y "FalOS" y BLANCO y 0
     activa_interrupciones
     pon_color con VERDE_CLARO y NEGRO
-    pinta_linea con "  Hecho. Para entrar hará falta, también al arrancar."
+    pinta_linea con "  Hecho. Para entrar hará falta, también al arrancar. Y la llave"
+    pinta_linea con "  que cifra lo que guardan los programas solo se abre con ella."
     pon_color con GRIS y NEGRO
     pinta_linea con "  Escribe bloquea para bloquear ya. Y me bloqueo solo si pasan"
     pinta_linea con "  5 minutos sin que toques el teclado ni el ratón."
 fin
 
 funcion abre_cerrojo
-    comparte bloqueado y modo_clave y mensaje_cerrojo y malas y cortado y ultima_actividad
+    comparte bloqueado y modo_clave y mensaje_cerrojo y malas y cortado y ultima_actividad y hay_llave
     si clave_mide es 0
+        entra_invitado
+        indicador
         devuelve nada
     fin
     mensaje_cerrojo es COMPROBANDO
     ensucia
-    huella_de con (region con cerrojo_en mas 4 y 16) y comprobada
+    nueva es (elemento 4 de cerrojo) es 50
+    si nueva
+        huella_de con (region con cerrojo_en mas 4 y 16) y comprobada
+    si no
+        huella_de con (region con cerrojo_en mas 4 y 16) y (region con clave_en mas 128 y 32)
+    fin
     buena es es_la_buena
+    si buena y nueva
+        para cada i desde 1 hasta 32
+            elemento i de llave es o_exclusivo con (elemento 52 mas i de cerrojo) y (elemento 32 mas i de comprobada)
+        fin
+        hay_llave es verdadero
+    fin
     olvida_lo_escrito
     si no buena
         malas es malas mas 1
@@ -4560,10 +5065,11 @@ funcion lee_cerrojo
         devuelve nada
     fin
     buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
-    bien es traido es TOPE_CERROJO
+    version es elemento 4 de buzon
+    bien es (traido es TOPE_CERROJO y version es 50) o (traido es VIEJO_CERROJO y version es 49)
     i es 1
     para cada letra en MARCA_CERROJO
-        si bien y (elemento i de buzon) no es igual a letra
+        si bien y i es menor que 4 y (elemento i de buzon) no es igual a letra
             bien es falso
         fin
         i es i mas 1
@@ -4578,8 +5084,15 @@ funcion lee_cerrojo
         pinta_linea con ""
         devuelve nada
     fin
-    copia_region con cerrojo y 1 y buzon y 1 y TOPE_CERROJO
+    copia_region con cerrojo y 1 y buzon y 1 y traido
     hay_cerrojo es verdadero
+    si version es 49
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  Tu contraseña es de antes del día 14. Al entrar, vuelve a ponerla"
+        pinta_linea con "  con cerrojo: hasta entonces los programas no pueden guardar nada."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+    fin
     desactiva_interrupciones
     bloquea_ya con AL_ARRANCAR
     activa_interrupciones
@@ -4594,7 +5107,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 13"
+    pinta con "día 14"
     pon_color con GRIS y NEGRO
 fin
 
@@ -4628,7 +5141,8 @@ funcion portada
     pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
     pinta_linea con "  Y registro te dice qué programa ha tocado tus cosas, y cuándo."
     pinta_linea con "  Con cerrojo, la pantalla pide contraseña para entrar."
-    pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa."
+    pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa, y lo que"
+    pinta_linea con "  guardan va cifrado, cada uno con su clave."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -4651,6 +5165,7 @@ mira_el_reloj
 prepara_interrupciones
 lee_siempre
 lee_cerrojo
+lee_llave
 indicador
 escribe "pantalla lista"
 

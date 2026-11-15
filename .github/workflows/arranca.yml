@@ -464,12 +464,56 @@ jobs:
           grep -q "veces guardó en el disco: 2" veces1.txt
           grep -q "veces leyó del disco: 2" veces2.txt
           grep -q "veces guardó en el disco: -10" veces3.txt
+          cat > guardado.py <<'FIN'
+          import hashlib, struct
+
+          def gira(x, n):
+              return ((x << n) | (x >> (32 - n))) & 0xffffffff
+
+          def cuarto(s, a, b, c, d):
+              s[a] = (s[a] + s[b]) & 0xffffffff; s[d] = gira(s[d] ^ s[a], 16)
+              s[c] = (s[c] + s[d]) & 0xffffffff; s[b] = gira(s[b] ^ s[c], 12)
+              s[a] = (s[a] + s[b]) & 0xffffffff; s[d] = gira(s[d] ^ s[a], 8)
+              s[c] = (s[c] + s[d]) & 0xffffffff; s[b] = gira(s[b] ^ s[c], 7)
+
+          def bloque(clave, contador, nonce):
+              estado = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574] + list(struct.unpack("<8I", clave)) + [contador] + list(struct.unpack("<3I", nonce))
+              s = list(estado)
+              for _ in range(10):
+                  cuarto(s, 0, 4, 8, 12); cuarto(s, 1, 5, 9, 13); cuarto(s, 2, 6, 10, 14); cuarto(s, 3, 7, 11, 15)
+                  cuarto(s, 0, 5, 10, 15); cuarto(s, 1, 6, 11, 12); cuarto(s, 2, 7, 8, 13); cuarto(s, 3, 4, 9, 14)
+              return struct.pack("<16I", *[(s[i] + estado[i]) & 0xffffffff for i in range(16)])
+
+          def indice(imagen):
+              lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
+              return {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
+
+          def archivo(imagen, nombre):
+              sector, medida = indice(imagen)[nombre]
+              return imagen[sector * 512:sector * 512 + medida]
+
+          def llave_de(imagen):
+              sis = archivo(imagen, b"llave.sis")
+              assert sis[:4] == b"LLA1" and len(sis) == 36
+              return sis[4:]
+
+          def descifra(cifrado, llave, programa):
+              assert cifrado[:4] == b"FAL1" and len(cifrado) >= 48
+              claves = hashlib.blake2b(b"guardado:" + programa, key=llave, digest_size=64).digest()
+              if hashlib.blake2b(cifrado[:-32], key=claves[32:], digest_size=32).digest() != cifrado[-32:]:
+                  return None
+              flujo = b"".join(bloque(claves[:32], c, cifrado[4:16]) for c in range(1, 9))
+              return bytes(a ^ b for a, b in zip(cifrado[16:-32], flujo))
+
+          def abre(imagen, programa, llave=None):
+              return descifra(archivo(imagen, programa + b".dat"), llave or llave_de(imagen), programa)
+          FIN
           python3 - <<'FIN'
+          import guardado
           imagen = open("disco.img", "rb").read()
           lineas = imagen[:1024].split(b"\n\n")[0].split(b"\n")[1:]
           sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
-          sector, medida = sitio[b"veces.dat"]
-          assert imagen[sector * 512:sector * 512 + medida] == b"2\n"
+          assert guardado.abre(imagen, b"veces") == b"2\n"
           sector, medida = sitio[b"veces.prg"]
           programa = imagen[sector * 512:sector * 512 + medida]
           open("veces.prg", "wb").write(programa)
@@ -496,11 +540,13 @@ jobs:
             lanza_veces $disco.img $disco.txt "deja 1"
           done
           grep -q "veces guardó en el disco: 2" pisa.txt
+          grep -q "veces leyó del disco: -14" pisa.txt
           grep -q "veces guardó en el disco: -5" roto.txt
           grep -q "veces guardó en el disco: -7" lleno.txt
           cmp roto.img roto.img.antes
           cmp lleno.img lleno.img.antes
           python3 - <<'FIN'
+          import guardado
           imagen = open("pisa.img", "rb").read()
           programa = open("veces.prg", "rb").read()
           assert imagen[1024:1024 + len(programa)] == programa
@@ -508,11 +554,11 @@ jobs:
           sitio = {l.split()[0]: (int(l.split()[1]), int(l.split()[2])) for l in lineas}
           sector, medida = sitio[b"veces.dat"]
           assert sector != 2
-          assert imagen[sector * 512:sector * 512 + medida] == b"1\n"
+          assert guardado.abre(imagen, b"veces") == b"1\n"
           FIN
           cp disco.img olvido.img
           lanza_veces olvido.img olvido.txt "olvida veces"
-          grep -q "veces olvidado: 2" olvido.txt
+          grep -q "veces olvidado: 50" olvido.txt
           python3 - <<'FIN'
           antes = open("disco.img", "rb").read()
           despues = open("olvido.img", "rb").read()
@@ -574,7 +620,7 @@ jobs:
           grep -q "notas guardó en el disco: 95" notas2.txt
           cp notas.img tocada.img
           /tmp/argon/bin/python - <<'FIN'
-          import hashlib, struct
+          import hashlib, struct, guardado
           from argon2.low_level import hash_secret_raw, Type
 
           def gira(x, n):
@@ -619,7 +665,7 @@ jobs:
 
           imagen = open("notas.img", "rb").read()
           desde, medida = sitio_de(imagen, b"notas.dat")
-          archivo = imagen[desde:desde + medida]
+          archivo = guardado.abre(imagen, b"notas")
           assert abre(archivo, b"gato") == b"kiwi azul\notra\n", abre(archivo, b"gato")
           assert abre(archivo, b"perro") is None
           assert b"kiwi" not in imagen and b"azul" not in imagen and b"gato" not in imagen
@@ -628,7 +674,7 @@ jobs:
           open("tocada.img", "wb").write(tocada)
           FIN
           abre_notas tocada.img notas3.txt "gato" "no"
-          grep -q "notas leyó del disco: 95" notas3.txt
+          grep -q "notas leyó del disco: -13" notas3.txt
           if grep -q "notas pide permiso\|notas guardó" notas3.txt; then
             echo "Ha abierto una nota que alguien habia tocado"
             exit 1
@@ -722,9 +768,7 @@ jobs:
             salida=$2
             shift 2
             {
-              sleep 4
-              echo "sendkey ret"
-              sleep 1
+              sleep 5
               for orden in "$@"; do
                 case "$orden" in
                   espera) sleep 20 ;;
@@ -744,10 +788,11 @@ jobs:
           }
           cp disco.img cerrojo.img
           arranca cerrojo.img cerrojo1.txt "cerrojo" "gato" "gato" espera "bloquea" "registro" espera
-          grep -q "cerrojo.sis guardado: 52" cerrojo1.txt
+          grep -q "cerrojo.sis guardado: 84" cerrojo1.txt
+          grep -q "llave.sis olvidado: 36" cerrojo1.txt
           cp cerrojo.img recien.img
           arranca cerrojo.img cerrojo2.txt "lanza veces" espera "gato" espera "registro" "lanza veces"
-          grep -q "cerrojo.sis leido: 52" cerrojo2.txt
+          grep -q "cerrojo.sis leido: 84" cerrojo2.txt
           grep -q "FalOS apunte 19 0" cerrojo2.txt
           grep -q "FalOS apunte 18 0" cerrojo2.txt
           test "$(grep -c "veces pide permiso para guardar" cerrojo2.txt)" = 1
@@ -763,7 +808,8 @@ jobs:
             exit 1
           fi
           arranca cerrojo.img cerrojo4.txt "gato" espera "sin cerrojo"
-          grep -q "cerrojo.sis olvidado: 52" cerrojo4.txt
+          grep -q "llave.sis guardado: 36" cerrojo4.txt
+          grep -q "cerrojo.sis olvidado: 84" cerrojo4.txt
           arranca cerrojo.img cerrojo5.txt "registro"
           if grep -q "cerrojo.sis leido" cerrojo5.txt; then
             echo "Sigue pidiendo contraseña despues de quitarla"
@@ -780,10 +826,10 @@ jobs:
           imagen, sitio = indice("recien.img")
           sector, medida = sitio[b"cerrojo.sis"]
           cerrojo = imagen[sector * 512:sector * 512 + medida]
-          assert cerrojo[:4] == b"CER1" and len(cerrojo) == 52
+          assert cerrojo[:4] == b"CER2" and len(cerrojo) == 84
           huella = hash_secret_raw(b"gato", cerrojo[4:20], time_cost=3, memory_cost=2040,
-                                   parallelism=1, hash_len=32, type=Type.ID)
-          assert huella == cerrojo[20:], (huella.hex(), cerrojo[20:].hex())
+                                   parallelism=1, hash_len=64, type=Type.ID)
+          assert huella[:32] == cerrojo[20:52], (huella.hex(), cerrojo[20:52].hex())
           assert b"gato" not in imagen
           despues, sitio_despues = indice("cerrojo.img")
           assert b"cerrojo.sis" not in sitio_despues
@@ -922,3 +968,122 @@ jobs:
             echo "Se ha pegado algo con la pantalla bloqueada o despues"
             exit 1
           fi
+
+      - name: Lo que guardan los programas va cifrado, y el invitado no deja rastro
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          arranca() {
+            imagen=$1
+            salida=$2
+            shift 2
+            {
+              sleep 5
+              for orden in "$@"; do
+                case "$orden" in
+                  espera) sleep 20 ;;
+                  intro) echo "sendkey ret"; sleep 2 ;;
+                  *) teclea "$orden"; sleep 3 ;;
+                esac
+              done
+              echo quit
+            } | timeout 300 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
+              -drive file=$imagen,format=raw,if=ide \
+              -serial file:$salida -monitor stdio -no-reboot > /dev/null
+            cat $salida
+            if grep -q "  X  " $salida; then
+              echo "Cifrar lo guardado ha tumbado a FalOS"
+              exit 1
+            fi
+          }
+          fal haz_disco.fal > /dev/null
+          cp disco.img cifra.img
+          arranca cifra.img cifra1.txt "lanza veces" "deja 1"
+          arranca cifra.img cifra2.txt "lanza veces" "deja 1"
+          grep -q "llave.sis guardado: 36" cifra1.txt
+          grep -q "veces guardó en el disco: 2" cifra1.txt
+          grep -q "llave.sis leido: 36" cifra2.txt
+          grep -q "veces leyó del disco: 2" cifra2.txt
+          python3 - <<'FIN'
+          import guardado
+          imagen = open("cifra.img", "rb").read()
+          llave = guardado.llave_de(imagen)
+          cifrado = guardado.archivo(imagen, b"veces.dat")
+          assert len(cifrado) == 2 + 48
+          assert guardado.abre(imagen, b"veces") == b"2\n"
+          assert guardado.descifra(cifrado, llave, b"serpiente") is None
+          sector = guardado.indice(imagen)[b"veces.dat"][0]
+          tocada = bytearray(imagen)
+          tocada[sector * 512 + 20] ^= 1
+          open("tocada14.img", "wb").write(tocada)
+          medida = guardado.indice(imagen)[b"veces.dat"][1]
+          indice = imagen[:1024].replace(b"veces.dat %d %d\n" % (sector, medida), b"veces.dat %d 2\n" % sector)
+          claro = bytearray(indice.ljust(1024, b" ")[:1024] + imagen[1024:])
+          claro[sector * 512:sector * 512 + 2] = b"7\n"
+          open("claro14.img", "wb").write(claro)
+          FIN
+          arranca tocada14.img tocada14.txt "lanza veces" "registro"
+          grep -q "veces leyó del disco: -13" tocada14.txt
+          grep -q "veces apunte 26 0" tocada14.txt
+          arranca claro14.img claro14.txt "lanza veces" "registro"
+          grep -q "veces leyó del disco: -14" claro14.txt
+          grep -q "veces apunte 27 0" claro14.txt
+          cp cifra.img invitado.img
+          arranca invitado.img invitado1.txt "invitado" "lanza veces" "deja siempre 1" "para 1" "lanza veces" "deja 1" "para 1" "olvida veces" "cerrojo" "registro"
+          cmp invitado.img cifra.img
+          grep -q "modo invitado" invitado1.txt
+          grep -q "FalOS apunte 25 0" invitado1.txt
+          grep -q "veces leyó de la memoria: -3" invitado1.txt
+          grep -q "veces guardó en la memoria: 2" invitado1.txt
+          grep -q "veces leyó de la memoria: 2" invitado1.txt
+          grep -q "veces olvidado: 2" invitado1.txt
+          if grep -q "en el disco\|guardado: \|olvidado: 50" invitado1.txt; then
+            echo "El invitado ha escrito en el disco"
+            exit 1
+          fi
+          cp cifra.img llave.img
+          arranca llave.img llave1.txt "cerrojo" "gato" "gato" espera "lanza veces" "deja 1"
+          grep -q "cerrojo.sis guardado: 84" llave1.txt
+          grep -q "llave.sis olvidado: 36" llave1.txt
+          grep -q "veces guardó en el disco: 2" llave1.txt
+          /tmp/argon/bin/python - <<'FIN'
+          import guardado
+          from argon2.low_level import hash_secret_raw, Type
+          antes = open("cifra.img", "rb").read()
+          imagen = open("llave.img", "rb").read()
+          assert b"llave.sis" not in guardado.indice(imagen)
+          sector = guardado.indice(antes)[b"llave.sis"][0]
+          assert imagen[sector * 512:(sector + 1) * 512] == bytes(512)
+          cerrojo = guardado.archivo(imagen, b"cerrojo.sis")
+          assert cerrojo[:4] == b"CER2" and len(cerrojo) == 84
+          salida = hash_secret_raw(b"gato", cerrojo[4:20], time_cost=3, memory_cost=2040,
+                                   parallelism=1, hash_len=64, type=Type.ID)
+          assert salida[:32] == cerrojo[20:52]
+          llave = bytes(a ^ b for a, b in zip(cerrojo[52:], salida[32:]))
+          assert llave == guardado.llave_de(antes)
+          assert guardado.abre(imagen, b"veces", llave) == b"3\n"
+          assert llave not in imagen and b"gato" not in imagen
+          FIN
+          cp llave.img bloqueado.img
+          arranca bloqueado.img bloqueado.txt intro "lanza veces" "deja 1" "sin cerrojo" "registro"
+          cmp bloqueado.img llave.img
+          grep -q "modo invitado" bloqueado.txt
+          grep -q "veces leyó de la memoria: -3" bloqueado.txt
+          arranca llave.img llave2.txt "gato" espera "lanza veces" "deja 1"
+          grep -q "veces leyó del disco: 2" llave2.txt
+          grep -q "veces guardó en el disco: 2" llave2.txt
+          /tmp/argon/bin/python - <<'FIN'
+          import guardado
+          from argon2.low_level import hash_secret_raw, Type
+          imagen = open("llave.img", "rb").read()
+          cerrojo = guardado.archivo(imagen, b"cerrojo.sis")
+          salida = hash_secret_raw(b"gato", cerrojo[4:20], time_cost=3, memory_cost=2040,
+                                   parallelism=1, hash_len=64, type=Type.ID)
+          llave = bytes(a ^ b for a, b in zip(cerrojo[52:], salida[32:]))
+          assert guardado.abre(imagen, b"veces", llave) == b"4\n"
+          FIN

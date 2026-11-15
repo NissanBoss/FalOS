@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![Copiado de la consola y pegado en cambiazo: la barra dice cuánto le queda y dónde lo pegaste](capturas/dia-13.png)
+![Modo invitado: veces guarda, pero solo en memoria, y el disco no se toca](capturas/dia-14.png)
 
 ## Por qué
 
@@ -112,7 +112,7 @@ lanza serpiente
 teclado 1
 ```
 
-Un programa puede guardar hasta 512 bytes en el disco, pero solo en un archivo:
+Un programa puede guardar hasta 464 bytes en el disco, pero solo en un archivo:
 el suyo. Lo pide con una llamada, y es el núcleo quien pone el nombre, con el
 del programa: `serpiente` escribe en `serpiente.dat` y en nada más. El que
 escribe de verdad es el programa del disco, y no pisa lo que no entiende: si el
@@ -132,6 +132,31 @@ deja 1
 disco
 lee veces.dat
 olvida veces
+```
+
+Y lo que guarda va cifrado, sin que el programa haga nada ni lo pueda evitar.
+FalOS tiene una llave de 32 bytes al azar, y de ella saca una clave distinta
+para cada programa, con BLAKE2b y su nombre: lo que guarda `veces` no lo abre la
+clave de `serpiente`, aunque alguien le copie el archivo. Cada guardado se cifra
+con ChaCha20 y un número que no se repite, y se firma. Si alguien cambia un bit
+en el disco, el programa no recibe nada y el registro lo apunta en rojo. Si el
+archivo no va cifrado, tampoco: alguien lo ha puesto ahí a mano. El cifrado lo
+hace el núcleo en una página suya, así que ni el programa del disco ve nunca lo
+que guarda un programa.
+
+`invitado`, o Intro sin escribir nada en la pantalla de bloqueo, entra en modo
+invitado: cierra los programas, olvida la llave, el registro y el portapapeles,
+y desde ese momento no se escribe nada en el disco. Lo que guarden los programas
+vive en la memoria del núcleo hasta que reinicies, y al reiniciar se llena de
+ceros. Lo tuyo sigue en el disco, cifrado, y sin la contraseña no se abre. La
+prueba automática compara el disco byte a byte antes y después de una sesión de
+invitado: es idéntico.
+
+```
+invitado
+lanza veces
+deja 1
+registro
 ```
 
 `notas` es un bloc de notas que guarda cifrado con tu contraseña. La clave sale
@@ -171,7 +196,9 @@ niega veces
 ```
 
 `cerrojo` le pone contraseña a la pantalla. FalOS no la guarda: guarda su huella,
-hecha con el mismo Argon2id, y una sal al azar. Desde entonces arranca bloqueado,
+hecha con el mismo Argon2id, y una sal al azar. Argon2id da 64 bytes: con la
+mitad se comprueba la contraseña, y con la otra se envuelve la llave que cifra lo
+que guardan los programas, así que sin la contraseña no hay llave. Desde entonces arranca bloqueado,
 `bloquea` lo bloquea en el acto, y se bloquea solo si pasan 5 minutos sin que
 toques el teclado ni el ratón. Bloqueado, los programas siguen corriendo, pero no
 les llega ni una tecla ni un clic, lo que pintan no sale en la pantalla y no se
@@ -280,11 +307,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 ## Lo que no cubre
 
 - **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
-  archivo, de 512 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 13.
+  archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
+  FalOS. Es el día 14.
 - **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 4.650
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 5.200
   líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
   él.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
@@ -353,9 +380,31 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   saca el azar del reloj y de cuándo pulsas las teclas. Para la sal y el número
   de cada guardado basta con que no se repitan, pero eso es más fácil de
   predecir. Y quien no se fíe del generador de Intel tampoco tiene aquí otro.
-- **El bloqueo protege la pantalla, no el disco.** El disco no va cifrado: quien
-  se lo lleve lee todo lo que no es una nota, y si borra `cerrojo.sis`, FalOS
-  arranca sin contraseña. Si lo encuentra roto, lo dice al arrancar.
+- **El disco no va cifrado entero.** Lo que guardan los programas sí, pero los
+  nombres de los archivos, lo que ocupa cada uno, los programas y `permisos.sis`
+  se leen tal cual. Y si alguien borra `cerrojo.sis`, FalOS arranca sin
+  contraseña: lo guardado sigue sin abrirse, porque la llave se va con él, pero
+  la pantalla ya no pide nada. Si lo encuentra roto, lo dice al arrancar.
+- **Sin contraseña, la llave está en el disco.** Sin `cerrojo`, la llave va en
+  `llave.sis` tal cual. Así un programa no abre lo de otro, pero quien se lleve
+  el disco lo abre todo. Al quitar la contraseña, FalOS lo avisa.
+- **Cambiar la contraseña no cambia la llave.** Se envuelve la misma con la
+  nueva. Quien guardara una copia del disco y supiera la contraseña de entonces
+  saca la llave, y con ella abre también lo que se guarde después.
+- **Bloqueado, la llave sigue en memoria.** Los programas siguen corriendo y
+  pueden pedir guardar, así que el núcleo no la olvida al bloquear. Solo al
+  entrar como invitado y al reiniciar.
+- **Lo guardado antes del día 14 no se abre.** Iba sin cifrar, y FalOS no puede
+  distinguir un archivo viejo de uno que alguien ha puesto ahí a mano. Y una
+  contraseña de antes abre la pantalla, pero no tiene llave: hasta que la vuelvas
+  a poner con `cerrojo`, los programas no pueden guardar.
+- **El invitado ve qué hay.** Puede lanzar los programas del disco, ver los
+  nombres de los archivos con `disco` y leerlos con `lee`: ruido, pero sabe cuánto
+  ocupa cada uno. Y lo de sus programas cabe en 8 huecos de 464 bytes.
+- **Del modo invitado se sale reiniciando.** No hay otra forma de volver a lo tuyo,
+  a propósito: así no queda nada a medias. Si en vez de `reinicia` cortas la luz,
+  lo que guardaron sus programas no se llena de ceros: se queda en la memoria
+  hasta que se borre sola.
 - **Entre intento e intento solo espera Argon2.** No hay un tope de intentos ni
   una espera que crezca. En QEMU son unos segundos por intento; en un ordenador de
   verdad, mucho menos.
@@ -364,7 +413,8 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   vuelvas.
 - **Los ceros de `olvida` valen en este disco.** En un SSD, el propio disco puede
   guardar copias de un sector en otro sitio sin decírselo a nadie, y escribir
-  ceros encima no las alcanza. Ahí haría falta cifrar.
+  ceros encima no las alcanza. Lo que guardan los programas va cifrado, así que
+  esas copias son ruido; el índice, con los nombres, no.
 - **El permiso para siempre va por el nombre.** Se apunta que `veces` puede
   guardar, no qué `veces`: si alguien cambia `veces.prg` por otro programa con el
   mismo nombre, el nuevo lo hereda. Y quien pueda tocar el disco puede escribir
@@ -426,6 +476,9 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   y Linux, y de él salen los bordes de colores y la idea del portapapeles: entre
   dos cajas, lo copiado solo pasa con Ctrl+Mayús+C y Ctrl+Mayús+V. FalOS busca
   ese aislamiento en el diseño del propio núcleo, sin máquinas virtuales.
+- [Tails](https://tails.net) arranca sin tocar el disco del ordenador y lo olvida
+  todo al apagar. El modo invitado de FalOS es esa idea dentro del sistema de
+  siempre: entras sin contraseña, usas lo que hay, y no se escribe nada.
 
 ## Licencia
 
