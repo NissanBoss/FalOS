@@ -467,6 +467,26 @@ fin
 
 busca_graficos
 
+TARJETA_RED es 2150174956
+puerto_red es 0
+hay_red es falso
+
+funcion busca_red
+    comparte puerto_red y hay_red
+    para cada ranura desde 0 hasta 31
+        si (lee_pci con ranura y 0) es TARJETA_RED
+            barra_pci es lee_pci con ranura y BAR_0
+            si (barra_pci resto 2) es 1
+                puerto_red es barra_pci menos barra_pci resto 4
+                hay_red es verdadero
+            fin
+            devuelve nada
+        fin
+    fin
+fin
+
+busca_red
+
 funcion sin_parpadeo
     basura es lee_puerto de 986
     pon_en_puerto con 960 y 48
@@ -575,7 +595,8 @@ CONSOLA es 5
 TAREA_TECLADO es 6
 TAREA_DISCO es 7
 TAREA_PANTALLA es 8
-ULTIMA_TAREA es 8
+TAREA_RED es 9
+ULTIMA_TAREA es 9
 SIN_USAR es 0
 EN_MARCHA es 1
 DORMIDA es 2
@@ -721,6 +742,7 @@ R_TOCADO es 26
 R_SIN_CIFRAR es 27
 R_GUARDO_MEMORIA es 28
 R_LEYO_MEMORIA es 29
+R_PING es 30
 
 TOPE_LLAVE es 36
 MARCA_LLAVE es "LLA1"
@@ -812,6 +834,10 @@ hay_encargos es falso
 peticion_abierta es falso
 disco_listo es falso
 resultado_disco es 0
+peticion_red es falso
+red_lista es falso
+resultado_red es 0
+despierta_consola_en es 0
 tecla_sin_leer es falso
 raton_sin_leer es falso
 hay_raton es falso
@@ -824,12 +850,15 @@ elemento CONSOLA de raices es raiz_nucleo
 teclado_imagen es incluye_programa de "controladores/teclado.fal"
 disco_imagen es incluye_programa de "controladores/disco.fal"
 pantalla_imagen es incluye_programa de "controladores/pantalla.fal"
+red_imagen es incluye_programa de "controladores/red.fal"
 
 funcion imagen_de con t
     si t es TAREA_TECLADO
         devuelve teclado_imagen
     si no si t es TAREA_DISCO
         devuelve disco_imagen
+    si no si t es TAREA_RED
+        devuelve red_imagen
     fin
     devuelve pantalla_imagen
 fin
@@ -841,6 +870,8 @@ funcion nombre_de con t
         devuelve "disco"
     si no si t es TAREA_PANTALLA
         devuelve "pantalla"
+    si no si t es TAREA_RED
+        devuelve "red"
     fin
     devuelve region con nombres_en mas (t menos 1) por 32 y (elemento t de nombre_mide)
 fin
@@ -1206,6 +1237,7 @@ funcion compone
         fin
         pinta_seleccion
         pinta_aviso_disco
+        pinta_aviso_red
         pinta_aviso_pegado
         pinta_portapapeles
         pinta_invitado
@@ -1280,6 +1312,16 @@ funcion pinta_cerrojo
     fin
     pon_frase_en_vista con 18 y 12 y "Los programas siguen, pero no ven tus teclas ni tu ratón," y (NEGRO por 16 mas GRIS_OSCURO) por 256
     pon_frase_en_vista con 19 y 12 y "y lo que pintan no sale hasta que vuelvas." y (NEGRO por 16 mas GRIS_OSCURO) por 256
+fin
+
+funcion pinta_aviso_red
+    si no usando_red
+        devuelve nada
+    fin
+    marca es (AMARILLO por 16 mas NEGRO) por 256
+    pon_texto_en_vista con 1 y 24 y " ping a " y marca
+    pon_texto_en_vista con 1 y 32 y (region con red_en mas 64 y ip_texto_mide) y marca
+    pon_en_vista con 1 y 32 mas ip_texto_mide y marca mas 32
 fin
 
 funcion pinta_invitado
@@ -1703,7 +1745,7 @@ fin
 
 funcion se_puede_correr con t
     si t es CONSOLA
-        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_encargos o disco_listo
+        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_encargos o disco_listo o red_lista o (despierta_consola_en no es igual a 0 y tics es mayor o igual que despierta_consola_en)
     fin
     si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
         elemento t de estados_tarea es EN_MARCHA
@@ -1734,6 +1776,15 @@ funcion abre_puertos_de con t
     si no si t es TAREA_PANTALLA
         elemento BYTE_GRAFICOS de puertos es INDICE_Y_DATOS
         elemento BYTE_GRAFICOS_ALTO de puertos es EL_DE_DETRAS
+    fin
+    si hay_red
+        para cada k desde 1 hasta 4
+            si t es TAREA_RED
+                elemento (cociente con puerto_red y 8) mas k de puertos es LOS_OCHO
+            si no
+                elemento (cociente con puerto_red y 8) mas k de puertos es CERRADOS
+            fin
+        fin
     fin
 fin
 
@@ -1768,7 +1819,7 @@ funcion avisa_a con t y aviso
 fin
 
 funcion cierra_tarea con t y causa
-    comparte hay_cerradas y peticion_abierta y disco_listo y resultado_disco y foco
+    comparte hay_cerradas y peticion_abierta y disco_listo y resultado_disco y foco y peticion_red y red_lista y resultado_red
     si foco es t
         foco es CONSOLA
         ensucia
@@ -1781,6 +1832,11 @@ funcion cierra_tarea con t y causa
         peticion_abierta es falso
         resultado_disco es SIN_CONTROLADOR
         disco_listo es verdadero
+    fin
+    si t es TAREA_RED y peticion_red
+        peticion_red es falso
+        resultado_red es SIN_CONTROLADOR
+        red_lista es verdadero
     fin
     para cada otra desde 1 hasta MAX_TAREAS
         estado es elemento otra de estados_tarea
@@ -1876,7 +1932,7 @@ funcion rechaza_a_actual
 fin
 
 funcion aguarda_aviso con respuesta
-    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer y raton_sin_leer
+    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer y raton_sin_leer y peticion_red y red_lista y resultado_red
     yo es actual
     si no (es_controlador con yo)
         devuelve rechaza_a_actual
@@ -1885,6 +1941,11 @@ funcion aguarda_aviso con respuesta
         resultado_disco es respuesta
         peticion_abierta es falso
         disco_listo es verdadero
+    fin
+    si yo es TAREA_RED y peticion_red y respuesta no es igual a SIN_RESPUESTA
+        resultado_red es respuesta
+        peticion_red es falso
+        red_lista es verdadero
     fin
     aviso es elemento yo de avisos
     si aviso no es igual a 0
@@ -2219,6 +2280,7 @@ funcion al_tic
     vigila con TAREA_TECLADO
     vigila con TAREA_DISCO
     vigila con TAREA_PANTALLA
+    vigila con TAREA_RED
     si pantalla_sucia y no hay_graficos
         pantalla_sucia es falso
         compone
@@ -2538,6 +2600,12 @@ funcion ejecuta
         quita_cerrojo
     si no si es_orden con "invitado"
         orden_invitado
+    si no si es_orden con "ping"
+        orden_ping con 0
+    si no si empieza_por con "ping "
+        orden_ping con 6
+    si no si es_orden con "red"
+        orden_red
     si no
         no_conozco
     fin
@@ -2574,7 +2642,10 @@ funcion ayuda
     pinta_linea con "  sin cerrojo    quita la contraseña"
     pinta_linea con "  invitado       nada se escribe en el disco hasta que reinicies"
     pinta_linea con ""
-    pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco o la pantalla"
+    pinta_linea con "  ping           prueba la red con la salida, 10.0.2.2, o con otra"
+    pinta_linea con "  red            la tarjeta, y cuánto ha salido por ella"
+    pinta_linea con ""
+    pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco, la pantalla o la red"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
     pinta_linea con ""
     pinta_linea con "  Con el ratón, una ventana se mueve arrastrando su título, se cierra"
@@ -3224,6 +3295,9 @@ funcion tareas
     si hay_graficos
         linea_de_tarea con TAREA_PANTALLA
     fin
+    si hay_red
+        linea_de_tarea con TAREA_RED
+    fin
     pinta_linea con ""
 fin
 
@@ -3278,6 +3352,14 @@ funcion permisos
     si hay_graficos
         cabecera_de_tarea con TAREA_PANTALLA
         pinta_linea con "solo la imagen, y lee lo que hay que pintar sin poder cambiarlo"
+    fin
+    si hay_red
+        cabecera_de_tarea con TAREA_RED
+        pinta con "solo los puertos del "
+        pinta_numero con puerto_red
+        pinta con " al "
+        pinta_numero con puerto_red mas 31
+        pinta_linea con ", los de la tarjeta"
     fin
     pinta_linea con ""
     pinta_siempre
@@ -3639,6 +3721,496 @@ funcion recoge_tareas con en_el_indicador
         indicador
         redibuja
     fin
+fin
+
+ORDEN_ARRANCA_RED es 1
+ORDEN_ENVIA_RED es 2
+ORDEN_RECIBE_RED es 3
+NO_HAY_TARJETA es 0 menos 1
+NO_SALE es 0 menos 2
+NADIE_CONTESTA es 0 menos 20
+MI_IP es 167772687
+SALIDA_IP es 167772674
+ID_PING es 17985
+DATOS_PING es "FalOS: solo sale si tu lo pides."
+PINGS es 4
+LLEGA_NADA es 0
+LLEGA_ARP es 1
+LLEGA_ECO es 2
+red_en es pide_pagina
+mi_mac es region con red_en y 6
+mac_destino es region con red_en mas 8 y 6
+todos es region con red_en mas 16 y 6
+mac_pregunta es region con red_en mas 24 y 6
+ip_texto es region con red_en mas 64 y 16
+para cada byte_todos desde 1 hasta 6
+    elemento byte_todos de todos es 255
+fin
+red_arrancada es 0
+tramas_enviadas es 0
+tramas_recibidas es 0
+usando_red es falso
+ip_texto_mide es 0
+ip_pedida es 0
+ip_buscada es 0
+eco_esperado es 0
+
+funcion pide_a_la_red con peticion
+    comparte peticion_red y red_lista y esperando
+    recoge_tareas con falso
+    buzon es region con (elemento TAREA_RED de buzones) y TOPE_BUZON
+    elemento 1 de buzon es cociente con puerto_red y 256
+    elemento 2 de buzon es puerto_red resto 256
+    desactiva_interrupciones
+    red_lista es falso
+    peticion_red es verdadero
+    avisa_a con TAREA_RED y peticion
+    mientras no red_lista
+        esperando es verdadero
+        espera_interrupcion
+        esperando es falso
+        desactiva_interrupciones
+    fin
+    red_lista es falso
+    activa_interrupciones
+    devuelve resultado_red
+fin
+
+funcion buzon_red
+    devuelve region con (elemento TAREA_RED de buzones) y TOPE_BUZON
+fin
+
+funcion asegura_red
+    comparte red_arrancada
+    si (elemento TAREA_RED de generaciones) es red_arrancada
+        devuelve 0
+    fin
+    hecho es pide_a_la_red con ORDEN_ARRANCA_RED
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    copia_region con mi_mac y 1 y buzon_red y 3 y 6
+    red_arrancada es elemento TAREA_RED de generaciones
+    al_serie con "red: tarjeta en marcha"
+    escribe ""
+    devuelve 0
+fin
+
+funcion pon_numero_en con zona y sitio y valor y cuantos
+    queda es valor
+    i es sitio mas cuantos menos 1
+    mientras i es mayor o igual que sitio
+        elemento i de zona es queda resto 256
+        queda es cociente con queda y 256
+        i es i menos 1
+    fin
+fin
+
+funcion numero_de con zona y sitio y cuantos
+    n es 0
+    para cada i desde sitio hasta sitio mas cuantos menos 1
+        n es n por 256 mas elemento i de zona
+    fin
+    devuelve n
+fin
+
+funcion suma_de_control con zona y sitio y cuantos
+    suma es 0
+    i es 0
+    mientras i es menor que cuantos
+        byte_alto es elemento sitio mas i de zona
+        byte_bajo es 0
+        si i mas 1 es menor que cuantos
+            byte_bajo es elemento sitio mas i mas 1 de zona
+        fin
+        suma es suma mas byte_alto por 256 mas byte_bajo
+        i es i mas 2
+    fin
+    mientras suma es mayor que 65535
+        suma es (suma resto 65536) mas cociente con suma y 65536
+    fin
+    devuelve 65535 menos suma
+fin
+
+funcion envia_trama con largo
+    comparte tramas_enviadas
+    zona es buzon_red
+    elemento 41 de zona es cociente con largo y 256
+    elemento 42 de zona es largo resto 256
+    hecho es pide_a_la_red con ORDEN_ENVIA_RED
+    si hecho es mayor que 0
+        tramas_enviadas es tramas_enviadas mas 1
+    fin
+    devuelve hecho
+fin
+
+funcion cabecera_ethernet con zona y destino y que_lleva
+    copia_region con zona y 513 y destino y 1 y 6
+    copia_region con zona y 519 y mi_mac y 1 y 6
+    pon_numero_en con zona y 525 y que_lleva y 2
+fin
+
+funcion envia_arp con operacion y mac_a y ip_a
+    zona es buzon_red
+    cabecera_ethernet con zona y mac_a y 2054
+    pon_numero_en con zona y 527 y 1 y 2
+    pon_numero_en con zona y 529 y 2048 y 2
+    elemento 531 de zona es 6
+    elemento 532 de zona es 4
+    pon_numero_en con zona y 533 y operacion y 2
+    copia_region con zona y 535 y mi_mac y 1 y 6
+    pon_numero_en con zona y 541 y MI_IP y 4
+    si operacion es 1
+        pon_numero_en con zona y 545 y 0 y 6
+    si no
+        copia_region con zona y 545 y mac_a y 1 y 6
+    fin
+    pon_numero_en con zona y 551 y ip_a y 4
+    devuelve envia_trama con 42
+fin
+
+funcion envia_eco con numero
+    zona es buzon_red
+    cabecera_ethernet con zona y mac_destino y 2048
+    elemento 527 de zona es 69
+    elemento 528 de zona es 0
+    pon_numero_en con zona y 529 y 28 mas largo de DATOS_PING y 2
+    pon_numero_en con zona y 531 y numero y 2
+    pon_numero_en con zona y 533 y 0 y 2
+    elemento 535 de zona es 64
+    elemento 536 de zona es 1
+    pon_numero_en con zona y 537 y 0 y 2
+    pon_numero_en con zona y 539 y MI_IP y 4
+    pon_numero_en con zona y 543 y ip_pedida y 4
+    pon_numero_en con zona y 537 y (suma_de_control con zona y 527 y 20) y 2
+    elemento 547 de zona es 8
+    elemento 548 de zona es 0
+    pon_numero_en con zona y 549 y 0 y 2
+    pon_numero_en con zona y 551 y ID_PING y 2
+    pon_numero_en con zona y 553 y numero y 2
+    i es 554
+    para cada letra en DATOS_PING
+        i es i mas 1
+        elemento i de zona es letra
+    fin
+    pon_numero_en con zona y 549 y (suma_de_control con zona y 547 y 8 mas largo de DATOS_PING) y 2
+    devuelve envia_trama con 42 mas largo de DATOS_PING
+fin
+
+funcion mira_lo_que_llega
+    comparte tramas_recibidas
+    largo es pide_a_la_red con ORDEN_RECIBE_RED
+    si largo es menor que 42
+        devuelve LLEGA_NADA
+    fin
+    tramas_recibidas es tramas_recibidas mas 1
+    zona es buzon_red
+    lleva es numero_de con zona y 525 y 2
+    si lleva es 2054 y (numero_de con zona y 551 y 4) es MI_IP
+        operacion es numero_de con zona y 533 y 2
+        quien es numero_de con zona y 541 y 4
+        si operacion es 1
+            copia_region con mac_pregunta y 1 y zona y 535 y 6
+            envia_arp con 2 y mac_pregunta y quien
+        si no si operacion es 2 y quien es ip_buscada
+            copia_region con mac_destino y 1 y zona y 535 y 6
+            devuelve LLEGA_ARP
+        fin
+        devuelve LLEGA_NADA
+    fin
+    si lleva no es igual a 2048 o (elemento 527 de zona) no es igual a 69 o (elemento 536 de zona) no es igual a 1
+        devuelve LLEGA_NADA
+    fin
+    si (numero_de con zona y 543 y 4) no es igual a MI_IP o (numero_de con zona y 539 y 4) no es igual a ip_pedida
+        devuelve LLEGA_NADA
+    fin
+    si (elemento 547 de zona) es 0 y (numero_de con zona y 551 y 2) es ID_PING y (numero_de con zona y 553 y 2) es eco_esperado
+        devuelve LLEGA_ECO
+    fin
+    devuelve LLEGA_NADA
+fin
+
+funcion espera_un_tic
+    comparte esperando y despierta_consola_en
+    despierta_consola_en es tics mas 1
+    desactiva_interrupciones
+    mientras tics es menor que despierta_consola_en
+        esperando es verdadero
+        espera_interrupcion
+        esperando es falso
+        desactiva_interrupciones
+    fin
+    despierta_consola_en es 0
+    activa_interrupciones
+fin
+
+funcion espera_que_llegue con que y plazo
+    limite es tics mas plazo
+    mientras tics es menor que limite
+        visto es mira_lo_que_llega
+        si visto es que
+            devuelve verdadero
+        fin
+        si visto es LLEGA_NADA
+            espera_un_tic
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion busca_mac_de con ip
+    comparte ip_buscada
+    ip_buscada es ip
+    para cada intento desde 1 hasta 3
+        hecho es envia_arp con 1 y todos y ip
+        si hecho es menor que 0
+            devuelve hecho
+        fin
+        si espera_que_llegue con LLEGA_ARP y TICS_POR_SEGUNDO
+            devuelve 0
+        fin
+    fin
+    devuelve NADIE_CONTESTA
+fin
+
+funcion lee_ip con primera
+    ip es 0
+    parte es 0
+    digitos es 0
+    puntos es 0
+    para cada i desde primera hasta escritas
+        letra es elemento i de orden
+        si letra es 46
+            si digitos es 0
+                devuelve 0
+            fin
+            ip es ip por 256 mas parte
+            parte es 0
+            digitos es 0
+            puntos es puntos mas 1
+        si no si letra es mayor o igual que 48 y letra es menor o igual que 57
+            parte es parte por 10 mas letra menos 48
+            digitos es digitos mas 1
+            si parte es mayor que 255 o digitos es mayor que 3
+                devuelve 0
+            fin
+        si no
+            devuelve 0
+        fin
+    fin
+    si puntos no es igual a 3 o digitos es 0
+        devuelve 0
+    fin
+    devuelve ip por 256 mas parte
+fin
+
+funcion escribe_ip con ip
+    comparte ip_texto_mide
+    ip_texto_mide es 0
+    para cada parte desde 1 hasta 4
+        trozo es (cociente con ip y (potencia_de_256 con 4 menos parte)) resto 256
+        si trozo es mayor o igual que 100
+            ip_texto_mide es ip_texto_mide mas 1
+            elemento ip_texto_mide de ip_texto es 48 mas cociente con trozo y 100
+        fin
+        si trozo es mayor o igual que 10
+            ip_texto_mide es ip_texto_mide mas 1
+            elemento ip_texto_mide de ip_texto es 48 mas (cociente con trozo y 10) resto 10
+        fin
+        ip_texto_mide es ip_texto_mide mas 1
+        elemento ip_texto_mide de ip_texto es 48 mas trozo resto 10
+        si parte es menor que 4
+            ip_texto_mide es ip_texto_mide mas 1
+            elemento ip_texto_mide de ip_texto es 46
+        fin
+    fin
+    devuelve region con red_en mas 64 y ip_texto_mide
+fin
+
+funcion potencia_de_256 con cuantas
+    n es 1
+    repite cuantas veces
+        n es n por 256
+    fin
+    devuelve n
+fin
+
+funcion cifra_hexadecimal con n
+    si n es menor que 10
+        devuelve 48 mas n
+    fin
+    devuelve 87 mas n
+fin
+
+funcion pinta_mac con mac
+    para cada i desde 1 hasta 6
+        pon_letra con (cifra_hexadecimal con (cociente con (elemento i de mac) y 16))
+        pon_letra con (cifra_hexadecimal con ((elemento i de mac) resto 16))
+        si i es menor que 6
+            pinta con ":"
+        fin
+    fin
+fin
+
+funcion fallo_de_red con motivo
+    pon_color con ROJO_CLARO y NEGRO
+    si motivo es NO_HAY_TARJETA
+        pinta_linea con "  La tarjeta no contesta."
+    si no si motivo es NO_SALE
+        pinta_linea con "  La tarjeta no ha podido enviarlo."
+    si no
+        pinta_linea con "  El programa de la red ha caído antes de contestar."
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+fin
+
+funcion sin_tarjeta
+    pon_color con ROJO_CLARO y NEGRO
+    pinta_linea con "  No hay tarjeta de red. FalOS sabe usar la NE2000: arráncalo con"
+    pinta_linea con "  -nic user,model=ne2k_pci"
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    al_serie con "red: no hay tarjeta"
+    escribe ""
+fin
+
+funcion orden_ping con primera
+    comparte usando_red y ip_pedida y eco_esperado
+    si no hay_red
+        sin_tarjeta
+        devuelve nada
+    fin
+    ip_pedida es SALIDA_IP
+    si primera es mayor que 0
+        ip_pedida es lee_ip con primera
+    fin
+    si ip_pedida es 0
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  Eso no es una dirección. Prueba: ping 10.0.2.2"
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    hecho es asegura_red
+    si hecho es menor que 0
+        fallo_de_red con hecho
+        devuelve nada
+    fin
+    texto es escribe_ip con ip_pedida
+    usando_red es verdadero
+    ensucia
+    pinta con "  Ping a "
+    pinta con texto
+    pinta_linea con " desde 10.0.2.15. Sale porque lo has pedido tú."
+    salto es SALIDA_IP
+    si (cociente con ip_pedida y 256) es cociente con MI_IP y 256
+        salto es ip_pedida
+    fin
+    hecho es busca_mac_de con salto
+    si hecho es menor que 0
+        usando_red es falso
+        ensucia
+        si hecho es NADIE_CONTESTA
+            pon_color con ROJO_CLARO y NEGRO
+            pinta_linea con "  Nadie en la red dice tener esa dirección."
+            pon_color con GRIS y NEGRO
+            pinta_linea con ""
+        si no
+            fallo_de_red con hecho
+        fin
+        desactiva_interrupciones
+        apunta con R_PING y texto y BLANCO y 0
+        activa_interrupciones
+        al_serie con "ping: nadie contesta"
+        escribe ""
+        devuelve nada
+    fin
+    pon_color con GRIS_OSCURO y NEGRO
+    si salto es ip_pedida
+        pinta con "  Su tarjeta es la "
+    si no
+        pinta con "  La salida de la red, 10.0.2.2, es la tarjeta "
+    fin
+    pinta_mac con mac_destino
+    pinta_linea con "."
+    pon_color con GRIS y NEGRO
+    llegadas es 0
+    para cada numero desde 1 hasta PINGS
+        eco_esperado es numero
+        enviado_en es tics
+        hecho es envia_eco con numero
+        si hecho es menor que 0
+            fallo_de_red con hecho
+        si no si espera_que_llegue con LLEGA_ECO y TICS_POR_SEGUNDO
+            llegadas es llegadas mas 1
+            tardo es (tics menos enviado_en) por 10
+            pinta con "  Respuesta de "
+            pinta con texto
+            pinta con ": "
+            pinta_numero con largo de DATOS_PING
+            si tardo es 0
+                pinta_linea con " bytes, en menos de 10 ms"
+            si no
+                pinta con " bytes, en "
+                pinta_numero con tardo
+                pinta_linea con " ms"
+            fin
+            al_serie con "ping: respuesta "
+            escribe numero
+        si no
+            pinta_linea con "  No contesta."
+        fin
+        mientras numero es menor que PINGS y tics es menor que enviado_en mas TICS_POR_SEGUNDO
+            espera_un_tic
+        fin
+    fin
+    usando_red es falso
+    ensucia
+    pinta con "  "
+    pinta_numero con PINGS
+    pinta con " enviados, "
+    pinta_numero con llegadas
+    pinta_linea con " recibidos."
+    pinta_linea con "  Ningún programa tiene forma de usar la red: solo sale lo que pides tú."
+    pinta_linea con ""
+    desactiva_interrupciones
+    apunta con R_PING y texto y BLANCO y llegadas
+    activa_interrupciones
+    al_serie con "ping: "
+    al_serie con texto
+    al_serie con " contesta "
+    escribe llegadas
+fin
+
+funcion orden_red
+    si no hay_red
+        sin_tarjeta
+        devuelve nada
+    fin
+    hecho es asegura_red
+    si hecho es menor que 0
+        fallo_de_red con hecho
+        devuelve nada
+    fin
+    pinta con "  Tarjeta de red NE2000, en los puertos del "
+    pinta_numero con puerto_red
+    pinta con " al "
+    pinta_numero con puerto_red mas 31
+    pinta_linea con "."
+    pinta con "  Su dirección es "
+    pinta_mac con mi_mac
+    pinta_linea con ", y la mía en la red, 10.0.2.15."
+    pinta con "  Han salido "
+    pinta_numero con tramas_enviadas
+    pinta con " tramas y han llegado "
+    pinta_numero con tramas_recibidas
+    pinta_linea con ". Solo salen con ping."
+    pinta_linea con "  Ningún programa tiene una llamada para la red, y el programa que"
+    pinta_linea con "  maneja la tarjeta solo toca sus 32 puertos."
+    pinta_linea con ""
+    al_serie con "red: enviadas "
+    escribe tramas_enviadas
 fin
 
 funcion pide_al_disco con peticion
@@ -4328,10 +4900,12 @@ funcion estropea con primera y aviso
         objetivo es TAREA_DISCO
     si no si hay_graficos y resto_es con primera y "pantalla"
         objetivo es TAREA_PANTALLA
+    si no si hay_red y resto_es con primera y "red"
+        objetivo es TAREA_RED
     fin
     si objetivo es 0
         pon_color con ROJO_CLARO y NEGRO
-        pinta_linea con "  Solo sé hacerlo con el teclado, el disco o la pantalla."
+        pinta_linea con "  Solo sé hacerlo con el teclado, el disco, la pantalla o la red."
         pon_color con GRIS y NEGRO
         pinta_linea con ""
         devuelve nada
@@ -4388,7 +4962,7 @@ funcion es_tuya con clase
     si clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
         devuelve verdadero
     fin
-    si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE o clase es R_INVITADO
+    si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE o clase es R_INVITADO o clase es R_PING
         devuelve verdadero
     fin
     devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
@@ -4526,6 +5100,12 @@ funcion pinta_apunte con k
         pinta con "leyó "
         pinta_cuantos con n
         pinta con " bytes de la memoria"
+    si no si clase es R_PING
+        pinta con "hiciste ping a "
+        pinta con nombre
+        pinta con ": "
+        pinta_numero con n
+        pinta con " de 4 contestan"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -5107,7 +5687,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 14"
+    pinta con "día 15"
     pon_color con GRIS y NEGRO
 fin
 
@@ -5142,7 +5722,8 @@ funcion portada
     pinta_linea con "  Y registro te dice qué programa ha tocado tus cosas, y cuándo."
     pinta_linea con "  Con cerrojo, la pantalla pide contraseña para entrar."
     pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa, y lo que"
-    pinta_linea con "  guardan va cifrado, cada uno con su clave."
+    pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
+    pinta_linea con "  ningún programa puede usarla."
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
     pon_color con GRIS y NEGRO
@@ -5157,6 +5738,11 @@ si hay_graficos
 fin
 lanza_controlador con TAREA_TECLADO
 lanza_controlador con TAREA_DISCO
+si hay_red
+    lanza_controlador con TAREA_RED
+    al_serie con "red: NE2000 en el puerto "
+    escribe puerto_red
+fin
 prepara_raton
 si hay_raton
     escribe "ratón listo"

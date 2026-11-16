@@ -1,0 +1,229 @@
+ESPERA es 8
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+
+ORDEN_ARRANCA es 1
+ORDEN_ENVIA es 2
+ORDEN_RECIBE es 3
+
+NO_HAY_TARJETA es 0 menos 1
+NO_SALE es 0 menos 2
+MAL_TAMANO es 0 menos 3
+ANILLO_ROTO es 0 menos 4
+
+MANDO es 0
+EMPIEZA_ANILLO es 1
+ACABA_ANILLO es 2
+FRONTERA es 3
+PAGINA_ENVIO es 4
+ENVIO_BAJO es 5
+ENVIO_ALTO es 6
+SUCESOS es 7
+DESDE_BAJO es 8
+DESDE_ALTO es 9
+CUANTOS_BAJO es 10
+CUANTOS_ALTO es 11
+RECIBE_QUE es 12
+ENVIA_COMO es 13
+FORMA_DATOS es 14
+SUCESOS_QUE_AVISAN es 15
+DATOS es 16
+REINICIO es 31
+LLEGANDO es 7
+
+PARADA es 33
+EN_MARCHA es 34
+LEYENDO es 10
+ESCRIBIENDO es 18
+ENVIANDO es 38
+PAGINA_1_PARADA es 97
+PAGINA_1 es 98
+
+COPIA_HECHA es 64
+ENVIADA es 2
+FALLO_AL_ENVIAR es 8
+
+PRIMERA es 70
+ULTIMA es 128
+ENVIO es 64
+TOPE_TRAMA es 1514
+MINIMO es 60
+PACIENCIA es 100000
+
+buzon es region con 807399424 y 4096
+base es 0
+
+funcion pon con registro y valor
+    pon_en_puerto con base mas registro y valor
+fin
+
+funcion mira con registro
+    devuelve lee_puerto de (base mas registro)
+fin
+
+funcion bit_de con valor y cual
+    devuelve ((cociente con valor y cual) resto 2) es 1
+fin
+
+funcion copia_desde con sitio y cuantos y mando_dma
+    pon con CUANTOS_BAJO y cuantos resto 256
+    pon con CUANTOS_ALTO y cociente con cuantos y 256
+    pon con DESDE_BAJO y sitio resto 256
+    pon con DESDE_ALTO y cociente con sitio y 256
+    pon con MANDO y mando_dma
+fin
+
+funcion espera_suceso con cual
+    para cada vuelta desde 1 hasta PACIENCIA
+        visto es mira con SUCESOS
+        si bit_de con visto y cual
+            pon con SUCESOS y cual
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion arranca
+    comparte base
+    base es (elemento 1 de buzon) por 256 mas elemento 2 de buzon
+    pon_en_puerto con base mas REINICIO y (lee_puerto de (base mas REINICIO))
+    pon con MANDO y PARADA
+    si (mira con MANDO) es 255
+        devuelve NO_HAY_TARJETA
+    fin
+    pon con FORMA_DATOS y 72
+    pon con CUANTOS_BAJO y 0
+    pon con CUANTOS_ALTO y 0
+    pon con SUCESOS_QUE_AVISAN y 0
+    pon con SUCESOS y 255
+    pon con RECIBE_QUE y 32
+    pon con ENVIA_COMO y 2
+    copia_desde con 0 y 12 y LEYENDO
+    para cada i desde 1 hasta 6
+        elemento 2 mas i de buzon es mira con DATOS
+        mira con DATOS
+    fin
+    espera_suceso con COPIA_HECHA
+    pon con PAGINA_ENVIO y ENVIO
+    pon con EMPIEZA_ANILLO y PRIMERA
+    pon con ACABA_ANILLO y ULTIMA
+    pon con FRONTERA y ULTIMA menos 1
+    pon con MANDO y PAGINA_1_PARADA
+    para cada i desde 1 hasta 6
+        pon con i y elemento 2 mas i de buzon
+    fin
+    pon con LLEGANDO y PRIMERA
+    para cada i desde 8 hasta 15
+        pon con i y 0
+    fin
+    pon con MANDO y EN_MARCHA
+    pon con SUCESOS y 255
+    pon con ENVIA_COMO y 0
+    pon con RECIBE_QUE y 4
+    devuelve 6
+fin
+
+funcion envia
+    largo es (elemento 41 de buzon) por 256 mas elemento 42 de buzon
+    si base es 0
+        devuelve NO_HAY_TARJETA
+    fin
+    si largo es menor que 14 o largo es mayor que TOPE_TRAMA
+        devuelve MAL_TAMANO
+    fin
+    medida es largo
+    mientras medida es menor que MINIMO
+        medida es medida mas 1
+        elemento 512 mas medida de buzon es 0
+    fin
+    copia_desde con ENVIO por 256 y medida y ESCRIBIENDO
+    para cada i desde 1 hasta medida
+        pon con DATOS y elemento 512 mas i de buzon
+    fin
+    si no (espera_suceso con COPIA_HECHA)
+        devuelve NO_SALE
+    fin
+    pon con PAGINA_ENVIO y ENVIO
+    pon con ENVIO_BAJO y medida resto 256
+    pon con ENVIO_ALTO y cociente con medida y 256
+    pon con MANDO y ENVIANDO
+    para cada vuelta desde 1 hasta PACIENCIA
+        visto es mira con SUCESOS
+        si bit_de con visto y ENVIADA
+            pon con SUCESOS y ENVIADA
+            devuelve largo
+        fin
+        si bit_de con visto y FALLO_AL_ENVIAR
+            pon con SUCESOS y FALLO_AL_ENVIAR
+            devuelve NO_SALE
+        fin
+    fin
+    devuelve NO_SALE
+fin
+
+funcion vacia_anillo
+    pon con MANDO y PAGINA_1
+    pon con LLEGANDO y PRIMERA
+    pon con MANDO y EN_MARCHA
+    pon con FRONTERA y ULTIMA menos 1
+fin
+
+funcion recibe
+    si base es 0
+        devuelve NO_HAY_TARJETA
+    fin
+    pon con MANDO y PAGINA_1
+    llega es mira con LLEGANDO
+    pon con MANDO y EN_MARCHA
+    toca es (mira con FRONTERA) mas 1
+    si toca es mayor o igual que ULTIMA
+        toca es PRIMERA
+    fin
+    si toca es llega
+        devuelve 0
+    fin
+    copia_desde con toca por 256 y 4 y LEYENDO
+    mira con DATOS
+    siguiente es mira con DATOS
+    bajo es mira con DATOS
+    alto es mira con DATOS
+    espera_suceso con COPIA_HECHA
+    largo es alto por 256 mas bajo menos 4
+    si largo es menor que 14 o largo es mayor que TOPE_TRAMA o siguiente es menor que PRIMERA o siguiente es mayor o igual que ULTIMA
+        vacia_anillo
+        devuelve ANILLO_ROTO
+    fin
+    copia_desde con toca por 256 mas 4 y largo y LEYENDO
+    para cada i desde 1 hasta largo
+        elemento 512 mas i de buzon es mira con DATOS
+    fin
+    espera_suceso con COPIA_HECHA
+    nueva_frontera es siguiente menos 1
+    si nueva_frontera es menor que PRIMERA
+        nueva_frontera es ULTIMA menos 1
+    fin
+    pon con FRONTERA y nueva_frontera
+    elemento 41 de buzon es cociente con largo y 256
+    elemento 42 de buzon es largo resto 256
+    devuelve largo
+fin
+
+respuesta es SIN_RESPUESTA
+mientras verdadero
+    aviso es llama_al_sistema con ESPERA y respuesta
+    respuesta es SIN_RESPUESTA
+    si aviso es AVISO_CUELGA
+        mientras verdadero
+        fin
+    si no si aviso es AVISO_ROMPE
+        pon_en_puerto con 100 y 254
+    si no si aviso es ORDEN_ARRANCA
+        respuesta es arranca
+    si no si aviso es ORDEN_ENVIA
+        respuesta es envia
+    si no si aviso es ORDEN_RECIBE
+        respuesta es recibe
+    fin
+fin

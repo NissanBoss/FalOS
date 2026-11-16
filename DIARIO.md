@@ -2,6 +2,62 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 15: la red, y nada sale sin que lo pidas
+
+![ping a 10.0.2.2: cuatro de cuatro, y sale porque lo has pedido tú](capturas/dia-15.png)
+
+**Lo que hay.** FalOS sabe usar una tarjeta de red, la NE2000, y la primera
+orden que la usa es `ping`. Pregunta quién tiene esa dirección, le manda cuatro
+ecos, uno por segundo, y dice cuántos vuelven y cuánto tardan. Mientras dura, la
+barra de arriba dice a quién, y el registro lo apunta.
+
+```
+ping
+ping 10.0.2.99
+red
+registro
+```
+
+El controlador es un programa más, en su caja, como el del disco: el procesador
+solo le deja tocar los 32 puertos de la tarjeta. Elegí la NE2000 por eso. Es una
+tarjeta de los noventa que mueve cada trama byte a byte por sus puertos, y no
+escribe en la memoria por su cuenta. Una tarjeta moderna sí lo hace, y entonces
+su controlador podría usarla para escribir donde quisiera, saltándose la caja.
+
+ARP, IP e ICMP los arma el núcleo, y le pasa al controlador la trama hecha. La
+dirección es fija, la de la red de QEMU: 10.0.2.15. Cada eco lleva dentro un
+texto: `FalOS: solo sale si tu lo pides.`
+
+**Y nada más.** FalOS no envía nada al arrancar. Ni DHCP, ni anuncios, ni una
+trama. Ningún programa tiene una llamada para la red. `escucha` las prueba todas,
+no encuentra ninguna, y cuando intenta tocar la tarjeta él mismo, el procesador
+lo para. `red` dice cuántas tramas han salido desde que arrancaste, y si no has
+hecho ping, son cero.
+
+![escucha busca por dónde salir y el procesador lo para](capturas/dia-15-escucha.png)
+
+**La seguridad.** La prueba automática le pone a QEMU un filtro que graba todo lo
+que pasa por la tarjeta. Primero arranca, lanza `escucha` y `fisgon`, enciende
+la tarjeta con `red`, cuelga el controlador y lo rompe: de FalOS no ha salido ni
+una trama. Luego hace ping, y abre la grabación en Python: una pregunta ARP,
+cuatro ecos con las sumas de control bien, numerados del 1 al 4 y con su texto, y
+cuatro respuestas. Con una dirección que no existe, tres preguntas ARP y nada
+más. Y sin tarjeta, `ping` te dice cómo arrancar QEMU con ella.
+
+![El registro: a quién hiciste ping y cuántos contestaron](capturas/dia-15-registro.png)
+
+**Lo que se aprende.** Lo difícil de la red no es enviar, es callarse. Un sistema
+normal habla nada más encenderse: pide una dirección, se anuncia, busca
+actualizaciones, pregunta la hora. Aquí lo que sale es lo que pides tú, y la
+prueba lo graba para que no dependa de creérselo.
+
+**Lo que costó.** La dirección de la tarjeta salía `1a:1a:1a:1a:1a:1a` y nada se
+enviaba. En Fal, `lee_puerto de base mas registro` se lee como
+`(lee_puerto de base) mas registro`: leía siempre el mismo puerto y le sumaba el
+número. Con paréntesis, salió la de verdad. Y medir el tiempo: la consola espera
+a la respuesta durmiendo, y no había nada que la despertara a cada tic del reloj.
+Ahora el reloj la despierta, y por eso el tiempo va de 10 en 10 ms.
+
 ## Día 14: lo que guardan los programas va cifrado, y el invitado no deja rastro
 
 ![Modo invitado: veces guarda, pero solo en memoria, y el disco no se toca](capturas/dia-14.png)

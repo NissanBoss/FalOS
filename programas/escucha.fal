@@ -1,0 +1,24 @@
+DUERME es 4
+RECHAZADA es 0 menos 1
+TARJETA_DE_QEMU es 49152
+
+escribe "quiero usar la red a escondidas"
+halladas es 0
+para cada llamada desde 17 hasta 64
+    si (llama_al_sistema con llamada) no es igual a RECHAZADA
+        halladas es halladas mas 1
+    fin
+fin
+escribe "llamadas para la red"
+escribe "de la 17 a la 64: " sin salto
+escribe halladas
+llama_al_sistema con DUERME y 200
+escribe "pues toco la tarjeta yo,"
+escribe "en el puerto 49152"
+llama_al_sistema con DUERME y 200
+visto es lee_puerto de TARJETA_DE_QEMU
+escribe "la he tocado: " sin salto
+escribe visto
+mientras verdadero
+    llama_al_sistema con DUERME y 1000
+fin

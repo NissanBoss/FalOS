@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![Modo invitado: veces guarda, pero solo en memoria, y el disco no se toca](capturas/dia-14.png)
+![ping a 10.0.2.2: cuatro de cuatro, y sale porque lo has pedido tú](capturas/dia-15.png)
 
 ## Por qué
 
@@ -44,8 +44,8 @@ fal --arranca sistema.fal
 textos de [disco/](disco) y hace un `disco.img`, y `fal --arranca` lo conecta
 solo.
 
-El núcleo está en [sistema.fal](sistema.fal), y los tres programas que necesita
-para ver, oír y leer, en [controladores/](controladores). Lo que se va añadiendo
+El núcleo está en [sistema.fal](sistema.fal), y los cuatro programas que necesita
+para ver, oír, leer y salir a la red, en [controladores/](controladores). Lo que se va añadiendo
 cada día está en el [diario](DIARIO.md).
 
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
@@ -53,7 +53,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
-`sin cerrojo`, `portapapeles`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
+`sin cerrojo`, `portapapeles`, `ping`, `red`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -234,6 +234,36 @@ registro
 olvida portapapeles
 ```
 
+Y a la red solo se sale cuando tú lo pides. FalOS sabe usar una tarjeta NE2000,
+y su controlador es otro programa del anillo 3: el procesador solo le deja tocar
+los 32 puertos de la tarjeta. Esta tarjeta mueve cada trama byte a byte por esos
+puertos y no escribe en la memoria por su cuenta, así que a través de ella el
+controlador tampoco puede. Ningún programa tiene una llamada para usar la red, y
+FalOS no envía nada al arrancar: ni DHCP, ni anuncios, ni una sola trama. Lo
+único que sale es lo que pide `ping`: una pregunta ARP para saber quién tiene esa
+dirección y cuatro ecos ICMP, uno por segundo, que llevan dentro `FalOS: solo
+sale si tu lo pides.` La barra dice a quién haces ping mientras dura, el registro
+lo apunta, y `red` dice cuántas tramas han salido desde que arrancó. `escucha`
+busca una llamada para la red, no la encuentra, y cuando toca la tarjeta él
+mismo, el procesador lo para. Para probarlo hay que darle la tarjeta a QEMU, que
+`fal --arranca` no lo hace:
+
+```bash
+fal --nucleo sistema.fal
+```
+
+```bash
+qemu-system-x86_64 -cpu max -kernel sistema.bin -drive file=disco.img,format=raw,if=ide -nic user,model=ne2k_pci
+```
+
+```
+ping
+ping 10.0.2.99
+lanza escucha
+red
+registro
+```
+
 Los programas nacen sin ningún permiso, tampoco el de hablar con otro. Se
 hablan con mensajes, una pregunta y una respuesta, y solo si tienen una llave:
 una capacidad que guarda el núcleo y que un programa no puede fabricar ni
@@ -248,9 +278,9 @@ prohibe 2 1
 permisos
 ```
 
-El teclado, el disco y la pantalla ya no van dentro del núcleo. Son programas
+El teclado, el disco, la pantalla y la red ya no van dentro del núcleo. Son programas
 del anillo 3, y el procesador solo les deja tocar lo suyo: `teclado`, el puerto
-96, por el que llega también el ratón; `disco`, del 496 al 503; y `pantalla`, los puertos de la tarjeta gráfica y su
+96, por el que llega también el ratón; `disco`, del 496 al 503; `red`, los 32 de la tarjeta; y `pantalla`, los puertos de la tarjeta gráfica y su
 imagen, y lee lo que hay que pintar sin poder cambiarlo. Si uno se cuelga o se
 rompe, FalOS lo nota, lo cierra y lanza otro sin que caiga nada más. Se puede
 probar:
@@ -271,7 +301,10 @@ Cada vez que se sube algo, GitHub lo arranca en QEMU, comprueba que llega a
 esperar órdenes sin reventar, lanza `apaga` y `espia` y mira que los dos acaban
 cerrados y el sistema sigue. Da un permiso, lo quita y mira que `ladron` no ha
 abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
-todo vuelve. Le da archivos que mienten sobre lo que son, y le conecta discos
+todo vuelve. Le da una tarjeta de red y lo graba todo: con `escucha`, `fisgon` y el
+controlador colgado y roto, mira que de FalOS no ha salido ni una trama; con
+`ping`, que han salido una pregunta ARP y cuatro ecos con las sumas de control
+bien, en orden y con su texto, y que han vuelto cuatro respuestas. Le da archivos que mienten sobre lo que son, y le conecta discos
 hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
 cierra dos con el ratón. Juega a la serpiente con `disfraz` abierto al lado, y
 mira que a `disfraz` no le ha llegado ni una tecla. Y escribe en el disco: arranca
@@ -301,15 +334,15 @@ que FalOS la tira entera en vez de creérsela.
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
 programa y cada controlador en su propia caja, sin poder tocar lo que no se le
-ha dado expresamente. Los mensajes, las capacidades y tres controladores ya
+ha dado expresamente. Los mensajes, las capacidades y cuatro controladores ya
 están. Falta sacar del núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** No hay red, y un programa solo escribe su propio
-  archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 14.
-- **Aún no es un micronúcleo.** El teclado, el disco y la pantalla ya salieron,
+- **Casi todo, de momento.** De la red solo sabe hacer `ping`, y un programa
+  solo escribe su propio archivo, de 464 bytes como mucho: no se puede escribir
+  un programa dentro de FalOS. Es el día 15.
+- **Aún no es un micronúcleo.** El teclado, el disco, la pantalla y la red ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
   núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 5.200
   líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
@@ -419,6 +452,19 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   guardar, no qué `veces`: si alguien cambia `veces.prg` por otro programa con el
   mismo nombre, el nuevo lo hereda. Y quien pueda tocar el disco puede escribir
   `permisos.sis` a mano. Ningún programa de dentro puede.
+- **Si el controlador de la red es otro, puede enviar lo que quiera.** El núcleo
+  le da la tarjeta, no mira cada trama. Quien cambie `controladores/red.fal` y
+  vuelva a compilar el núcleo, o lo cambie dentro de la imagen, puede sacar
+  tramas sin que nadie haga ping. Lo que hoy lo impide es que el que hay no lo
+  hace, y que la prueba automática graba todo lo que sale y mira que no hay nada.
+- **La red vive en el núcleo.** ARP, IP e ICMP los arma el núcleo, no un programa.
+  Es poco código, pero es más núcleo.
+- **Solo la NE2000, y solo la red de usuario de QEMU.** La dirección es fija,
+  10.0.2.15, y la salida, 10.0.2.2: las de QEMU. No hay DHCP ni DNS, así que
+  `ping` quiere números y en otra red no sabe dónde está. Tampoco hay TCP ni UDP:
+  `ping` es todo lo que sabe hacer.
+- **El tiempo de `ping` va de 10 en 10 ms.** Lo mide con el reloj de los turnos,
+  así que una respuesta de 1 ms dice 10 o 20.
 - **El registro guarda los 16 últimos.** Si un programa repite lo mismo, se
   junta en una línea con las veces, pero uno que alterne cosas distintas puede
   empujar fuera lo de antes. Y no apunta lo que lees tú con `lee`.
@@ -479,6 +525,11 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - [Tails](https://tails.net) arranca sin tocar el disco del ordenador y lo olvida
   todo al apagar. El modo invitado de FalOS es esa idea dentro del sistema de
   siempre: entras sin contraseña, usas lo que hay, y no se escribe nada.
+- [OpenSnitch](https://github.com/evilsocket/opensnitch) y
+  [Little Snitch](https://www.obdev.at/products/littlesnitch) avisan cuando un
+  programa quiere conectarse, pero viven encima de un sistema que se lo deja
+  hacer a cualquiera. En FalOS un programa no tiene por dónde salir, y la red
+  la usa solo lo que tú pides.
 
 ## Licencia
 

@@ -15,6 +15,7 @@
   larga       escribe una línea que no cabe
   disfraz     se hace pasar por FalOS y te pide la contraseña
   cambiazo    quiere leer y cambiar lo que copias
+  escucha     quiere usar la red a escondidas
 
   gigante     dice que necesita un terabyte de memoria
   desborda    dice que ocupa un número que no cabe en ninguna cuenta

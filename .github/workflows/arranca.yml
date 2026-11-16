@@ -1087,3 +1087,100 @@ jobs:
           llave = bytes(a ^ b for a, b in zip(cerrojo[52:], salida[32:]))
           assert guardado.abre(imagen, b"veces", llave) == b"4\n"
           FIN
+
+      - name: La red, y que nada salga sin que lo pidas
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          arranca() {
+            tarjeta=$1
+            salida=$2
+            shift 2
+            cp disco.img red.img
+            {
+              sleep 5
+              for orden in "$@"; do
+                case "$orden" in
+                  espera) sleep 20 ;;
+                  *) teclea "$orden"; sleep 3 ;;
+                esac
+              done
+              echo quit
+            } | timeout 300 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
+              -drive file=red.img,format=raw,if=ide $tarjeta \
+              -serial file:$salida -monitor stdio -no-reboot > /dev/null
+            cat $salida
+            if grep -q "  X  " $salida; then
+              echo "La red ha tumbado a FalOS"
+              exit 1
+            fi
+          }
+          con_red() {
+            echo "-netdev user,id=n1 -device ne2k_pci,netdev=n1 -object filter-dump,id=f1,netdev=n1,file=$1"
+          }
+          fal haz_disco.fal > /dev/null
+          arranca "$(con_red callada.pcap)" callada.txt "lanza escucha" espera "lanza fisgon" "lanza veces" "red" "cuelga red" espera "rompe red" espera "tareas"
+          grep -q "red: NE2000 en el puerto" callada.txt
+          grep -q "escucha cerrado por la excepción 13" callada.txt
+          grep -q "red: enviadas 0" callada.txt
+          grep -q "red reiniciado, y van 2" callada.txt
+          arranca "$(con_red ping.pcap)" ping.txt "cuelga red" espera "ping" espera "ping 10.0.2.99" espera "ping 10.0.2" "red" "registro"
+          grep -q "red reiniciado, y van 1" ping.txt
+          grep -q "ping: 10.0.2.2 contesta 4" ping.txt
+          grep -q "ping: nadie contesta" ping.txt
+          grep -q "red: enviadas 8" ping.txt
+          grep -q "10.0.2.2 apunte 30 4" ping.txt
+          grep -q "10.0.2.99 apunte 30 0" ping.txt
+          arranca "-nic none" sin_red.txt "ping" "red" "tareas"
+          grep -q "red: no hay tarjeta" sin_red.txt
+          if grep -q "red: NE2000\|red: tarjeta en marcha" sin_red.txt; then
+            echo "FalOS ve una tarjeta que no existe"
+            exit 1
+          fi
+          python3 - <<'FIN'
+          import struct
+
+          FALOS = bytes.fromhex("525400123456")
+
+          def tramas(nombre):
+              datos = open(nombre, "rb").read()
+              i = 24
+              while i < len(datos):
+                  cap = struct.unpack("<I", datos[i + 8:i + 12])[0]
+                  yield datos[i + 16:i + 16 + cap]
+                  i += 16 + cap
+
+          def suma(trozo):
+              if len(trozo) % 2:
+                  trozo += b"\0"
+              total = sum(struct.unpack("!%dH" % (len(trozo) // 2), trozo))
+              while total >> 16:
+                  total = (total & 0xFFFF) + (total >> 16)
+              return total
+
+          callada = [t for t in tramas("callada.pcap") if t[6:12] == FALOS]
+          assert callada == [], "FalOS ha sacado %d tramas sin que nadie hiciera ping" % len(callada)
+
+          salen = [t for t in tramas("ping.pcap") if t[6:12] == FALOS]
+          entran = [t for t in tramas("ping.pcap") if t[0:6] == FALOS]
+          arp = [t for t in salen if t[12:14] == b"\x08\x06"]
+          eco = [t for t in salen if t[12:14] == b"\x08\x00"]
+          assert len(salen) == 8 and len(arp) == 4 and len(eco) == 4, len(salen)
+          assert [bytes(t[38:42]) for t in arp] == [bytes([10, 0, 2, 2])] + [bytes([10, 0, 2, 99])] * 3
+          for numero, t in enumerate(eco, 1):
+              ip = t[14:34]
+              assert ip[9] == 1 and ip[12:16] == bytes([10, 0, 2, 15]) and ip[16:20] == bytes([10, 0, 2, 2])
+              assert suma(ip) == 0xFFFF
+              largo = struct.unpack("!H", ip[2:4])[0]
+              icmp = t[34:14 + largo]
+              assert icmp[0] == 8 and suma(icmp) == 0xFFFF
+              assert struct.unpack("!H", icmp[6:8])[0] == numero
+              assert icmp[8:] == b"FalOS: solo sale si tu lo pides."
+          respuestas = [t for t in entran if t[12:14] == b"\x08\x00" and t[34] == 0]
+          assert len(respuestas) == 4
+          FIN
