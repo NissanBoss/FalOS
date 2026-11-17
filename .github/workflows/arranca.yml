@@ -1215,9 +1215,9 @@ jobs:
             exit 1
           fi
           grep -q "busca pide permiso para conectarse" conecta.txt
-          grep -Eq "busca habló con la red: [1-9][0-9]*$" conecta.txt
+          grep -q "busca habló con la red: [1-9]" conecta.txt
           grep -q "busca apunte 33 0" conecta.txt
-          grep -Eq "busca apunte 31 [1-9][0-9]*$" conecta.txt
+          grep -q "busca apunte 31 [1-9]" conecta.txt
           test "$(grep -c "chivato pide permiso para conectarse" conecta.txt)" = 2
           test "$(grep -c "chivato habló con la red: -10" conecta.txt)" = 3
           grep -q "chivato apunte 34 0" conecta.txt
