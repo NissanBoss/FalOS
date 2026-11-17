@@ -1,0 +1,98 @@
+DUERME es 4
+CONECTA es 17
+MESA es 807395328
+NEGADO es 0 menos 10
+
+caja es region con MESA y 4096
+sitio es 0
+
+funcion mete con valor
+    comparte sitio
+    sitio es sitio mas 1
+    elemento sitio de caja es valor
+fin
+
+funcion mete_etiqueta con texto
+    mete con largo de texto
+    para cada letra en texto
+        mete con letra
+    fin
+fin
+
+funcion dos_de con donde
+    devuelve (elemento donde de caja) por 256 mas elemento donde mas 1 de caja
+fin
+
+funcion salta_nombre con donde
+    mientras (elemento donde de caja) no es igual a 0
+        si (elemento donde de caja) es mayor o igual que 192
+            devuelve donde mas 2
+        fin
+        donde es donde mas (elemento donde de caja) mas 1
+    fin
+    devuelve donde mas 1
+fin
+
+mete con 10
+mete con 0
+mete con 2
+mete con 3
+mete con 0
+mete con 53
+mete con 70
+mete con 65
+mete con 1
+mete con 0
+mete con 0
+mete con 1
+repite 6 veces
+    mete con 0
+fin
+mete_etiqueta con "fal-lang"
+mete_etiqueta con "org"
+mete con 0
+mete con 0
+mete con 1
+mete con 0
+mete con 1
+
+escribe "pregunto al DNS por fal-lang.org"
+llegan es llama_al_sistema con CONECTA y 0 y sitio
+si llegan es NEGADO
+    escribe "no me dejas preguntar"
+si no si llegan es menor que 12
+    escribe "nadie contesta: " sin salto
+    escribe llegan
+si no
+    respuestas es dos_de con 7
+    donde es salta_nombre con 13
+    donde es donde mas 4
+    halladas es 0
+    para cada r desde 1 hasta respuestas
+        donde es salta_nombre con donde
+        tipo_de_dato es dos_de con donde
+        mide es dos_de con donde mas 8
+        donde es donde mas 10
+        si tipo_de_dato es 1 y mide es 4 y donde mas 3 es menor o igual que llegan
+            si halladas es 0
+                escribe "fal-lang.org esta en:"
+            fin
+            halladas es halladas mas 1
+            escribe "  " sin salto
+            escribe elemento donde de caja sin salto
+            escribe "." sin salto
+            escribe elemento donde mas 1 de caja sin salto
+            escribe "." sin salto
+            escribe elemento donde mas 2 de caja sin salto
+            escribe "." sin salto
+            escribe elemento donde mas 3 de caja
+        fin
+        donde es donde mas mide
+    fin
+    si halladas es 0
+        escribe "el DNS no sabe donde esta"
+    fin
+fin
+mientras verdadero
+    llama_al_sistema con DUERME y 1000
+fin

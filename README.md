@@ -5,7 +5,7 @@ un lenguaje de programación en español. Se construye en público, un día cada
 vez: cada día, un paso que se pueda ver, subido aquí y contado en
 [TikTok](https://www.tiktok.com/@fal.lang).
 
-![ping a 10.0.2.2: cuatro de cuatro, y sale porque lo has pedido tú](capturas/dia-15.png)
+![busca pide permiso para preguntar al DNS, y con deja 1 le llegan las direcciones de fal-lang.org](capturas/dia-16.png)
 
 ## Por qué
 
@@ -238,13 +238,12 @@ Y a la red solo se sale cuando tú lo pides. FalOS sabe usar una tarjeta NE2000,
 y su controlador es otro programa del anillo 3: el procesador solo le deja tocar
 los 32 puertos de la tarjeta. Esta tarjeta mueve cada trama byte a byte por esos
 puertos y no escribe en la memoria por su cuenta, así que a través de ella el
-controlador tampoco puede. Ningún programa tiene una llamada para usar la red, y
-FalOS no envía nada al arrancar: ni DHCP, ni anuncios, ni una sola trama. Lo
+controlador tampoco puede. FalOS no envía nada al arrancar: ni DHCP, ni anuncios, ni una sola trama. Lo
 único que sale es lo que pide `ping`: una pregunta ARP para saber quién tiene esa
 dirección y cuatro ecos ICMP, uno por segundo, que llevan dentro `FalOS: solo
 sale si tu lo pides.` La barra dice a quién haces ping mientras dura, el registro
 lo apunta, y `red` dice cuántas tramas han salido desde que arrancó. `escucha`
-busca una llamada para la red, no la encuentra, y cuando toca la tarjeta él
+busca otra forma de usar la red, no la encuentra, y cuando toca la tarjeta él
 mismo, el procesador lo para. Para probarlo hay que darle la tarjeta a QEMU, que
 `fal --arranca` no lo hace:
 
@@ -261,6 +260,26 @@ ping
 ping 10.0.2.99
 lanza escucha
 red
+registro
+```
+
+Un programa también puede hablar con alguien de fuera, pero no sin preguntarte.
+Lo pide con una llamada: una dirección, un puerto y lo que quiere mandar, un
+mensaje UDP. El programa se queda esperando, y FalOS te dice quién quiere
+conectarse, a qué dirección y puerto, y cuántos bytes mandaría. Con `deja N` sale
+ese mensaje y la respuesta le llega solo a él; con `niega N` no sale nada, y si lo
+vuelve a intentar con el mismo sitio, ni te pregunta. El permiso vale para esa
+dirección y nada más: si el programa quiere hablar con otra, te vuelve a
+preguntar. Mientras habla, la barra dice quién y con quién, y el registro apunta
+lo que dejaste, lo que negaste y cuántos bytes volvieron. `busca` le pregunta al
+DNS de QEMU dónde está fal-lang.org y te enseña sus direcciones; `chivato` quiere
+contarle a un servidor de fuera qué programas usas.
+
+```
+lanza busca
+deja 1
+lanza chivato
+niega 2
 registro
 ```
 
@@ -304,7 +323,10 @@ abierto nada. Cuelga y rompe el teclado, el disco y la pantalla, y comprueba que
 todo vuelve. Le da una tarjeta de red y lo graba todo: con `escucha`, `fisgon` y el
 controlador colgado y roto, mira que de FalOS no ha salido ni una trama; con
 `ping`, que han salido una pregunta ARP y cuatro ecos con las sumas de control
-bien, en orden y con su texto, y que han vuelto cuatro respuestas. Le da archivos que mienten sobre lo que son, y le conecta discos
+bien, en orden y con su texto, y que han vuelto cuatro respuestas. Deja a `busca`
+preguntar al DNS y niega dos veces a `chivato`: mira que ha salido un solo mensaje
+UDP, a 10.0.2.3, con las sumas de control bien, y que hacia los servidores de
+`chivato` no ha salido ni una pregunta ARP. Le da archivos que mienten sobre lo que son, y le conecta discos
 hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
 cierra dos con el ratón. Juega a la serpiente con `disfraz` abierto al lado, y
 mira que a `disfraz` no le ha llegado ni una tecla. Y escribe en el disco: arranca
@@ -339,9 +361,10 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 
 ## Lo que no cubre
 
-- **Casi todo, de momento.** De la red solo sabe hacer `ping`, y un programa
-  solo escribe su propio archivo, de 464 bytes como mucho: no se puede escribir
-  un programa dentro de FalOS. Es el día 15.
+- **Casi todo, de momento.** De la red solo sabe hacer `ping`, y que un programa
+  mande un mensaje y espere su respuesta. Un programa solo escribe su propio
+  archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
+  FalOS. Es el día 16.
 - **Aún no es un micronúcleo.** El teclado, el disco, la pantalla y la red ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
   núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 5.200
@@ -457,12 +480,21 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   vuelva a compilar el núcleo, o lo cambie dentro de la imagen, puede sacar
   tramas sin que nadie haga ping. Lo que hoy lo impide es que el que hay no lo
   hace, y que la prueba automática graba todo lo que sale y mira que no hay nada.
-- **La red vive en el núcleo.** ARP, IP e ICMP los arma el núcleo, no un programa.
+- **La red vive en el núcleo.** ARP, IP, ICMP y UDP los arma el núcleo, no un programa.
   Es poco código, pero es más núcleo.
 - **Solo la NE2000, y solo la red de usuario de QEMU.** La dirección es fija,
-  10.0.2.15, y la salida, 10.0.2.2: las de QEMU. No hay DHCP ni DNS, así que
-  `ping` quiere números y en otra red no sabe dónde está. Tampoco hay TCP ni UDP:
-  `ping` es todo lo que sabe hacer.
+  10.0.2.15, y la salida, 10.0.2.2: las de QEMU. No hay DHCP, y FalOS no usa el
+  DNS él solo: `ping` quiere números, y en otra red no sabe dónde está. Tampoco
+  hay TCP: un programa manda un mensaje UDP y espera una sola respuesta, 3
+  segundos como mucho. Mientras espera, la consola también.
+- **El permiso va por dirección, no por lo que se manda.** FalOS te dice cuántos
+  bytes salen, pero no qué llevan. Un programa al que dejas hablar con una
+  dirección puede mandarle lo que quiera hasta que se cierre.
+- **Una dirección es solo un número.** FalOS no sabe de quién es. 10.0.2.3 es el
+  DNS de QEMU, que a su vez pregunta al de tu ordenador: dejar a `busca` es dejar
+  que esa pregunta llegue a tu proveedor.
+- **Un programa puede preguntar mucho.** Si le niegas una dirección, con esa ya no
+  te pregunta, pero puede pedir otra, y otra. No hay tope.
 - **El tiempo de `ping` va de 10 en 10 ms.** Lo mide con el reloj de los turnos,
   así que una respuesta de 1 ms dice 10 o 20.
 - **El registro guarda los 16 últimos.** Si un programa repite lo mismo, se
@@ -528,8 +560,8 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - [OpenSnitch](https://github.com/evilsocket/opensnitch) y
   [Little Snitch](https://www.obdev.at/products/littlesnitch) avisan cuando un
   programa quiere conectarse, pero viven encima de un sistema que se lo deja
-  hacer a cualquiera. En FalOS un programa no tiene por dónde salir, y la red
-  la usa solo lo que tú pides.
+  hacer a cualquiera. En FalOS el aviso no es un añadido: la única forma de
+  salir es pedírtelo, y el permiso vale para una sola dirección.
 
 ## Licencia
 

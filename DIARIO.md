@@ -2,6 +2,62 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 16: un programa solo sale a la red si le dejas, y solo a donde le dejas
+
+![busca pide permiso para preguntar al DNS, y con deja 1 le llegan las direcciones de fal-lang.org](capturas/dia-16.png)
+
+**Lo que hay.** Un programa ya puede hablar con alguien de fuera, pero tiene que
+pedírtelo. Hace una llamada con la dirección, el puerto y lo que quiere mandar, y
+se queda esperando. FalOS te dice quién es, a dónde quiere ir, a qué puerto (y
+qué suele haber en él: DNS, la hora, una web) y cuántos bytes mandaría.
+
+```
+lanza busca
+deja 1
+lanza chivato
+niega 2
+registro
+```
+
+`busca` le pregunta al DNS de QEMU dónde está fal-lang.org. Con `deja 1` sale la
+pregunta, vuelve la respuesta, y te enseña las cuatro direcciones. Mientras
+habla, la barra de arriba dice `busca habla con 10.0.2.3`, en el color del
+programa. `chivato` quiere contarle a un servidor de fuera qué programas usas.
+Con `niega 2` no sale nada, ni siquiera la pregunta ARP de la puerta de salida.
+
+![chivato lo intenta tres veces: la segunda ni pregunta, y la tercera, con otro servidor, vuelve a preguntar](capturas/dia-16-chivato.png)
+
+**El permiso va por dirección.** Si dejas a `busca` hablar con 10.0.2.3, solo
+puede hablar con 10.0.2.3. Si quiere ir a otro sitio, te vuelve a preguntar. Si
+niegas una dirección y el programa insiste con la misma, FalOS ya no te molesta:
+le dice que no y lo apunta. El permiso dura hasta que el programa se cierra.
+
+El mensaje lo arma el núcleo, no el programa: UDP con su suma de control, dentro
+de IP, dentro de una trama que le pasa al controlador. El programa no elige de
+dónde sale ni por qué puerto, y la respuesta solo le llega si viene de la
+dirección y el puerto a los que preguntó.
+
+**La seguridad.** La prueba automática graba todo lo que pasa por la tarjeta.
+Deja a `busca` y niega dos veces a `chivato`. En la grabación tiene que haber un
+solo mensaje UDP, a 10.0.2.3, puerto 53, con las sumas de control bien y la
+pregunta por fal-lang.org dentro, y su respuesta. Hacia los servidores de
+`chivato`, nada. Y en el registro, lo que dejaste, lo que negaste y cada vez que
+un programa se quedó sin salir.
+
+![El registro: a quién dejaste hablar, a quién no, y cuántos bytes volvieron](capturas/dia-16-registro.png)
+
+**Lo que se aprende.** Un cortafuegos de los que preguntan, como OpenSnitch o
+Little Snitch, vigila desde fuera: el programa ya tiene la red, y alguien la
+intercepta. Aquí es al revés. La única forma de salir es pedirlo, así que no hay
+nada que interceptar ni por dónde colarse. Y una pregunta al DNS ya cuenta
+mucho: a dónde vas a ir, antes de ir.
+
+**Lo que costó.** La línea del registro para cada intento que no sale era
+demasiado larga: con ` (2 veces)` detrás se pasaba de las 80 columnas y partía
+la pantalla. Quedó en `no le dejé hablar con`. Y `cambiazo`, el programa que
+prueba llamadas con argumentos malos, tenía que seguir en 49 rechazadas: una
+llamada a la red mal hecha cuenta como rechazo, igual que las demás.
+
 ## Día 15: la red, y nada sale sin que lo pidas
 
 ![ping a 10.0.2.2: cuatro de cuatro, y sale porque lo has pedido tú](capturas/dia-15.png)

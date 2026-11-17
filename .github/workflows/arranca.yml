@@ -1184,3 +1184,83 @@ jobs:
           respuestas = [t for t in entran if t[12:14] == b"\x08\x00" and t[34] == 0]
           assert len(respuestas) == 4
           FIN
+
+      - name: Un programa solo sale a la red si le dejas, y solo a donde le dejas
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          fal haz_disco.fal > /dev/null
+          cp disco.img conecta.img
+          {
+            sleep 5
+            for orden in "lanza busca" "deja 1" espera "lanza chivato" "niega 2" espera "niega 2" "registro" "tareas"; do
+              case "$orden" in
+                espera) sleep 20 ;;
+                *) teclea "$orden"; sleep 3 ;;
+              esac
+            done
+            echo quit
+          } | timeout 300 qemu-system-x86_64 -cpu max -kernel sistema.bin -display none \
+            -drive file=conecta.img,format=raw,if=ide \
+            -netdev user,id=n1 -device ne2k_pci,netdev=n1 -object filter-dump,id=f1,netdev=n1,file=conecta.pcap \
+            -serial file:conecta.txt -monitor stdio -no-reboot > /dev/null
+          cat conecta.txt
+          if grep -q "  X  " conecta.txt; then
+            echo "La red de los programas ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "busca pide permiso para conectarse" conecta.txt
+          grep -Eq "busca habló con la red: [1-9][0-9]*$" conecta.txt
+          grep -q "busca apunte 33 0" conecta.txt
+          grep -Eq "busca apunte 31 [1-9][0-9]*$" conecta.txt
+          test "$(grep -c "chivato pide permiso para conectarse" conecta.txt)" = 2
+          test "$(grep -c "chivato habló con la red: -10" conecta.txt)" = 3
+          grep -q "chivato apunte 34 0" conecta.txt
+          grep -q "chivato apunte 32 0" conecta.txt
+          python3 - <<'FIN'
+          import struct
+
+          FALOS = bytes.fromhex("525400123456")
+
+          def tramas(nombre):
+              datos = open(nombre, "rb").read()
+              i = 24
+              while i < len(datos):
+                  cap = struct.unpack("<I", datos[i + 8:i + 12])[0]
+                  yield datos[i + 16:i + 16 + cap]
+                  i += 16 + cap
+
+          def suma(trozo):
+              if len(trozo) % 2:
+                  trozo += b"\0"
+              total = sum(struct.unpack("!%dH" % (len(trozo) // 2), trozo))
+              while total >> 16:
+                  total = (total & 0xFFFF) + (total >> 16)
+              return total
+
+          todas = list(tramas("conecta.pcap"))
+          salen = [t for t in todas if t[6:12] == FALOS]
+          for t in salen:
+              assert t[12:14] in (b"\x08\x06", b"\x08\x00"), t[12:14]
+              destino = t[38:42] if t[12:14] == b"\x08\x06" else t[30:34]
+              assert destino not in (bytes([203, 0, 113, 66]), bytes([198, 51, 100, 23])), "chivato ha llegado a la red"
+          udp = [t for t in salen if t[12:14] == b"\x08\x00" and t[23] == 17]
+          assert len(udp) == 1, len(udp)
+          t = udp[0]
+          ip = t[14:34]
+          assert suma(ip) == 0xFFFF
+          assert ip[16:20] == bytes([10, 0, 2, 3])
+          largo = struct.unpack("!H", t[38:40])[0]
+          segmento = t[34:34 + largo]
+          assert struct.unpack("!H", segmento[2:4])[0] == 53
+          falso = ip[12:20] + struct.pack("!BBH", 0, 17, largo)
+          assert suma(falso + segmento) == 0xFFFF
+          assert b"\x08fal-lang\x03org\x00" in segmento
+          vuelven = [t for t in todas if t[0:6] == FALOS and t[12:14] == b"\x08\x00" and t[23] == 17]
+          assert vuelven and vuelven[0][26:30] == bytes([10, 0, 2, 3])
+          FIN

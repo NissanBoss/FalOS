@@ -1,0 +1,41 @@
+DUERME es 4
+CONECTA es 17
+MESA es 807395328
+NEGADO es 0 menos 10
+CHIVATEO es "uso: busca, notas, veces"
+
+caja es region con MESA y 4096
+
+funcion chivatea con a y b y c y d
+    elemento 1 de caja es a
+    elemento 2 de caja es b
+    elemento 3 de caja es c
+    elemento 4 de caja es d
+    elemento 5 de caja es 17
+    elemento 6 de caja es 92
+    i es 6
+    para cada letra en CHIVATEO
+        i es i mas 1
+        elemento i de caja es letra
+    fin
+    hecho es llama_al_sistema con CONECTA y 0 y i
+    si hecho es NEGADO
+        escribe "  no me dejan"
+    si no
+        escribe "  ha salido: " sin salto
+        escribe hecho
+    fin
+fin
+
+escribe "quiero contarle a un servidor"
+escribe "lo que haces en FalOS"
+chivatea con 203 y 0 y 113 y 66
+llama_al_sistema con DUERME y 200
+escribe "lo intento otra vez"
+chivatea con 203 y 0 y 113 y 66
+llama_al_sistema con DUERME y 200
+escribe "pues a otro servidor"
+chivatea con 198 y 51 y 100 y 23
+mientras verdadero
+    llama_al_sistema con DUERME y 1000
+fin

@@ -4,13 +4,13 @@ TARJETA_DE_QEMU es 49152
 
 escribe "quiero usar la red a escondidas"
 halladas es 0
-para cada llamada desde 17 hasta 64
+para cada llamada desde 18 hasta 64
     si (llama_al_sistema con llamada) no es igual a RECHAZADA
         halladas es halladas mas 1
     fin
 fin
-escribe "llamadas para la red"
-escribe "de la 17 a la 64: " sin salto
+escribe "otras llamadas para la red"
+escribe "de la 18 a la 64: " sin salto
 escribe halladas
 llama_al_sistema con DUERME y 200
 escribe "pues toco la tarjeta yo,"

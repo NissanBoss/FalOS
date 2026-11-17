@@ -5,6 +5,7 @@
   notas       un bloc de notas que guarda cifrado con tu contraseña
   caja        guarda un secreto y contesta si le preguntan
   curioso     quiere saber el secreto de la caja
+  busca       pregunta al DNS dónde está fal-lang.org, si le dejas
 
   apaga       intenta apagar el ordenador
   espia       intenta leer la memoria de FalOS
@@ -16,6 +17,7 @@
   disfraz     se hace pasar por FalOS y te pide la contraseña
   cambiazo    quiere leer y cambiar lo que copias
   escucha     quiere usar la red a escondidas
+  chivato     quiere contar lo que haces a un servidor de fuera
 
   gigante     dice que necesita un terabyte de memoria
   desborda    dice que ocupa un número que no cabe en ninguna cuenta
