@@ -231,6 +231,53 @@ estados es nada
 total_paginas es 0
 ram es 0
 pista es 1
+modulo_desde es 0
+modulo_hasta es 0
+libre_desde es 0
+ARRANQUE_CERCA es 67108864
+
+funcion bit_de_arranque con cual
+    info es region con datos_de_arranque y 13 y 4
+    devuelve ((cociente con (elemento 1 de info) y cual) resto 2) es 1
+fin
+
+funcion busca_modulo
+    comparte modulo_desde y modulo_hasta
+    info es region con datos_de_arranque y 13 y 4
+    si no (bit_de_arranque con 8) o (elemento 6 de info) es 0
+        devuelve nada
+    fin
+    modulo es region con (elemento 7 de info) y 4 y 4
+    desde es elemento 1 de modulo
+    hasta es elemento 2 de modulo
+    si desde es mayor o igual que MEGA y hasta es mayor que desde mas 1024 y hasta es menor que VISIBLE y (desde resto PAGINA) es 0
+        modulo_desde es desde
+        modulo_hasta es hasta
+    fin
+fin
+
+funcion deja_atras con direccion y largo
+    comparte libre_desde
+    hasta es direccion mas largo
+    si direccion es mayor o igual que MEGA y direccion es menor que ARRANQUE_CERCA y hasta es mayor que libre_desde
+        libre_desde es cociente con (hasta mas PAGINA menos 1) y PAGINA
+        libre_desde es libre_desde por PAGINA
+    fin
+fin
+
+funcion aparta_lo_del_cargador
+    comparte libre_desde
+    libre_desde es final_del_nucleo
+    info es region con datos_de_arranque y 13 y 4
+    deja_atras con datos_de_arranque y 116
+    deja_atras con (elemento 13 de info) y (elemento 12 de info)
+    si bit_de_arranque con 8
+        deja_atras con (elemento 7 de info) y (elemento 6 de info) por 16
+    fin
+    si modulo_hasta es mayor que 0
+        deja_atras con modulo_desde y modulo_hasta menos modulo_desde
+    fin
+fin
 
 funcion reparte_memoria
     comparte estados y total_paginas y ram
@@ -241,6 +288,8 @@ funcion reparte_memoria
     si ((elemento 1 de info) resto 128) es menor que 64
         falla "El cargador no me ha dado el mapa de la memoria."
     fin
+    busca_modulo
+    aparta_lo_del_cargador
     tope es 0
     mapa es elemento 13 de info
     fin_mapa es mapa mas elemento 12 de info
@@ -260,7 +309,7 @@ funcion reparte_memoria
         tope es VISIBLE
     fin
     total_paginas es cociente con tope y PAGINA
-    estados es region con final_del_nucleo y total_paginas
+    estados es region con libre_desde y total_paginas
     para cada p desde 1 hasta total_paginas
         elemento p de estados es RESERVADA
     fin
@@ -284,7 +333,7 @@ funcion reparte_memoria
     para cada p desde 1 hasta (cociente con MEGA y PAGINA)
         elemento p de estados es RESERVADA
     fin
-    hasta_aqui es cociente con (final_del_nucleo mas total_paginas mas PAGINA menos 1) y PAGINA
+    hasta_aqui es cociente con (libre_desde mas total_paginas mas PAGINA menos 1) y PAGINA
     para cada p desde (cociente con MEGA y PAGINA) mas 1 hasta hasta_aqui
         elemento p de estados es MIA
     fin
@@ -426,7 +475,7 @@ reparte_memoria
 protege_memoria
 
 rejilla es pide_pagina
-control es region con rejilla mas ANCHO por ALTO por 2 y 8 y 8
+control es region con rejilla mas ANCHO por ALTO por 2 y 12 y 8
 elemento DONDE_RATON_X de control es 0 menos 1
 lo_que_se_ve es pantalla
 pantalla es region con pide_pagina y ANCHO por ALTO y 2
@@ -447,24 +496,107 @@ funcion lee_pci con ranura y registro
     devuelve lee_doble de PCI_DATOS
 fin
 
-funcion busca_graficos
-    comparte hay_graficos y memoria_de_video y lo_que_se_ve
+CUADRO_ANCHO es 960
+CUADRO_ALTO es 600
+SIN_VIDEO es 0
+VIDEO_QEMU es 1
+VIDEO_DEL_CARGADOR es 2
+VIDEO_ORIGEN es 5
+VIDEO_PASO es 6
+VIDEO_MODO es 7
+VIDEO_COLORES es 8
+VIDEO_INICIO es 9
+VIDEO_FILAS es 10
+TOPE_PAGINAS_VIDEO es 64
+modo_video es SIN_VIDEO
+video_paginas es 0
+
+funcion pon_video con cual y valor
+    elemento cual de control es valor
+fin
+
+funcion busca_pantalla_del_cargador
+    comparte memoria_de_video y video_paginas
+    si datos_de_arranque es 0
+        devuelve falso
+    fin
+    si no (bit_de_arranque con 4096)
+        devuelve falso
+    fin
+    info es region con datos_de_arranque y 30 y 4
+    direccion es (elemento 23 de info) mas (elemento 24 de info) por 4294967296
+    bytes_por_fila es elemento 25 de info
+    pixeles_ancho es elemento 26 de info
+    pixeles_alto es elemento 27 de info
+    formato es elemento 28 de info
+    si (formato resto 256) no es igual a 32 o ((cociente con formato y 256) resto 256) no es igual a 1
+        devuelve falso
+    fin
+    si pixeles_ancho es menor que CUADRO_ANCHO o pixeles_alto es menor que CUADRO_ALTO o bytes_por_fila es menor que pixeles_ancho por 4
+        devuelve falso
+    fin
+    desde_pagina es direccion resto DOS_MEGAS
+    paginas es cociente con (desde_pagina mas bytes_por_fila por pixeles_alto mas DOS_MEGAS menos 1) y DOS_MEGAS
+    si paginas es mayor que TOPE_PAGINAS_VIDEO o direccion es menor que MEGA
+        devuelve falso
+    fin
+    memoria_de_video es direccion menos desde_pagina
+    video_paginas es paginas
+    pon_video con VIDEO_INICIO y desde_pagina
+    pon_video con VIDEO_ORIGEN y desde_pagina mas (cociente con (pixeles_alto menos CUADRO_ALTO) y 2) por bytes_por_fila mas (cociente con (pixeles_ancho menos CUADRO_ANCHO) y 2) por 4
+    pon_video con VIDEO_PASO y cociente con bytes_por_fila y 4
+    pon_video con VIDEO_FILAS y pixeles_alto
+    si ((cociente con formato y 16777216) resto 256) es 0
+        a_rojo es (elemento 29 de info) resto 256
+        a_verde es (cociente con (elemento 29 de info) y 65536) resto 256
+        a_azul es (elemento 30 de info) resto 256
+    si no
+        a_rojo es (cociente con formato y 65536) resto 256
+        a_verde es (elemento 29 de info) resto 256
+        a_azul es (cociente con (elemento 29 de info) y 65536) resto 256
+    fin
+    pon_video con VIDEO_COLORES y a_rojo por 65536 mas a_verde por 256 mas a_azul
+    devuelve verdadero
+fin
+
+funcion busca_tarjeta_qemu
+    comparte memoria_de_video y video_paginas
     pon_palabra con GRAFICOS_INDICE y 0
     version es lee_palabra de GRAFICOS_DATOS
     si version es menor que VERSION_MINIMA o version es mayor que VERSION_MAXIMA
-        devuelve nada
+        devuelve falso
     fin
     para cada ranura desde 0 hasta 31
         si (lee_pci con ranura y 0) es TARJETA_QEMU
             base es lee_pci con ranura y BAR_0
             memoria_de_video es base menos base resto 16
             si (base resto 8) es 0 y memoria_de_video es mayor que 0 y (memoria_de_video resto DOS_MEGAS) es 0
-                hay_graficos es verdadero
-                lo_que_se_ve es region con rejilla y ANCHO por ALTO y 2
+                video_paginas es 2
+                pon_video con VIDEO_INICIO y 0
+                pon_video con VIDEO_ORIGEN y 70 por CUADRO_ANCHO por 4
+                pon_video con VIDEO_PASO y CUADRO_ANCHO
+                pon_video con VIDEO_FILAS y CUADRO_ALTO mas 70
+                pon_video con VIDEO_COLORES y 16 por 65536 mas 8 por 256
+                devuelve verdadero
             fin
-            devuelve nada
+            devuelve falso
         fin
     fin
+    devuelve falso
+fin
+
+funcion busca_graficos
+    comparte hay_graficos y lo_que_se_ve y modo_video
+    si busca_pantalla_del_cargador
+        modo_video es VIDEO_DEL_CARGADOR
+    si no si busca_tarjeta_qemu
+        modo_video es VIDEO_QEMU
+    si no
+        devuelve nada
+    fin
+    pon_video con VIDEO_MODO y modo_video
+    hay_graficos es verdadero
+    lo_que_se_ve es region con rejilla y ANCHO por ALTO y 2
 fin
 
 busca_graficos
@@ -1793,9 +1925,9 @@ funcion abre_puertos_de con t
     elemento BYTE_GRAFICOS_ALTO de puertos es CERRADOS
     si t es TAREA_TECLADO
         elemento BYTE_TECLADO de puertos es SOLO_EL_96
-    si no si t es TAREA_DISCO
+    si no si t es TAREA_DISCO y no disco_en_memoria
         elemento BYTE_DISCO de puertos es LOS_OCHO
-    si no si t es TAREA_PANTALLA
+    si no si t es TAREA_PANTALLA y modo_video es VIDEO_QEMU
         elemento BYTE_GRAFICOS de puertos es INDICE_Y_DATOS
         elemento BYTE_GRAFICOS_ALTO de puertos es EL_DE_DETRAS
     fin
@@ -3027,12 +3159,16 @@ funcion monta_programa con t y archivo y total
             taller es pagina_de_tarea con t
             elemento SITIO_TALLER mas p de entradas es taller mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
         fin
-        elemento SITIO_VIDEO de directorio es memoria_de_video mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
-        elemento SITIO_VIDEO mas 1 de directorio es memoria_de_video mas DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+        para cada k desde 1 hasta video_paginas
+            elemento SITIO_VIDEO mas k menos 1 de directorio es memoria_de_video mas (k menos 1) por DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+        fin
     si no si es_controlador con t
         buzon es pagina_de_tarea con t
         elemento t de buzones es buzon
         elemento SITIO_BUZON de entradas es buzon mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+        si t es TAREA_DISCO y disco_en_memoria
+            monta_disco_en_memoria con t y directorio y mesa
+        fin
     fin
     primera_de_codigo es (elemento t de paginas_usadas) mas 1
     de_codigo es paginas_de con archivo
@@ -3050,6 +3186,39 @@ fin
 
 funcion paginas_de con bytes
     devuelve cociente con (bytes mas PAGINA menos 1) y PAGINA
+fin
+
+SITIO_DISCO_EN_MEMORIA es 400
+TOPE_DISCO_EN_MEMORIA es 8 por DOS_MEGAS
+disco_en_memoria es modulo_hasta es mayor que 0
+
+funcion bytes_del_modulo
+    largo es modulo_hasta menos modulo_desde
+    si largo es mayor que TOPE_DISCO_EN_MEMORIA
+        devuelve TOPE_DISCO_EN_MEMORIA
+    fin
+    devuelve largo
+fin
+
+funcion monta_disco_en_memoria con t y directorio y mesa
+    largo es bytes_del_modulo
+    para cada k desde 1 hasta cociente con (largo mas DOS_MEGAS menos 1) y DOS_MEGAS
+        tabla es pagina_de_tarea con t
+        hojas es region con tabla y 512 y 8
+        para cada i desde 1 hasta 512
+            sitio es (k menos 1) por DOS_MEGAS mas (i menos 1) por PAGINA
+            si sitio es menor que largo
+                elemento i de hojas es modulo_desde mas sitio mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+            fin
+        fin
+        elemento SITIO_DISCO_EN_MEMORIA mas k menos 1 de directorio es tabla mas PRESENTE mas ESCRIBIBLE mas USUARIO
+    fin
+    sectores es cociente con largo y 512
+    cifras_mesa es region con mesa mas 4092 y 4
+    para cada i desde 1 hasta 4
+        elemento 5 menos i de cifras_mesa es sectores resto 256
+        sectores es cociente con sectores y 256
+    fin
 fin
 
 funcion pagina_de_codigo con t y p
@@ -6067,7 +6236,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 16"
+    pinta con "día 17"
     pon_color con GRIS y NEGRO
 fin
 
@@ -6093,9 +6262,17 @@ funcion portada
     pinta_linea con "  más, los cierro. El teclado, el disco y la pantalla ya no van dentro"
     pinta_linea con "  de mí: son programas, y si se cuelgan, lanzo otros."
     pinta_linea con ""
-    pinta_linea con "  Cada programa sale en su ventana, y el borde lo pinto yo, del color"
-    pinta_linea con "  de su caja. Él no puede tocarlo. Y lo que escribes solo le llega"
-    pinta_linea con "  al programa al que tú le das el teclado."
+    si disco_en_memoria
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "  He arrancado desde un pendrive. Mi disco va entero en la memoria:"
+        pinta_linea con "  no toco ningún disco de este ordenador, y lo que guardes se borra"
+        pinta_linea con "  al apagar."
+        pon_color con GRIS y NEGRO
+    si no
+        pinta_linea con "  Cada programa sale en su ventana, y el borde lo pinto yo, del color"
+        pinta_linea con "  de su caja. Él no puede tocarlo. Y lo que escribes solo le llega"
+        pinta_linea con "  al programa al que tú le das el teclado."
+    fin
     pinta_linea con ""
     pinta_linea con "  Hay un juego en el disco (lanza serpiente) y un bloc de notas"
     pinta_linea con "  (lanza notas) que guarda lo que escribes cifrado con tu clave."
@@ -6111,6 +6288,16 @@ funcion portada
 fin
 
 escribe "FalOS arrancado"
+si modo_video es VIDEO_DEL_CARGADOR
+    al_serie con "pantalla del cargador: "
+    escribe (elemento VIDEO_PASO de control) sin salto
+    al_serie con " por "
+    escribe (elemento VIDEO_FILAS de control)
+fin
+si disco_en_memoria
+    al_serie con "disco en memoria: "
+    escribe cociente con bytes_del_modulo y 1024
+fin
 portada
 compone
 si hay_graficos

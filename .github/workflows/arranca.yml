@@ -1264,3 +1264,75 @@ jobs:
           vuelven = [t for t in todas if t[0:6] == FALOS and t[12:14] == b"\x08\x00" and t[23] == 17]
           assert vuelven and vuelven[0][26:30] == bytes([10, 0, 2, 3])
           FIN
+
+      - name: Arrancar desde un pendrive, por BIOS y por UEFI, sin tocar ningun disco
+        run: |
+          sudo apt-get install -y -q grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools ovmf
+          fal haz_disco.fal
+          sh usb/haz_usb.sh
+          cp falos.iso falos.iso.antes
+          teclea() {
+            for letra in $(echo "$1" | sed 's/./& /g; s/  / spc /g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 20
+            teclea "lanza veces"
+            sleep 3
+            teclea "deja 1"
+            sleep 3
+            teclea "lanza veces"
+            sleep 3
+            teclea "deja 1"
+            sleep 3
+            teclea "lanza serpiente"
+            sleep 4
+            echo "screendump pendrive.ppm"
+            sleep 1
+            echo quit
+          } | timeout 90 qemu-system-x86_64 -m 1024 -display none \
+            -device qemu-xhci -drive if=none,id=pendrive,file=falos.iso,format=raw \
+            -device usb-storage,drive=pendrive \
+            -serial file:pendrive.txt -monitor stdio -no-reboot > /dev/null
+          cat pendrive.txt
+          if grep -q "  X  " pendrive.txt; then
+            echo "FalOS revento al arrancar desde el pendrive"
+            exit 1
+          fi
+          grep -q "pantalla del cargador: 1024 por 768" pendrive.txt
+          grep -q "disco en memoria: 4096" pendrive.txt
+          grep -q "veces leyó del disco: -3" pendrive.txt
+          grep -q "veces guardó en el disco: 2" pendrive.txt
+          grep -q "veces leyó del disco: 2" pendrive.txt
+          cmp falos.iso falos.iso.antes
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
+          {
+            sleep 30
+            echo "screendump uefi.ppm"
+            sleep 1
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -m 1024 -display none \
+            -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+            -drive if=pflash,format=raw,file=variables.fd \
+            -device qemu-xhci -drive if=none,id=pendrive,file=falos.iso,format=raw \
+            -device usb-storage,drive=pendrive \
+            -serial file:uefi.txt -monitor stdio -no-reboot > /dev/null
+          tr -d '\033' < uefi.txt | grep -a -E "FalOS|pantalla|disco|X  " || true
+          if grep -a -q "  X  " uefi.txt; then
+            echo "FalOS revento al arrancar por UEFI"
+            exit 1
+          fi
+          grep -a -q "pantalla del cargador: 1024 por 768" uefi.txt
+          grep -a -q "disco en memoria: 4096" uefi.txt
+          grep -a -q "pantalla lista" uefi.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: falos-pendrive
+          path: |
+            falos.iso
+            pendrive.ppm
+            uefi.ppm

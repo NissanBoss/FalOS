@@ -37,12 +37,21 @@ FLECHA_ALTO es 19
 FLECHA es "N...........NN..........NBN.........NBBN........NBBBN.......NBBBBN......NBBBBBN.....NBBBBBBN....NBBBBBBBN...NBBBBBBBBN..NBBBBBBBBBN.NBBBBBNNNNNNNBBNBBN.....NBN.NBBN....NN..NBBN....N....NBBN........NBBN.........NBBN........NNN..."
 
 rejilla es region con 807399424 y 2000 y 2
-control es region con 807403424 y 8 y 8
+control es region con 807403424 y 12 y 8
 pintado es region con 807395328 y 2000 y 2
 tintas es region con 807399328 y 16 y 4
 letras es region con 807313408 y 73728
 chica es region con 807387136 y 72
-video es region con 809769472 y 576000 y 4
+VIDEO_EN es 809500672
+VIDEO_ORIGEN es 5
+VIDEO_PASO es 6
+VIDEO_MODO es 7
+VIDEO_COLORES es 8
+VIDEO_INICIO es 9
+VIDEO_FILAS es 10
+VIDEO_QEMU es 1
+paso es elemento VIDEO_PASO de control
+video es region con VIDEO_EN mas (elemento VIDEO_ORIGEN de control) y EN_ALTO por paso y 4
 letra_dibujada es incluye_archivo de "controladores/letra.txt"
 
 subidas_vistas es 0
@@ -66,8 +75,20 @@ funcion enciende_graficos
     registro con REG_DESPLAZADO y SALTO_VGA
 fin
 
+funcion desplaza con valor y bits
+    movido es valor
+    repite bits veces
+        movido es movido por 2
+    fin
+    devuelve movido
+fin
+
 funcion pon_tinta con i y rojo y verde y azul
-    elemento i mas 1 de tintas es rojo por 65536 mas verde por 256 mas azul
+    sitios es elemento VIDEO_COLORES de control
+    a_rojo es cociente con sitios y 65536
+    a_verde es (cociente con sitios y 256) resto 256
+    a_azul es sitios resto 256
+    elemento i mas 1 de tintas es (desplaza con rojo y a_rojo) mas (desplaza con verde y a_verde) mas (desplaza con azul y a_azul)
 fin
 
 funcion prepara_tintas
@@ -179,7 +200,7 @@ funcion pinta_casilla con i y valor
     colores es cociente con valor y 256
     fondo es elemento (cociente con colores y 16) mas 1 de tintas
     tinta es elemento (colores resto 16) mas 1 de tintas
-    sitio es (cociente con i menos 1 y ANCHO) por LETRA_ALTO por EN_ANCHO mas ((i menos 1) resto ANCHO) por LETRA_ANCHO
+    sitio es (cociente con i menos 1 y ANCHO) por LETRA_ALTO por paso mas ((i menos 1) resto ANCHO) por LETRA_ANCHO
     punto es (valor resto 256) por PIXELES
     repite LETRA_ALTO veces
         para cada x desde 1 hasta LETRA_ANCHO
@@ -190,7 +211,7 @@ funcion pinta_casilla con i y valor
             fin
         fin
         punto es punto mas LETRA_ANCHO
-        sitio es sitio mas EN_ANCHO
+        sitio es sitio mas paso
     fin
 fin
 
@@ -205,13 +226,13 @@ funcion pinta_cursor
     cursor_pintado es elemento CURSOR_EN de control
     si cursor_pintado es mayor o igual que 0 y cursor_pintado es menor que ALTO por ANCHO
         tinta es elemento 16 de tintas
-        sitio es (cociente con cursor_pintado y ANCHO) por LETRA_ALTO por EN_ANCHO mas (cursor_pintado resto ANCHO) por LETRA_ANCHO
-        sitio es sitio mas 22 por EN_ANCHO
+        sitio es (cociente con cursor_pintado y ANCHO) por LETRA_ALTO por paso mas (cursor_pintado resto ANCHO) por LETRA_ANCHO
+        sitio es sitio mas 22 por paso
         repite 2 veces
             para cada x desde 1 hasta LETRA_ANCHO
                 elemento sitio mas x de video es tinta
             fin
-            sitio es sitio mas EN_ANCHO
+            sitio es sitio mas paso
         fin
     fin
 fin
@@ -223,7 +244,7 @@ funcion sube_lo_pintado
     subidas_vistas es ahora
     filas es ABAJO menos ARRIBA mas 1
     si cuantas es mayor que 0 y cuantas es menor que filas
-        por_fila es LETRA_ALTO por EN_ANCHO
+        por_fila es LETRA_ALTO por paso
         copia_region con video y por_fila mas 1 y video y (1 mas cuantas) por por_fila mas 1 y (filas menos cuantas) por por_fila
         copia_region con pintado y ANCHO mas 1 y pintado y (1 mas cuantas) por ANCHO mas 1 y (filas menos cuantas) por ANCHO
     fin
@@ -287,7 +308,7 @@ funcion pinta_flecha
         para cada fx desde 0 hasta FLECHA_ANCHO menos 1
             punto es elemento fy por FLECHA_ANCHO mas fx mas 1 de FLECHA
             si flecha_y mas fy es menor que EN_ALTO y flecha_x mas fx es menor que EN_ANCHO
-                sitio es (flecha_y mas fy) por EN_ANCHO mas flecha_x mas fx mas 1
+                sitio es (flecha_y mas fy) por paso mas flecha_x mas fx mas 1
                 si punto es 78
                     elemento sitio de video es oscuro
                 si no si punto es 66
@@ -310,9 +331,29 @@ fin
 para cada i desde 1 hasta ALTO por ANCHO
     elemento i de pintado es SIN_PINTAR
 fin
+funcion borra_todo
+    filas es elemento VIDEO_FILAS de control
+    todo es region con VIDEO_EN mas (elemento VIDEO_INICIO de control) y filas por paso y 4
+    fondo es elemento 1 de tintas
+    i es 1
+    para cada f desde 1 hasta filas
+        repite paso veces
+            elemento i de todo es fondo
+            i es i mas 1
+        fin
+        si (f resto 32) es 0
+            llama_al_sistema con CEDE
+        fin
+    fin
+fin
+
 prepara_tintas
 prepara_letras
-enciende_graficos
+si (elemento VIDEO_MODO de control) es VIDEO_QEMU
+    enciende_graficos
+si no
+    borra_todo
+fin
 subidas_vistas es elemento SUBIDAS de control
 pinta_todo
 

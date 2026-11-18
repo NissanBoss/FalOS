@@ -41,8 +41,20 @@ MODELO es 3700
 buzon es region con 807399424 y 4096
 mesa es region con 807395328 y 4096
 
+DISCO_EN_MEMORIA es 836763648
+MODELO_EN_MEMORIA es "pendrive, entero en la memoria"
+
 total_sectores es 0
 leido es 1
+sectores_en_memoria es 0
+para cada i desde 4093 hasta 4096
+    sectores_en_memoria es sectores_en_memoria por 256 mas elemento i de mesa
+fin
+en_memoria es sectores_en_memoria es mayor que 0
+disco_entero es nada
+si en_memoria
+    disco_entero es region con DISCO_EN_MEMORIA y sectores_en_memoria por 512
+fin
 salida es 0
 nombre_largo es 0
 campo_sector es 0
@@ -73,6 +85,16 @@ fin
 
 funcion identifica
     comparte total_sectores
+    si en_memoria
+        total_sectores es sectores_en_memoria
+        para cada i desde 1 hasta 40
+            elemento 54 mas i de mesa es 32
+        fin
+        para cada i desde 1 hasta largo de MODELO_EN_MEMORIA
+            elemento 54 mas i de mesa es elemento i de MODELO_EN_MEMORIA
+        fin
+        devuelve verdadero
+    fin
     pon_en_puerto con UNIDAD y 160
     pon_en_puerto con CUENTA y 0
     pon_en_puerto con BAJO y 0
@@ -121,7 +143,18 @@ funcion apunta_a con numero y orden
     pon_en_puerto con ESTADO y orden
 fin
 
+funcion sector_en_memoria con numero
+    devuelve en_memoria y numero es mayor o igual que 0 y numero es menor que total_sectores
+fin
+
 funcion lee_sector con numero y destino y desde
+    si en_memoria
+        si no (sector_en_memoria con numero)
+            devuelve falso
+        fin
+        copia_region con destino y desde mas 1 y disco_entero y numero por 512 mas 1 y 512
+        devuelve verdadero
+    fin
     apunta_a con numero y LEER
     si no libre_y_con_datos
         devuelve falso
@@ -135,6 +168,13 @@ funcion lee_sector con numero y destino y desde
 fin
 
 funcion escribe_sector con numero y origen y desde
+    si en_memoria
+        si no (sector_en_memoria con numero)
+            devuelve falso
+        fin
+        copia_region con disco_entero y numero por 512 mas 1 y origen y desde mas 1 y 512
+        devuelve verdadero
+    fin
     apunta_a con numero y ESCRIBIR
     si no libre_y_con_datos
         devuelve falso
