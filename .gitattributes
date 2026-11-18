@@ -2,4 +2,4 @@
 *.fal text eol=lf
 disco/* text eol=lf
 controladores/*.txt text eol=lf
-usb/haz_usb.sh linguist-detectable=false
+usb/* linguist-vendored
