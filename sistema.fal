@@ -250,7 +250,7 @@ funcion busca_modulo
     modulo es region con (elemento 7 de info) y 4 y 4
     desde es elemento 1 de modulo
     hasta es elemento 2 de modulo
-    si desde es mayor o igual que MEGA y hasta es mayor que desde mas 1024 y hasta es menor que VISIBLE y (desde resto PAGINA) es 0
+    si desde es mayor o igual que MEGA y hasta es mayor que desde mas 1024 y hasta es menor o igual que ARRANQUE_CERCA y (desde resto PAGINA) es 0
         modulo_desde es desde
         modulo_hasta es hasta
     fin
@@ -269,7 +269,7 @@ funcion aparta_lo_del_cargador
     comparte libre_desde
     libre_desde es final_del_nucleo
     info es region con datos_de_arranque y 13 y 4
-    deja_atras con datos_de_arranque y 116
+    deja_atras con datos_de_arranque y 120
     deja_atras con (elemento 13 de info) y (elemento 12 de info)
     si bit_de_arranque con 8
         deja_atras con (elemento 7 de info) y (elemento 6 de info) por 16
@@ -510,13 +510,14 @@ VIDEO_FILAS es 10
 TOPE_PAGINAS_VIDEO es 64
 modo_video es SIN_VIDEO
 video_paginas es 0
+ancho_del_cargador es 0
 
 funcion pon_video con cual y valor
     elemento cual de control es valor
 fin
 
 funcion busca_pantalla_del_cargador
-    comparte memoria_de_video y video_paginas
+    comparte memoria_de_video y video_paginas y ancho_del_cargador
     si datos_de_arranque es 0
         devuelve falso
     fin
@@ -546,6 +547,7 @@ funcion busca_pantalla_del_cargador
     pon_video con VIDEO_ORIGEN y desde_pagina mas (cociente con (pixeles_alto menos CUADRO_ALTO) y 2) por bytes_por_fila mas (cociente con (pixeles_ancho menos CUADRO_ANCHO) y 2) por 4
     pon_video con VIDEO_PASO y cociente con bytes_por_fila y 4
     pon_video con VIDEO_FILAS y pixeles_alto
+    ancho_del_cargador es pixeles_ancho
     si ((cociente con formato y 16777216) resto 256) es 0
         a_rojo es (elemento 29 de info) resto 256
         a_verde es (cociente con (elemento 29 de info) y 65536) resto 256
@@ -6299,7 +6301,7 @@ fin
 escribe "FalOS arrancado"
 si modo_video es VIDEO_DEL_CARGADOR
     al_serie con "pantalla del cargador: "
-    escribe (elemento VIDEO_PASO de control) sin salto
+    escribe ancho_del_cargador sin salto
     al_serie con " por "
     escribe (elemento VIDEO_FILAS de control)
 fin
