@@ -44,6 +44,33 @@ fal --arranca sistema.fal
 textos de [disco/](disco) y hace un `disco.img`, y `fal --arranca` lo conecta
 solo.
 
+### En un ordenador de verdad
+
+FalOS arranca desde un pendrive con GRUB, por BIOS y por UEFI, y no se instala:
+su disco va entero en la memoria y no toca ningún disco del ordenador. Lo que
+guardes se borra al apagar. Se ha probado en un ThinkPad L450 de 2015.
+
+La imagen la hace GitHub cada vez que se sube algo (en Actions, el artefacto
+`falos-pendrive`), o tú con GRUB y xorriso instalados:
+
+```bash
+fal --nucleo sistema.fal
+```
+
+```bash
+fal haz_disco.fal
+```
+
+```bash
+sh usb/haz_usb.sh
+```
+
+Grábala con [Rufus](https://rufus.ie) en **modo Imagen DD** (en modo ISO, Rufus
+cambia el arranque de GRUB) o con `dd`. Borra el pendrive entero. Luego enciende
+el ordenador con el pendrive puesto y elige el pendrive en el menú de arranque
+(F12 en un ThinkPad). Si no sale, en la BIOS pon el arranque en "Both" o
+"Legacy" y quita Secure Boot: GRUB va sin firmar.
+
 El núcleo está en [sistema.fal](sistema.fal), y los cuatro programas que necesita
 para ver, oír, leer y salir a la red, en [controladores/](controladores). Lo que se va añadiendo
 cada día está en el [diario](DIARIO.md).
@@ -399,18 +426,23 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Un programa puede pedirte que le pegues algo.** Lo pegado va a la ventana que
   tiene el teclado, y esa la eliges tú: si `disfraz` te pide que pegues tu
   contraseña y se la pegas, la tiene. El título de la ventana dice quién es.
-- **Solo ratón PS/2.** Es el que trae QEMU. Al hacer clic en su ventana, QEMU se
-  queda con el ratón, y lo suelta con la combinación que pone en su título. Ni
-  USB ni pantallas táctiles.
-- **Los gráficos son los de la tarjeta de QEMU.** Con otra tarjeta, FalOS se queda
-  en modo de texto. En un portátil de verdad haría falta otro camino.
+- **Solo ratón PS/2.** Es el que trae QEMU, y el TrackPoint y el touchpad de
+  muchos portátiles. Al hacer clic en su ventana, QEMU se queda con el ratón, y
+  lo suelta con la combinación que pone en su título. Ni ratones USB ni
+  pantallas táctiles.
+- **En un ordenador de verdad, la pantalla es la de 1024x768 que da GRUB.**
+  FalOS pinta su cuadro de 960x600 en el centro, y una pantalla más ancha lo
+  estira. Si la tarjeta no tiene ese modo a 32 bits, la pantalla se queda en
+  negro. Y si FalOS revienta, el aviso rojo no se ve: lo escribe en el modo de
+  texto, que ahí no está.
 - **La letra tiene 125 caracteres.** El español, las líneas de las cajas y poco más.
 - **El programa del teclado ve todo lo que escribes**, y ahora también cómo
   mueves el ratón. Está en su caja y no puede hacer nada más, pero si alguien lo
   cambiara por otro, lo leería todo, y podría pulsar Ctrl+V por ti.
-- **El disco es el IDE de siempre.** Es el que trae QEMU, no el de un portátil
-  de ahora, y el formato es uno de texto propio: ni FAT, ni nada que escriba
-  otro sistema.
+- **El disco es el IDE de siempre, o la memoria.** El IDE es el que trae QEMU, no
+  el de un portátil de ahora, y el formato es uno de texto propio: ni FAT, ni
+  nada que escriba otro sistema. Desde el pendrive, el disco va en la memoria, y
+  lo que guardes se pierde al apagar: no escribe en el pendrive.
 - **El índice del disco cabe en dos sectores.** Son 1.024 bytes, y hoy quedan
   unos 480 libres. Si no cabe, el programa recibe un error y el disco no se toca.
 - **Un hueco del disco no se reutiliza.** Si el sitio de antes no vale, o se ha
@@ -524,9 +556,12 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
   puede, y eso aquí aún no ha pasado. No lo uses para nada que importe.
-- **Solo se ha probado en QEMU.** En un ordenador de verdad debería arrancar
-  con GRUB, pero no se ha comprobado.
-- **Solo x86-64 y arranque por BIOS** (multiboot). Ni ARM ni UEFI.
+- **Un solo ordenador de verdad.** Un ThinkPad L450, por BIOS (Legacy). Por UEFI
+  solo se ha probado en QEMU, en la prueba automática. En otro ordenador puede
+  fallar el teclado, el reloj o la pantalla, y la red no va en ninguno: solo sé
+  usar la NE2000.
+- **Solo x86-64**, arrancado por multiboot: con QEMU o con GRUB. Ni ARM ni
+  Secure Boot.
 
 ## Filosofía
 

@@ -4321,8 +4321,13 @@ fin
 
 funcion sin_tarjeta
     pon_color con ROJO_CLARO y NEGRO
-    pinta_linea con "  No hay tarjeta de red. FalOS sabe usar la NE2000: arráncalo con"
-    pinta_linea con "  -nic user,model=ne2k_pci"
+    si disco_en_memoria
+        pinta_linea con "  Este ordenador no tiene una NE2000, la única tarjeta de red que sé"
+        pinta_linea con "  usar. Así que aquí no salgo a la red, ni aunque me lo pidas."
+    si no
+        pinta_linea con "  No hay tarjeta de red. FalOS sabe usar la NE2000: arráncalo con"
+        pinta_linea con "  -nic user,model=ne2k_pci"
+    fin
     pon_color con GRIS y NEGRO
     pinta_linea con ""
     al_serie con "red: no hay tarjeta"
@@ -4786,7 +4791,11 @@ funcion orden_disco
     si no
         pinta_buzon con respuesta
         pinta_linea con ""
-        pinta_linea con "  Lo ha leído un programa sin permisos, que solo toca ocho puertos."
+        si disco_en_memoria
+            pinta_linea con "  Lo ha leído un programa sin permisos, que no toca ningún puerto."
+        si no
+            pinta_linea con "  Lo ha leído un programa sin permisos, que solo toca ocho puertos."
+        fin
         pinta_linea con ""
     fin
 fin

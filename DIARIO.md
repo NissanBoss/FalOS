@@ -2,6 +2,67 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 17: FalOS sale de QEMU y arranca en un portátil de verdad
+
+![FalOS en un ThinkPad L450, arrancado desde un pendrive](capturas/dia-17.jpg)
+
+**Lo que hay.** Hasta hoy FalOS solo había arrancado en QEMU, un ordenador de
+mentira. Hoy arranca en un ThinkPad L450 de 2015, desde un pendrive. La foto es
+de la pantalla del portátil, hecha con un móvil: en un ordenador de verdad no
+hay captura que valga.
+
+El pendrive lleva GRUB, FalOS y su disco. GRUB carga los dos en la memoria y
+salta a FalOS, que ya no necesita nada más del pendrive. Funciona lo mismo que
+en QEMU: el teclado español, el TrackPoint, las ventanas, la serpiente, las
+notas cifradas y el registro.
+
+**No se instala.** El portátil tiene Qubes en su disco, y FalOS no lo toca. Su
+disco va entero en la memoria, y el programa del disco lo lee y lo escribe
+ahí, sin poder tocar ni un puerto: el núcleo ni se los abre. Lo que guardes se
+borra al apagar. Quitas el pendrive y el portátil vuelve a ser el de antes.
+
+![disco: el pendrive entero en la memoria, leído por un programa que no toca ningún puerto](capturas/dia-17-disco.jpg)
+
+**Lo que hizo falta.** En QEMU, FalOS pintaba con una tarjeta gráfica que solo
+existe en QEMU, y leía un disco IDE que un portátil de ahora no tiene. Las dos
+cosas tenían que cambiar:
+
+- **La pantalla la da GRUB.** FalOS le pide una de 1024x768, GRUB la enciende y
+  le dice dónde está y cómo van los colores. El programa de la pantalla pinta
+  ahí el mismo cuadro de siempre, centrado, y ya no toca ningún puerto.
+- **El disco va como un módulo.** GRUB lo carga detrás de FalOS, y FalOS se
+  aparta para no pisarlo: antes apuntaba qué páginas están libres justo donde
+  ahora está el disco.
+
+Para eso Fal ha cambiado su cabecera de arranque: ahora le dice a GRUB que
+quiere una pantalla de píxeles. Sin eso, en un ordenador con UEFI no hay
+ninguna pantalla que FalOS sepa usar.
+
+![notas en el portátil: lo que escribes se cifra antes de guardarlo](capturas/dia-17-notas.jpg)
+
+**La seguridad.** La prueba automática hace la imagen del pendrive y la arranca
+dos veces en QEMU como si fuera un USB, sin ningún disco conectado: una por
+BIOS y otra por UEFI. Guarda dos veces en el disco de la memoria, lo vuelve a
+leer, y al final compara la imagen byte a byte con la de antes. Tiene que
+estar igual: FalOS no ha escrito nada en el pendrive.
+
+**Lo que se aprende.** Un ordenador de verdad no se parece a QEMU en lo que
+importa. QEMU tiene una tarjeta gráfica que se maneja con dos puertos, y un
+portátil tiene la de Intel, con cientos de registros y un manual de miles de
+páginas. La salida
+es la de siempre: que alguien que ya la conoce (aquí, la BIOS a través de
+GRUB) la encienda, y pintar encima.
+
+**Lo que costó.** GRUB no le hacía caso a su propio archivo de ajustes: le
+pedía 1024x768 en `grub.cfg` y daba 800x600 a 24 bits, y una entrada para el
+modo de texto daba píxeles igual. Solo obedece a la cabecera del núcleo. Y los
+colores salieron cambiados, el azul verde y el verde rojo: la especificación
+de multiboot dice que los colores van desde el byte 110, y GRUB los deja desde
+el 112. FalOS mira los dos sitios.
+
+`ping` en el portátil no sale: tiene una tarjeta de red de Intel, y FalOS solo
+sabe usar la NE2000. Lo dice así, sin mandarte a QEMU.
+
 ## Día 16: un programa solo sale a la red si le dejas, y solo a donde le dejas
 
 ![busca pide permiso para preguntar al DNS, y con deja 1 le llegan las direcciones de fal-lang.org](capturas/dia-16.png)
