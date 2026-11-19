@@ -1288,6 +1288,8 @@ jobs:
             sleep 3
             teclea "deja 1"
             sleep 3
+            teclea "reto"
+            sleep 2
             teclea "lanza serpiente"
             sleep 4
             echo "screendump pendrive.ppm"
@@ -1307,6 +1309,7 @@ jobs:
           grep -q "veces leyó del disco: -3" pendrive.txt
           grep -q "veces guardó en el disco: 2" pendrive.txt
           grep -q "veces leyó del disco: 2" pendrive.txt
+          grep -q "reto: 7" pendrive.txt
           cmp falos.iso falos.iso.antes
           cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
           {
@@ -1329,10 +1332,66 @@ jobs:
           grep -a -q "disco en memoria: 4096" uefi.txt
           grep -a -q "pantalla lista" uefi.txt
 
+      - name: Apuntar con qué Fal se ha hecho
+        run: git -C /tmp/fal rev-parse HEAD > fal.txt
+
       - uses: actions/upload-artifact@v4
         with:
           name: falos-pendrive
           path: |
             falos.iso
+            sistema.bin
+            disco.img
+            fal.txt
             pendrive.ppm
             uefi.ppm
+
+  publicar:
+    needs: arrancar
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: falos-pendrive
+          path: imagen
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Compilar Fal para Linux, Windows y Mac
+        run: |
+          git clone https://github.com/NissanBoss/Fal.git /tmp/fal
+          git -C /tmp/fal checkout "$(cat imagen/fal.txt)"
+          cd /tmp/fal
+          GOOS=linux GOARCH=amd64 go build -trimpath -o "$GITHUB_WORKSPACE/imagen/fal-linux" .
+          GOOS=windows GOARCH=amd64 go build -trimpath -o "$GITHUB_WORKSPACE/imagen/fal-windows.exe" .
+          GOOS=darwin GOARCH=arm64 go build -trimpath -o "$GITHUB_WORKSPACE/imagen/fal-mac" .
+
+      - name: Publicar la imagen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIQUETA: ${{ github.ref_name }}
+        run: |
+          cd imagen
+          sha256sum falos.iso sistema.bin disco.img fal-linux fal-windows.exe fal-mac > sha256.txt
+          cat > notas.md <<FIN
+          Lo ha hecho GitHub desde el commit $GITHUB_SHA, después de pasar todas las pruebas de [arranca.yml](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID). No sale de mi ordenador.
+
+          - **falos.iso**: para un pendrive. Grábala con [Rufus](https://rufus.ie) en modo Imagen DD, o con dd. Arranca por BIOS y por UEFI, sin Secure Boot, y no toca el disco del ordenador.
+          - **sistema.bin** y **disco.img**: para QEMU. \`qemu-system-x86_64 -kernel sistema.bin -drive file=disco.img,format=raw,if=ide\`, y con \`-nic user,model=ne2k_pci\` tiene red.
+          - **fal-linux**, **fal-windows.exe** y **fal-mac**: el compilador de Fal con el que se hizo, del commit $(cat fal.txt) de [Fal](https://github.com/NissanBoss/Fal). Con él compilas tus programas para meterlos en el disco.
+
+          ¿Crees que puedes romperlo? Las reglas están en [RETO.md](https://github.com/$GITHUB_REPOSITORY/blob/$ETIQUETA/RETO.md).
+
+          \`\`\`
+          $(cat sha256.txt)
+          \`\`\`
+          FIN
+          gh release create "$ETIQUETA" falos.iso sistema.bin disco.img fal-linux fal-windows.exe fal-mac sha256.txt \
+            --repo "$GITHUB_REPOSITORY" --title "FalOS, $ETIQUETA" --notes-file notas.md

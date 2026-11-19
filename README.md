@@ -71,6 +71,17 @@ el ordenador con el pendrive puesto y elige el pendrive en el menú de arranque
 (F12 en un ThinkPad). Si no sale, en la BIOS pon el arranque en "Both" o
 "Legacy" y quita Secure Boot: GRUB va sin firmar.
 
+### Descargarlo, y romperlo
+
+En [Releases](https://github.com/NissanBoss/FalOS/releases/latest) está la imagen
+para el pendrive, el núcleo y el disco para QEMU, y el compilador de Fal con el
+que se hizo, para Linux, Windows y Mac. La hace GitHub desde el commit de la
+etiqueta, y solo la publica si pasan todas las pruebas.
+
+Y si crees que puedes hacer que un programa se salga de lo que FalOS le deja,
+[RETO.md](RETO.md) dice qué hay que conseguir, qué tiene un programa a mano y
+cómo avisar. Dentro de FalOS, `reto` lo resume.
+
 El núcleo está en [sistema.fal](sistema.fal), y los cuatro programas que necesita
 para ver, oír, leer y salir a la red, en [controladores/](controladores). Lo que se va añadiendo
 cada día está en el [diario](DIARIO.md).
@@ -80,7 +91,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
-`sin cerrojo`, `portapapeles`, `ping`, `red`, `cuelga`, `rompe` y `reinicia`. Lo que escribes se corrige
+`sin cerrojo`, `portapapeles`, `ping`, `red`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -555,7 +566,8 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   no se usa todavía.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
-  puede, y eso aquí aún no ha pasado. No lo uses para nada que importe.
+  puede, y eso aquí aún no ha pasado: para eso está el [reto](RETO.md). No lo
+  uses para nada que importe.
 - **Un solo ordenador de verdad.** Un ThinkPad L450, por BIOS (Legacy). Por UEFI
   solo se ha probado en QEMU, en la prueba automática. En otro ordenador puede
   fallar el teclado, el reloj o la pantalla, y la red no va en ninguno: solo sé

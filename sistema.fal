@@ -2793,6 +2793,8 @@ funcion ejecuta
         orden_ping con 6
     si no si es_orden con "red"
         orden_red
+    si no si es_orden con "reto"
+        reto
     si no
         no_conozco
     fin
@@ -2834,6 +2836,7 @@ funcion ayuda
     pinta_linea con ""
     pinta_linea con "  cuelga X       cuelga a propósito el teclado, el disco, la pantalla o la red"
     pinta_linea con "  rompe X        hace que intenten algo prohibido"
+    pinta_linea con "  reto           lo que tendría que hacer un programa para ganarme"
     pinta_linea con ""
     pinta_linea con "  Con el ratón, una ventana se mueve arrastrando su título, se cierra"
     pinta_linea con "  con la x roja, y un clic en ella le da el teclado."
@@ -2844,6 +2847,29 @@ funcion ayuda
     pinta_linea con "  portapapeles   cuánto hay copiado, sin enseñarlo"
     pinta_linea con "  olvida portapapeles   lo borra ya"
     pinta_linea con ""
+fin
+
+funcion reto
+    pon_color con AMARILLO y NEGRO
+    pinta_linea con "  El reto: haz un programa que consiga una de estas cosas."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    pinta_linea con "  1  Leer lo que guarda otro programa, o lo que escribes en otra ventana."
+    pinta_linea con "  2  Salir a la red sin que digas deja, o ir a otro sitio del que dejaste."
+    pinta_linea con "  3  Guardar en el disco sin tu permiso, o pisar lo que guardó otro."
+    pinta_linea con "  4  Leer lo que copias sin que tú se lo pegues."
+    pinta_linea con "  5  Tocar memoria que no es suya, o un aparato, y seguir corriendo."
+    pinta_linea con "  6  Tirarme o colgarme entero, no solo a él."
+    pinta_linea con "  7  Ver o tocar algo con la pantalla bloqueada."
+    pinta_linea con ""
+    pinta_linea con "  Vale escribirlo en Fal o hacer el programa byte a byte. No vale"
+    pinta_linea con "  cambiar mi código, ni hacerlo desde fuera de la máquina."
+    pinta_linea con ""
+    pon_color con CIAN_CLARO y NEGRO
+    pinta_linea con "  Las reglas y cómo avisar: fal-lang.org/falos#reto"
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    al_serie con "reto: 7"
 fin
 
 funcion no_conozco
@@ -6247,7 +6273,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 17"
+    pinta con "día 18"
     pon_color con GRIS y NEGRO
 fin
 
@@ -6293,7 +6319,7 @@ funcion portada
     pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
     pinta_linea con "  un programa solo se conecta a donde tú le dejes."
     pon_color con AMARILLO y NEGRO
-    pinta_linea con "  Escribe ayuda para ver lo que sé hacer."
+    pinta_linea con "  Escribe ayuda para ver lo que sé hacer, o reto si quieres romperme."
     pon_color con GRIS y NEGRO
     pinta_linea con ""
 fin

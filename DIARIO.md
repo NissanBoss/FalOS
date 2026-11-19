@@ -2,6 +2,50 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 18: la imagen para que lo arranques tú, y un reto para romperlo
+
+![reto: las siete cosas que tendría que conseguir un programa para ganarme](capturas/dia-18.png)
+
+**Lo que hay.** Desde hoy, FalOS se descarga. En
+[Releases](https://github.com/NissanBoss/FalOS/releases/latest) están la imagen
+para un pendrive, el núcleo y el disco para QEMU, y el compilador de Fal con el
+que se hizo, para Linux, Windows y Mac. No hace falta instalar Go ni GRUB.
+
+Y un reto. La orden `reto` dice lo que tendría que conseguir un programa para
+ganarme: leer lo que guarda otro, salir a la red o guardar sin permiso, leer el
+portapapeles, salirse de su caja y seguir vivo, tirarme entero o saltarse el
+cerrojo. Y vale igual que FalOS te mienta: que la pregunta de permiso diga otro
+programa u otro sitio de lo que de verdad pasa. Las reglas, las llamadas al
+sistema que tiene un programa y cómo avisar están en [RETO.md](RETO.md).
+
+```
+reto
+```
+
+**La imagen no sale de mi ordenador.** La hace GitHub desde el commit de la
+etiqueta, y solo la publica si antes pasan todas las pruebas, también las que
+arrancan el pendrive por BIOS y por UEFI. Con ella van sus sumas SHA-256 y el
+commit de Fal con el que se compiló, para que se sepa de dónde sale cada byte.
+
+**La seguridad.** Hasta hoy, quien intentaba romper FalOS era yo, con los
+programas que lo intentan: `espia`, `ladron`, `chivato`, `cambiazo` y los demás.
+Yo sé dónde mirar, y por eso mismo no se me ocurre mirar en otros sitios. El
+README lo dice desde el primer día: un sistema es seguro cuando alguien de fuera
+intenta romperlo y no puede, y eso aquí aún no ha pasado. A partir de hoy puede
+pasar.
+
+**Lo que se aprende.** Para el reto había que escribir todo lo que un programa
+puede pedirle al núcleo, y cabe en una tabla de 18 filas. Eso es toda la
+superficie: un ataque tiene que pasar por una de esas 18 llamadas, por la mesa
+que comparte con el núcleo o por la cabecera del programa, que FalOS lee antes
+de cargarlo. Verlo escrito en una tabla ayuda a saber dónde buscar.
+
+**Lo que costó.** Antes de invitar a nadie repasé lo del día 17, y había un
+agujero. Si GRUB cargaba el disco por encima de los 64 MB, FalOS lo usaba igual
+pero no lo apartaba, y podía darle esa memoria a un programa. En el portátil y
+en QEMU lo carga abajo, por eso no se vio. Ahora solo acepta el disco si cae
+donde lo protege.
+
 ## Día 17: FalOS sale de QEMU y arranca en un portátil de verdad
 
 ![FalOS en un ThinkPad L450, arrancado desde un pendrive](capturas/dia-17.jpg)

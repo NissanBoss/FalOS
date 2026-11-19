@@ -1,0 +1,47 @@
+name: He roto FalOS
+description: Un programa que consigue algo de lo que pide el reto
+title: "Reto: "
+labels: ["reto"]
+body:
+  - type: dropdown
+    id: que
+    attributes:
+      label: Qué has conseguido
+      options:
+        - "1. Leer lo que no es suyo"
+        - "2. Salir a la red sin permiso"
+        - "3. Guardar sin permiso"
+        - "4. Leer el portapapeles"
+        - "5. Salirse de su caja y seguir vivo"
+        - "6. Tirar FalOS entero"
+        - "7. Saltarse el cerrojo"
+        - "Que FalOS mienta"
+    validations:
+      required: true
+  - type: textarea
+    id: programa
+    attributes:
+      label: El programa
+      description: El .fal entero, o cómo hacer el .prg si va byte a byte.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Cómo lo arrancaste
+      description: La release o el commit, QEMU o un ordenador de verdad, y lo que escribiste en FalOS.
+    validations:
+      required: true
+  - type: textarea
+    id: paso
+    attributes:
+      label: Qué pasó
+      description: Lo que salió, mejor con una captura.
+    validations:
+      required: true
+  - type: input
+    id: nombre
+    attributes:
+      label: Con qué nombre sales en el muro
+      description: Si lo dejas vacío, saldrá tu usuario de GitHub.
