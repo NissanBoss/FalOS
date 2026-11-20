@@ -42,7 +42,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:serie.txt -no-reboot || true
           cat serie.txt
-          if grep -q "  X  " serie.txt; then
+          if grep -Eq "X  [A-Z]" serie.txt; then
             echo "FalOS revento al arrancar"
             exit 1
           fi
@@ -70,7 +70,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:programas.txt -monitor stdio -no-reboot > /dev/null
           cat programas.txt
-          if grep -q "  X  " programas.txt; then
+          if grep -Eq "X  [A-Z]" programas.txt; then
             echo "Un programa ha tumbado a FalOS"
             exit 1
           fi
@@ -103,7 +103,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:permisos.txt -monitor stdio -no-reboot > /dev/null
           cat permisos.txt
-          if grep -q "  X  " permisos.txt; then
+          if grep -Eq "X  [A-Z]" permisos.txt; then
             echo "Un programa ha tumbado a FalOS"
             exit 1
           fi
@@ -146,7 +146,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:aparatos.txt -monitor stdio -no-reboot > /dev/null
           cat aparatos.txt
-          if grep -q "  X  " aparatos.txt; then
+          if grep -Eq "X  [A-Z]" aparatos.txt; then
             echo "Un aparato ha tumbado a FalOS"
             exit 1
           fi
@@ -201,7 +201,7 @@ jobs:
               -drive file=$disco.img,format=raw,if=ide \
               -serial file:$disco.txt -monitor stdio -no-reboot > /dev/null
             cat $disco.txt
-            if grep -q "  X  " $disco.txt; then
+            if grep -Eq "X  [A-Z]" $disco.txt; then
               echo "El disco $disco ha tumbado a FalOS"
               exit 1
             fi
@@ -234,7 +234,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:antes.txt -monitor stdio -no-reboot > /dev/null
           cat antes.txt
-          if grep -q "  X  " antes.txt; then
+          if grep -Eq "X  [A-Z]" antes.txt; then
             echo "Ha vuelto un fallo viejo"
             exit 1
           fi
@@ -243,6 +243,99 @@ jobs:
             echo "Un programa que solo gasta procesador ha tumbado un controlador"
             exit 1
           fi
+
+      - name: Una sola llamada que tumbaba FalOS
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza tumba"
+            sleep 3
+            teclea "lanza cuenta"
+            sleep 2
+            teclea "para 1"
+            sleep 1
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:tumba.txt -monitor stdio -no-reboot > /dev/null
+          cat tumba.txt
+          if grep -Eq "X  [A-Z]" tumba.txt; then
+            echo "Guardar, leer o conectar desde el final de la memoria ha vuelto a tumbar a FalOS"
+            exit 1
+          fi
+          grep -q "tumba recibió 0 teclas" tumba.txt
+          if grep -q "tumba cerrado por" tumba.txt; then
+            echo "tumba no ha llegado al final"
+            exit 1
+          fi
+          grep -q "cuenta cerrado con" tumba.txt
+          if grep -q "no hay controlador PS/2" tumba.txt; then
+            echo "FalOS dice que no hay teclado con el teclado delante"
+            exit 1
+          fi
+
+      - name: Ninguna ventana tapa una pregunta de permiso
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza trampa"
+            sleep 1
+            teclea "teclado 1"
+            teclea "x"
+            sleep 2
+            echo "screendump preguntando.ppm"
+            sleep 1
+            teclea "niega 1"
+            sleep 2
+            echo "screendump contestado.ppm"
+            sleep 1
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide -nic user,model=ne2k_pci \
+            -serial file:trampa.txt -monitor stdio -no-reboot > /dev/null
+          cat trampa.txt
+          if grep -Eq "X  [A-Z]" trampa.txt; then
+            echo "La trampa ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "trampa pide permiso para conectarse" trampa.txt
+          grep -q "trampa habló con la red: -10" trampa.txt
+          python3 - <<'FIN'
+          for nombre, ventana in (("preguntando.ppm", False), ("contestado.ppm", True)):
+              pixeles = open(nombre, "rb").read().split(b"\n", 3)[3]
+              verde = sum(1 for i in range(0, len(pixeles), 3) if pixeles[i:i + 3] == bytes((86, 211, 100)))
+              print(nombre, verde)
+              assert (verde > 3000) == ventana, nombre
+          FIN
+
+      - name: Un ordenador sin teclado PS/2
+        run: |
+          {
+            sleep 6
+            echo quit
+          } | timeout 30 qemu-system-x86_64 -machine q35,i8042=off -kernel sistema.bin -display none \
+            -serial file:sin_teclado.txt -monitor stdio -no-reboot > /dev/null
+          cat sin_teclado.txt
+          if grep -Eq "X  [A-Z]" sin_teclado.txt; then
+            echo "Arrancar sin controlador de teclado ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "teclado: no hay controlador PS/2" sin_teclado.txt
+          grep -q "pantalla lista" sin_teclado.txt
 
       - name: Archivos del disco que mienten
         run: |
@@ -270,12 +363,65 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:mentiras.txt -monitor stdio -no-reboot > /dev/null
           cat mentiras.txt
-          if grep -q "  X  " mentiras.txt; then
+          if grep -Eq "X  [A-Z]" mentiras.txt; then
             echo "Un archivo ha tumbado a FalOS"
             exit 1
           fi
           test "$(grep -c "^rechazado: " mentiras.txt)" = 5
           grep -q "cuenta cerrado con" mentiras.txt
+
+      - name: Dos archivos con el mismo nombre
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          cp programas/cuenta.fal disco/serpiente.prg
+          if fal haz_disco.fal; then
+            echo "haz_disco ha metido dos serpiente.prg"
+            exit 1
+          fi
+          rm disco/serpiente.prg
+          printf 'escribe "hola"\n' > "programas/Mal.fal"
+          if fal haz_disco.fal; then
+            echo "haz_disco ha metido un nombre con mayúsculas"
+            exit 1
+          fi
+          rm programas/Mal.fal
+          fal haz_disco.fal > /dev/null
+          python3 - <<'FIN'
+          imagen = open("disco.img", "rb").read()
+          indice = imagen[:1024].split(b"\n\n")[0]
+          linea = {l.split()[0]: l for l in indice.split(b"\n")[1:]}
+          falsa = linea[b"cuenta.prg"].replace(b"cuenta.prg", b"serpiente.prg")
+          indice = indice.replace(linea[b"serpiente.prg"], falsa + b"\n" + linea[b"serpiente.prg"]) + b"\n\n"
+          open("repetido.img", "wb").write(indice.ljust(1024, b" ") + imagen[1024:])
+          FIN
+          {
+            sleep 4
+            teclea "lanza serpiente"
+            sleep 2
+            teclea "lanza cuenta"
+            sleep 2
+            teclea "para 1"
+            sleep 1
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=repetido.img,format=raw,if=ide \
+            -serial file:repetido.txt -monitor stdio -no-reboot > /dev/null
+          cat repetido.txt
+          if grep -Eq "X  [A-Z]" repetido.txt; then
+            echo "Un nombre repetido ha tumbado a FalOS"
+            exit 1
+          fi
+          if grep -q "serpiente" repetido.txt; then
+            echo "FalOS ha lanzado una serpiente de las dos"
+            exit 1
+          fi
+          grep -q "cuenta cerrado con" repetido.txt
 
       - name: La pantalla se cuelga y vuelve
         run: |
@@ -303,7 +449,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:graficos.txt -monitor stdio -no-reboot > /dev/null
           cat graficos.txt
-          if grep -q "  X  " graficos.txt; then
+          if grep -Eq "X  [A-Z]" graficos.txt; then
             echo "La pantalla ha tumbado a FalOS"
             exit 1
           fi
@@ -353,7 +499,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:ventanas.txt -monitor stdio -no-reboot > /dev/null
           cat ventanas.txt
-          if grep -q "  X  " ventanas.txt; then
+          if grep -Eq "X  [A-Z]" ventanas.txt; then
             echo "Las ventanas han tumbado a FalOS"
             exit 1
           fi
@@ -409,7 +555,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:juego.txt -monitor stdio -no-reboot > /dev/null
           cat juego.txt
-          if grep -q "  X  " juego.txt; then
+          if grep -Eq "X  [A-Z]" juego.txt; then
             echo "El juego ha tumbado a FalOS"
             exit 1
           fi
@@ -451,7 +597,7 @@ jobs:
               -drive file=$1,format=raw,if=ide \
               -serial file:$2 -monitor stdio -no-reboot > /dev/null
             cat $2
-            if grep -q "  X  " $2; then
+            if grep -Eq "X  [A-Z]" $2; then
               echo "Escribir en el disco ha tumbado a FalOS"
               exit 1
             fi
@@ -507,6 +653,19 @@ jobs:
 
           def abre(imagen, programa, llave=None):
               return descifra(archivo(imagen, programa + b".dat"), llave or llave_de(imagen), programa)
+          FIN
+          grep -q "azar: del reloj, en cada tecla" veces1.txt
+          python3 - <<'FIN'
+          import guardado, hashlib, os, time
+          llave = guardado.llave_de(open("disco.img", "rb").read())
+          mitades = {llave[:16], llave[16:]}
+          hecho = time.gmtime(os.path.getmtime("disco.img"))
+          ahora = hecho.tm_hour * 3600 + hecho.tm_min * 60 + hecho.tm_sec
+          for segundo in range(ahora - 600, ahora + 60):
+              cuando = (segundo % 86400).to_bytes(8, "little")
+              for tic in range(6000):
+                  mitad = hashlib.blake2b(tic.to_bytes(8, "little") + cuando, digest_size=16).digest()
+                  assert mitad not in mitades, "La llave sale de la hora, como el día 18"
           FIN
           python3 - <<'FIN'
           import guardado
@@ -606,7 +765,7 @@ jobs:
               -drive file=$1,format=raw,if=ide \
               -serial file:$2 -monitor stdio -no-reboot > /dev/null
             cat $2
-            if grep -q "  X  " $2; then
+            if grep -Eq "X  [A-Z]" $2; then
               echo "Las notas han tumbado a FalOS"
               exit 1
             fi
@@ -704,7 +863,7 @@ jobs:
               -drive file=$imagen,format=raw,if=ide \
               -serial file:$salida -monitor stdio -no-reboot > /dev/null
             cat $salida
-            if grep -q "  X  " $salida; then
+            if grep -Eq "X  [A-Z]" $salida; then
               echo "El registro ha tumbado a FalOS"
               exit 1
             fi
@@ -781,7 +940,7 @@ jobs:
               -drive file=$imagen,format=raw,if=ide \
               -serial file:$salida -monitor stdio -no-reboot > /dev/null
             cat $salida
-            if grep -q "  X  " $salida; then
+            if grep -Eq "X  [A-Z]" $salida; then
               echo "El cerrojo ha tumbado a FalOS"
               exit 1
             fi
@@ -908,7 +1067,7 @@ jobs:
             -drive file=disco.img,format=raw,if=ide \
             -serial file:copia.txt -monitor stdio -no-reboot > /dev/null
           cat copia.txt
-          if grep -q "  X  " copia.txt; then
+          if grep -Eq "X  [A-Z]" copia.txt; then
             echo "Copiar y pegar ha tumbado a FalOS"
             exit 1
           fi
@@ -956,7 +1115,7 @@ jobs:
             -drive file=pegado.img,format=raw,if=ide \
             -serial file:bloqueo.txt -monitor stdio -no-reboot > /dev/null
           cat bloqueo.txt
-          if grep -q "  X  " bloqueo.txt; then
+          if grep -Eq "X  [A-Z]" bloqueo.txt; then
             echo "Bloquear con algo copiado ha tumbado a FalOS"
             exit 1
           fi
@@ -996,7 +1155,7 @@ jobs:
               -drive file=$imagen,format=raw,if=ide \
               -serial file:$salida -monitor stdio -no-reboot > /dev/null
             cat $salida
-            if grep -q "  X  " $salida; then
+            if grep -Eq "X  [A-Z]" $salida; then
               echo "Cifrar lo guardado ha tumbado a FalOS"
               exit 1
             fi
@@ -1006,6 +1165,7 @@ jobs:
           arranca cifra.img cifra1.txt "lanza veces" "deja 1"
           arranca cifra.img cifra2.txt "lanza veces" "deja 1"
           grep -q "llave.sis guardado: 36" cifra1.txt
+          grep -q "azar: del procesador" cifra1.txt
           grep -q "veces guardó en el disco: 2" cifra1.txt
           grep -q "llave.sis leido: 36" cifra2.txt
           grep -q "veces leyó del disco: 2" cifra2.txt
@@ -1070,10 +1230,14 @@ jobs:
           assert llave not in imagen and b"gato" not in imagen
           FIN
           cp llave.img bloqueado.img
-          arranca bloqueado.img bloqueado.txt intro "lanza veces" "deja 1" "sin cerrojo" "registro"
+          arranca bloqueado.img bloqueado.txt intro "lanza veces" "deja 1" "sin cerrojo" "lee cerrojo.sis" "lee llave.sis" "registro"
           cmp bloqueado.img llave.img
           grep -q "modo invitado" bloqueado.txt
           grep -q "veces leyó de la memoria: -3" bloqueado.txt
+          if grep -q "archivo leido: " bloqueado.txt; then
+            echo "El invitado ha leído un .sis"
+            exit 1
+          fi
           arranca llave.img llave2.txt "gato" espera "lanza veces" "deja 1"
           grep -q "veces leyó del disco: 2" llave2.txt
           grep -q "veces guardó en el disco: 2" llave2.txt
@@ -1115,7 +1279,7 @@ jobs:
               -drive file=red.img,format=raw,if=ide $tarjeta \
               -serial file:$salida -monitor stdio -no-reboot > /dev/null
             cat $salida
-            if grep -q "  X  " $salida; then
+            if grep -Eq "X  [A-Z]" $salida; then
               echo "La red ha tumbado a FalOS"
               exit 1
             fi
@@ -1210,7 +1374,7 @@ jobs:
             -netdev user,id=n1 -device ne2k_pci,netdev=n1 -object filter-dump,id=f1,netdev=n1,file=conecta.pcap \
             -serial file:conecta.txt -monitor stdio -no-reboot > /dev/null
           cat conecta.txt
-          if grep -q "  X  " conecta.txt; then
+          if grep -Eq "X  [A-Z]" conecta.txt; then
             echo "La red de los programas ha tumbado a FalOS"
             exit 1
           fi
@@ -1300,7 +1464,7 @@ jobs:
             -device usb-storage,drive=pendrive \
             -serial file:pendrive.txt -monitor stdio -no-reboot > /dev/null
           cat pendrive.txt
-          if grep -q "  X  " pendrive.txt; then
+          if grep -Eq "X  [A-Z]" pendrive.txt; then
             echo "FalOS revento al arrancar desde el pendrive"
             exit 1
           fi
@@ -1324,7 +1488,7 @@ jobs:
             -device usb-storage,drive=pendrive \
             -serial file:uefi.txt -monitor stdio -no-reboot > /dev/null
           tr -d '\033' < uefi.txt | grep -a -E "FalOS|pantalla|disco|X  " || true
-          if grep -a -q "  X  " uefi.txt; then
+          if grep -a -Eq "X  [A-Z]" uefi.txt; then
             echo "FalOS revento al arrancar por UEFI"
             exit 1
           fi

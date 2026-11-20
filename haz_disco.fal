@@ -5,6 +5,8 @@ PROGRAMAS es "programas"
 DESTINO es "disco.img"
 TEMPORAL es "disco.tmp"
 ESPACIO es 8192
+LARGO_NOMBRE es 32
+PERMITIDAS es "abcdefghijklmnopqrstuvwxyz0123456789-_."
 
 funcion relleno con cuantos
     trozo es ""
@@ -24,9 +26,29 @@ fin
 
 siguiente es 2
 indice es "FALDISC2\n"
+vistos es lista vacia
+
+funcion vale_el_nombre con nombre
+    si largo de nombre es mayor que LARGO_NOMBRE
+        devuelve falso
+    fin
+    para cada letra en nombre
+        si no contiene de PERMITIDAS con letra
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
 
 funcion mete con nombre y bytes
-    comparte siguiente y indice
+    comparte siguiente y indice y vistos
+    si no vale_el_nombre con nombre
+        falla "El nombre " mas nombre mas " no vale: solo minúsculas sin tilde, números, guion, guion bajo y punto, y hasta 32."
+    fin
+    si contiene de vistos con nombre
+        falla "Hay dos archivos que se llaman " mas nombre mas ", y el disco solo abriría uno."
+    fin
+    agrega nombre a vistos
     medida es largo de bytes
     indice es indice mas nombre mas " " mas siguiente mas " " mas medida mas "\n"
     anexa_bytes con TEMPORAL y bytes

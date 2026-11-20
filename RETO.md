@@ -65,7 +65,7 @@ fal haz_disco.fal
 ```
 
 ```bash
-qemu-system-x86_64 -kernel sistema.bin -drive file=disco.img,format=raw,if=ide -nic user,model=ne2k_pci
+qemu-system-x86_64 -cpu max -kernel sistema.bin -drive file=disco.img,format=raw,if=ide -nic user,model=ne2k_pci
 ```
 
 `sistema.bin` es el de la release, o el tuyo con `fal --nucleo sistema.fal`.
@@ -106,13 +106,13 @@ núcleo se lo niega, el número es negativo.
 | 14 | Guardar en su archivo `b` bytes de la mesa, desde el `a`. Hasta 464. Espera a tu `deja`. |
 | 15 | Leer su archivo en la mesa, desde el `a`. |
 | 16 | Dos megas más de memoria, una vez. |
-| 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve desde el byte 1. |
+| 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
 
 Del 18 en adelante no hay nada, y pedirlo cuenta como rechazado.
 
 Lo más rápido es empezar por los que ya lo intentan y FalOS para: `espia`,
-`ladron`, `fisgon`, `curioso`, `cambiazo`, `escucha`, `chivato`, `disfraz` e
-`impostor`, todos en [programas/](programas).
+`ladron`, `fisgon`, `curioso`, `cambiazo`, `escucha`, `chivato`, `disfraz`,
+`impostor`, `tumba` y `trampa`, todos en [programas/](programas).
 
 ## Cómo avisar
 
@@ -122,4 +122,17 @@ qué se rompe y cómo se arregla.
 
 ## Quién lo ha roto
 
-Nadie todavía.
+Nadie de fuera todavía. Los primeros los encontré yo, el día 18, mirando FalOS
+como lo miraría quien quiere romperlo, y los arreglé el día 19:
+
+- **Tirar FalOS entero, con una llamada.** Guardar, leer o conectar desde el
+  final de la memoria hacía una suma que no cabía, y el núcleo se paraba
+  entero. `tumba` lo intenta.
+- **Que FalOS mienta.** Una ventana podía tapar la pregunta de permiso y pintar
+  otra encima, con otro programa y otro sitio. Ahora las ventanas se esconden
+  mientras FalOS pregunta, y el teclado vuelve a la consola. `trampa` lo intenta.
+- **Leer lo que no es suyo, sin RDRAND.** La llave salía de la hora, y se
+  adivinaba en 3 segundos con un disco copiado. Ahora sale de cuándo pulsas
+  cada tecla.
+- **Un nombre repetido en el disco** heredaba la clave y los permisos del de
+  verdad. Ahora `haz_disco` no lo deja, y FalOS no abre ninguno de los dos.

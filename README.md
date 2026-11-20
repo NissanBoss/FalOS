@@ -68,8 +68,27 @@ sh usb/haz_usb.sh
 Grábala con [Rufus](https://rufus.ie) en **modo Imagen DD** (en modo ISO, Rufus
 cambia el arranque de GRUB) o con `dd`. Borra el pendrive entero. Luego enciende
 el ordenador con el pendrive puesto y elige el pendrive en el menú de arranque
-(F12 en un ThinkPad). Si no sale, en la BIOS pon el arranque en "Both" o
-"Legacy" y quita Secure Boot: GRUB va sin firmar.
+(F12 en un ThinkPad, F9 en muchos HP, F11 o F8 en muchas placas). Si no sale:
+
+- **Quita Secure Boot.** GRUB va sin firmar, y con Secure Boot el ordenador no
+  lo arranca. Se vuelve a poner después.
+- **Si no arranca por UEFI, prueba por BIOS.** En la BIOS se llama CSM, Legacy o
+  "Both". La misma imagen vale para los dos.
+- **Si arranca pero no puedes escribir,** FalOS solo sabe usar el teclado PS/2.
+  Los de los portátiles casi siempre lo son por dentro. Un teclado USB funciona
+  si la BIOS tiene "USB Legacy Support" encendido, que lo hace pasar por PS/2.
+  Si no hay nada de eso, FalOS lo dice en rojo al arrancar.
+
+Dónde ha arrancado ya:
+
+| Ordenador | Año | Por BIOS | Por UEFI | Teclado | Pantalla |
+|---|---|---|---|---|---|
+| ThinkPad L450 | 2015 | sí, día 17 | sin probar | sí | sí |
+
+Si lo pruebas en el tuyo, salga bien o mal, cuéntalo con la plantilla
+[arranca en mi ordenador](https://github.com/NissanBoss/FalOS/issues/new?template=arranca.yml):
+el modelo, cómo arrancó y una foto. Cada ordenador que aparezca aquí es uno que
+alguien ha probado de verdad.
 
 ### Descargarlo, y romperlo
 
@@ -173,8 +192,9 @@ olvida veces
 ```
 
 Y lo que guarda va cifrado, sin que el programa haga nada ni lo pueda evitar.
-FalOS tiene una llave de 32 bytes al azar, y de ella saca una clave distinta
-para cada programa, con BLAKE2b y su nombre: lo que guarda `veces` no lo abre la
+FalOS tiene una llave de 32 bytes al azar, del generador del procesador o, si
+no lo trae, del instante exacto en que pulsas cada tecla, y de ella saca una
+clave distinta para cada programa, con BLAKE2b y su nombre: lo que guarda `veces` no lo abre la
 clave de `serpiente`, aunque alguien le copie el archivo. Cada guardado se cifra
 con ChaCha20 y un número que no se repite, y se firma. Si alguien cambia un bit
 en el disco, el programa no recibe nada y el registro lo apunta en rojo. Si el
@@ -402,10 +422,10 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Casi todo, de momento.** De la red solo sabe hacer `ping`, y que un programa
   mande un mensaje y espere su respuesta. Un programa solo escribe su propio
   archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 16.
+  FalOS. Es el día 19.
 - **Aún no es un micronúcleo.** El teclado, el disco, la pantalla y la red ya salieron,
   pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 5.200
+  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 6.500
   líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
   él.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
@@ -473,12 +493,18 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Lo que se ve en la ventana está sin cifrar.** El núcleo pone las letras de la
   nota en la ventana y el programa de la pantalla las dibuja: los dos las ven.
   Cifrar protege el disco, no la memoria.
-- **El azar es el del procesador.** RDRAND lo traen los procesadores de Intel
-  desde 2012 y los de AMD desde 2015, pero el procesador que QEMU pone si no le
-  dices otra cosa no lo tiene: hace falta `-cpu max`. Sin él, `notas` lo avisa y
-  saca el azar del reloj y de cuándo pulsas las teclas. Para la sal y el número
-  de cada guardado basta con que no se repitan, pero eso es más fácil de
-  predecir. Y quien no se fíe del generador de Intel tampoco tiene aquí otro.
+- **Sin RDRAND, el azar sale de tus teclas.** RDRAND lo traen los procesadores
+  de Intel desde 2012 y los de AMD desde 2015, pero el que QEMU pone si no le
+  dices otra cosa no lo tiene: hace falta `-cpu max`. Hasta el día 18, sin él la
+  llave salía de la hora, y se adivinaba en 3 segundos mirando cuándo cambió el
+  archivo. Desde el día 19, el núcleo lee el reloj del ordenador, que cuenta a
+  1,19 MHz, en cada tecla y en cada movimiento del ratón, y encadena esas medidas
+  con BLAKE2b. Es menos que RDRAND: si un programa guarda nada más arrancar, la
+  llave sale de unas decenas de medidas (cada tecla da dos: al pulsarla y al
+  soltarla), y con menos de 16 FalOS no la crea. La portada lo avisa. Un disco
+  del día 18 o antes que se usó sin `-cpu max` sigue con la llave de entonces:
+  empieza con uno nuevo. Y quien no se fíe del generador de Intel tampoco tiene
+  aquí otro.
 - **El disco no va cifrado entero.** Lo que guardan los programas sí, pero los
   nombres de los archivos, lo que ocupa cada uno, los programas y `permisos.sis`
   se leen tal cual. Y si alguien borra `cerrojo.sis`, FalOS arranca sin
@@ -564,14 +590,25 @@ están. Falta sacar del núcleo lo que todavía vive en él.
 - **Solo el teclado español.** Y sin €: todavía no lo he dibujado.
 - **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
   no se usa todavía.
+- **Meltdown, en procesadores de antes de 2019.** Cada programa lleva en sus
+  tablas de memoria el primer giga entero, marcado como solo para el núcleo. En
+  un Intel anterior a 2019, como el del ThinkPad L450, un programa puede leerlo
+  por especulación aunque no tenga permiso: la llave, el portapapeles, las
+  teclas que van a otros. Es [Meltdown](https://meltdownattack.com), y el arreglo
+  es lo que Linux llama KPTI: que un programa solo vea lo justo para entrar y
+  salir del núcleo. Llega en un día propio. En QEMU sin KVM no se reproduce.
+- **Dos programas pueden hablarse a escondidas.** El núcleo no guarda los
+  registros del x87 de cada programa, así que dos hechos a mano pueden pasarse
+  datos por ahí, y también midiendo el tiempo. Uno sin red se lo puede contar a
+  otro que sí la tenga. No es una fuga del núcleo: Fal no usa el x87, y el núcleo
+  no deja nada en él.
 - **No es seguro todavía.** Está diseñado para el aislamiento, que no es lo
   mismo. Un sistema es seguro cuando alguien de fuera intenta romperlo y no
   puede, y eso aquí aún no ha pasado: para eso está el [reto](RETO.md). No lo
   uses para nada que importe.
-- **Un solo ordenador de verdad.** Un ThinkPad L450, por BIOS (Legacy). Por UEFI
-  solo se ha probado en QEMU, en la prueba automática. En otro ordenador puede
-  fallar el teclado, el reloj o la pantalla, y la red no va en ninguno: solo sé
-  usar la NE2000.
+- **Pocos ordenadores de verdad.** Los de la tabla de arriba, y nada más. En
+  otro puede fallar el teclado, el reloj o la pantalla, y la red no va en
+  ninguno: solo sé usar la NE2000, que es la de QEMU.
 - **Solo x86-64**, arrancado por multiboot: con QEMU o con GRUB. Ni ARM ni
   Secure Boot.
 

@@ -1,0 +1,50 @@
+name: Arranca en mi ordenador
+description: Has probado FalOS desde un pendrive, salga bien o mal
+title: "Arranca: "
+labels: ["arranca"]
+body:
+  - type: input
+    id: ordenador
+    attributes:
+      label: El ordenador
+      description: Marca y modelo, como sale en la pegatina de abajo. Por ejemplo, ThinkPad L450.
+    validations:
+      required: true
+  - type: input
+    id: procesador
+    attributes:
+      label: El procesador y el año
+      description: Si lo sabes. Por ejemplo, Intel Core i5-5200U, 2015.
+  - type: dropdown
+    id: como
+    attributes:
+      label: Cómo arrancó
+      options:
+        - "Por UEFI"
+        - "Por BIOS (Legacy o CSM)"
+        - "No llegó a arrancar"
+    validations:
+      required: true
+  - type: checkboxes
+    id: va
+    attributes:
+      label: Qué funcionó
+      options:
+        - label: Sale la portada de FalOS
+        - label: La pantalla se ve bien, sin rayas ni negro
+        - label: El teclado escribe
+        - label: El ratón, el TrackPoint o el touchpad mueven el puntero
+        - label: La hora de la barra es la buena (en UTC)
+        - label: "lanza serpiente se juega"
+  - type: textarea
+    id: salio
+    attributes:
+      label: Qué salió
+      description: Lo que viste, mejor con una foto de la pantalla. Si se paró, el aviso rojo entero. Y si tocaste algo en la BIOS (Secure Boot, CSM, USB Legacy), qué.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Qué FalOS
+      description: La release que bajaste, o el commit si la hiciste tú.

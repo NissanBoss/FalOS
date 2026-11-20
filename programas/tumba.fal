@@ -1,0 +1,24 @@
+DUERME es 4
+GUARDA es 14
+LEE_GUARDADO es 15
+CONECTA es 17
+RECHAZADA es 0 menos 1
+LEJISIMOS es 9223372036854775807
+
+funcion contesta con respuesta
+    si respuesta es RECHAZADA
+        escribe "rechazado"
+    si no
+        escribe "aceptado"
+    fin
+fin
+
+escribe "el día 18 una sola llamada así tumbaba FalOS"
+llama_al_sistema con DUERME y 100
+escribe "guardar desde el final de la memoria: " sin salto
+contesta con (llama_al_sistema con GUARDA y LEJISIMOS y 1)
+escribe "leer desde el final de la memoria: " sin salto
+contesta con (llama_al_sistema con LEE_GUARDADO y LEJISIMOS y 1)
+escribe "conectar desde el final de la memoria: " sin salto
+contesta con (llama_al_sistema con CONECTA y LEJISIMOS y 7)
+escribe "sigo vivo"

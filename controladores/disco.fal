@@ -16,6 +16,7 @@ DANADO es 0 menos 5
 NO_SE_ESCRIBE es 0 menos 6
 LLENO es 0 menos 7
 PROHIBIDO es 0 menos 8
+REPETIDO es 0 menos 16
 
 DATOS es 496
 CUENTA es 498
@@ -387,20 +388,34 @@ funcion nombre_pedido
 fin
 
 funcion abre_archivo con trozo
+    comparte campo_sector y campo_bytes
     largo_pedido es nombre_pedido
     total es abre_disco
     si total es menor que 0
         devuelve total
     fin
+    hallado es falso
+    sector_hallado es 0
+    bytes_hallados es 0
     mientras queda_entrada
         si lee_linea
             si mismo_nombre con 0 y largo_pedido
-                devuelve trae_archivo con trozo
+                si hallado
+                    devuelve REPETIDO
+                fin
+                hallado es verdadero
+                sector_hallado es campo_sector
+                bytes_hallados es campo_bytes
             fin
         fin
         salta_hasta_fin_de_linea
     fin
-    devuelve NO_ESTA
+    si no hallado
+        devuelve NO_ESTA
+    fin
+    campo_sector es sector_hallado
+    campo_bytes es bytes_hallados
+    devuelve trae_archivo con trozo
 fin
 
 funcion trae_archivo con trozo

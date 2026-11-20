@@ -18,6 +18,8 @@
   cambiazo    quiere leer y cambiar lo que copias
   escucha     quiere usar la red a escondidas
   chivato     quiere contar lo que haces a un servidor de fuera
+  tumba       lo que el día 18 tumbaba FalOS con una llamada
+  trampa      pinta una pregunta de permiso falsa encima de la de verdad
 
   gigante     dice que necesita un terabyte de memoria
   desborda    dice que ocupa un número que no cabe en ninguna cuenta

@@ -420,6 +420,7 @@ fin
 
 PRESENTE es 1
 ESCRIBIBLE es 2
+USUARIO es 4
 GRANDE es 128
 NO_EJECUTABLE es 0 menos 9223372036854775807 menos 1
 DOS_MEGAS es 2097152
@@ -511,13 +512,28 @@ TOPE_PAGINAS_VIDEO es 64
 modo_video es SIN_VIDEO
 video_paginas es 0
 ancho_del_cargador es 0
+tabla_video_primera es 0
+tabla_video_ultima es 0
+
+funcion tabla_de_video con k y primer_byte y final
+    tabla es pide_pagina
+    entradas es region con tabla y 512 y 8
+    base es memoria_de_video mas k por DOS_MEGAS
+    para cada i desde 1 hasta 512
+        marco es base mas (i menos 1) por PAGINA
+        si marco mas PAGINA es mayor que primer_byte y marco es menor que final
+            elemento i de entradas es marco mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+        fin
+    fin
+    devuelve tabla
+fin
 
 funcion pon_video con cual y valor
     elemento cual de control es valor
 fin
 
 funcion busca_pantalla_del_cargador
-    comparte memoria_de_video y video_paginas y ancho_del_cargador
+    comparte memoria_de_video y video_paginas y ancho_del_cargador y tabla_video_primera y tabla_video_ultima
     si datos_de_arranque es 0
         devuelve falso
     fin
@@ -543,6 +559,17 @@ funcion busca_pantalla_del_cargador
     fin
     memoria_de_video es direccion menos desde_pagina
     video_paginas es paginas
+    final es direccion mas bytes_por_fila por pixeles_alto
+    si desde_pagina no es igual a 0
+        tabla_video_primera es tabla_de_video con 0 y direccion y final
+    fin
+    si memoria_de_video mas paginas por DOS_MEGAS menos final es mayor o igual que PAGINA
+        si paginas es 1 y tabla_video_primera no es igual a 0
+            tabla_video_ultima es tabla_video_primera
+        si no
+            tabla_video_ultima es tabla_de_video con (paginas menos 1) y direccion y final
+        fin
+    fin
     pon_video con VIDEO_INICIO y desde_pagina
     pon_video con VIDEO_ORIGEN y desde_pagina mas (cociente con (pixeles_alto menos CUADRO_ALTO) y 2) por bytes_por_fila mas (cociente con (pixeles_ancho menos CUADRO_ANCHO) y 2) por 4
     pon_video con VIDEO_PASO y cociente con bytes_por_fila y 4
@@ -684,7 +711,6 @@ sale es 0
 tics es 0
 tics_dormido es 0
 
-USUARIO es 4
 MAGIA es 20071938299543878
 DONDE_VAN es 805306368
 TOPE_PROGRAMA es 1048576
@@ -776,6 +802,7 @@ SIN_LLAVE es 0 menos 12
 TOCADO es 0 menos 13
 SIN_CIFRAR es 0 menos 14
 EN_INVITADO es 0 menos 15
+REPETIDO es 0 menos 16
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
@@ -960,6 +987,16 @@ clave_primera es region con clave_en mas 64 y 32
 comprobada es region con clave_en mas 128 y 64
 azar_en es clave_en mas 192
 taller_cerrojo es clave_en mas 1024
+CABEN_SORBOS es 64
+MINIMO_SORBOS es 16
+pozo_en es pide_pagina
+estado_azar es region con pozo_en y 32
+salida_azar es region con pozo_en mas 64 y 64
+pozo es region con pozo_en mas 1024 y CABEN_SORBOS mas 4 y 8
+pozo_bytes es region con pozo_en mas 1024 y CABEN_SORBOS por 8 mas 32
+taller_azar es pozo_en mas 2048
+sorbos es 0
+vueltas_azar es 0
 memoria_cerrojo es pide_dos_megas
 hay_cerrojo es falso
 bloqueado es falso
@@ -986,6 +1023,7 @@ despierta_consola_en es 0
 tecla_sin_leer es falso
 raton_sin_leer es falso
 hay_raton es falso
+hay_8042 es falso
 primera_de_codigo es 0
 puertos es region con mapa_de_puertos y 8192
 
@@ -1358,7 +1396,23 @@ funcion dentro_de_ventana con t y renglon y c
     devuelve c es mayor o igual que vx y c es menor que vx mas va y renglon es mayor o igual que vy y renglon es menor que vy mas vh
 fin
 
+funcion hay_pregunta
+    para cada t desde 1 hasta MAX_TAREAS
+        estado es elemento t de estados_tarea
+        si estado es CON_EL_DISCO y (elemento t de permiso_disco) es DISCO_PEDIDO
+            devuelve verdadero
+        fin
+        si estado es CON_LA_RED y (elemento t de permiso_red) es DISCO_PEDIDO
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
 funcion ventana_en con renglon y c
+    si hay_pregunta
+        devuelve 0
+    fin
     i es puestas
     mientras i es mayor o igual que 1
         t es elemento i de encima
@@ -1376,7 +1430,7 @@ funcion compone
     si no
         copia_region con lo_que_se_ve y 1 y pantalla y 1 y ANCHO por ALTO
         i es 1
-        mientras i es menor o igual que puestas
+        mientras i es menor o igual que puestas y no hay_pregunta
             pinta_ventana con (elemento i de encima)
             i es i mas 1
         fin
@@ -2208,7 +2262,7 @@ funcion encarga con pedido y desde y cuantos
     si es_controlador con t
         devuelve rechaza_a_actual
     fin
-    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que TOPE_GUARDADO o desde mas cuantos es mayor que PAGINA
+    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que TOPE_GUARDADO o desde es mayor que PAGINA menos cuantos
         devuelve RECHAZADA
     fin
     si pedido es GUARDA y cuantos es mayor que TOPE_CIFRABLE
@@ -2229,7 +2283,7 @@ funcion pide_red con desde y cuantos
     si es_controlador con t
         devuelve rechaza_a_actual
     fin
-    si desde es menor que 0 o cuantos es menor que 7 o cuantos es mayor que 6 mas TOPE_DATOS_RED o desde mas cuantos es mayor que PAGINA
+    si desde es menor que 0 o cuantos es menor que 7 o cuantos es mayor que 6 mas TOPE_DATOS_RED o desde es mayor que PAGINA menos cuantos
         devuelve rechaza_a_actual
     fin
     pedida es region con (elemento t de mesas) mas desde y cuantos
@@ -2329,9 +2383,19 @@ funcion cierra_entrada
     pon_en_puerto con ESCLAVO_DATOS y ESCLAVO_CERRADO
 fin
 
+funcion bebe_del_reloj
+    comparte sorbos
+    pon_en_puerto con RELOJ_ORDEN y 0
+    byte_bajo es lee_puerto de RELOJ
+    byte_alto es lee_puerto de RELOJ
+    sorbos es sorbos mas 1
+    elemento (sorbos resto CABEN_SORBOS) mas 1 de pozo es tics por 65536 mas byte_alto por 256 mas byte_bajo
+fin
+
 funcion al_pulsar
     comparte tecla_sin_leer
     tecla_sin_leer es verdadero
+    bebe_del_reloj
     cierra_entrada
     pon_en_puerto con CONTROLADOR y YA_ESTA
     avisa_a con TAREA_TECLADO y AVISO_TECLA
@@ -2341,6 +2405,7 @@ fin
 funcion al_mover
     comparte raton_sin_leer
     raton_sin_leer es verdadero
+    bebe_del_reloj
     cierra_entrada
     pon_en_puerto con ESCLAVO y YA_ESTA
     pon_en_puerto con CONTROLADOR y YA_ESTA
@@ -2392,7 +2457,11 @@ funcion manda_al_raton con valor
 fin
 
 funcion prepara_raton
-    comparte hay_raton
+    comparte hay_raton y hay_8042
+    hay_8042 es (lee_puerto de ESTADO_8042) no es igual a 255
+    si no hay_8042
+        devuelve nada
+    fin
     repite 16 veces
         si ((lee_puerto de ESTADO_8042) resto 2) es 1
             basura es lee_puerto de DATOS_8042
@@ -3188,7 +3257,13 @@ funcion monta_programa con t y archivo y total
             elemento SITIO_TALLER mas p de entradas es taller mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
         fin
         para cada k desde 1 hasta video_paginas
-            elemento SITIO_VIDEO mas k menos 1 de directorio es memoria_de_video mas (k menos 1) por DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+            entrada es memoria_de_video mas (k menos 1) por DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
+            si k es 1 y tabla_video_primera no es igual a 0
+                entrada es tabla_video_primera mas PRESENTE mas ESCRIBIBLE mas USUARIO
+            si no si k es video_paginas y tabla_video_ultima no es igual a 0
+                entrada es tabla_video_ultima mas PRESENTE mas ESCRIBIBLE mas USUARIO
+            fin
+            elemento SITIO_VIDEO mas k menos 1 de directorio es entrada
         fin
     si no si es_controlador con t
         buzon es pagina_de_tarea con t
@@ -3982,6 +4057,7 @@ fin
 ORDEN_ARRANCA_RED es 1
 ORDEN_ENVIA_RED es 2
 ORDEN_RECIBE_RED es 3
+TOPE_TRAMA es 1514
 NO_HAY_TARJETA es 0 menos 1
 NO_SALE es 0 menos 2
 NADIE_CONTESTA es 0 menos 20
@@ -4176,7 +4252,7 @@ fin
 funcion mira_lo_que_llega
     comparte tramas_recibidas
     largo es pide_a_la_red con ORDEN_RECIBE_RED
-    si largo es menor que 42
+    si largo es menor que 42 o largo es mayor que TOPE_TRAMA
         devuelve LLEGA_NADA
     fin
     tramas_recibidas es tramas_recibidas mas 1
@@ -4411,7 +4487,9 @@ funcion pinta_destino con destino
 fin
 
 funcion pide_permiso_red con t
-    comparte columna
+    comparte columna y foco
+    foco es CONSOLA
+    olvida_seleccion
     base es (fila menos 1) por ANCHO
     para cada c desde 1 hasta ANCHO
         elemento base mas c de pantalla es color por 256 mas 32
@@ -4438,7 +4516,8 @@ funcion pide_permiso_red con t
     pinta con ". Si no: niega "
     pinta_numero con t
     pinta_linea con "."
-    pinta_linea con "  Hasta que me contestes, espera, y no sale nada."
+    pinta_linea con "  Hasta que me contestes, espera, y no sale nada. Y escondo las"
+    pinta_linea con "  ventanas, para que ninguna tape esto ni pinte una pregunta falsa."
     pinta_linea con ""
     al_serie con (nombre_de con t)
     escribe " pide permiso para conectarse"
@@ -4795,6 +4874,8 @@ funcion fallo_de_disco con motivo
         pinta_linea con "  Ese nombre no vale."
     si no si motivo es EN_INVITADO
         pinta_linea con "  En modo invitado no escribo nada en el disco."
+    si no si motivo es REPETIDO
+        pinta_linea con "  Hay dos archivos con ese nombre en el disco, y no sé cuál es el bueno."
     si no
         pinta_linea con "  El programa del disco ha caído antes de contestar."
     fin
@@ -4869,9 +4950,17 @@ fin
 
 funcion nueva_llave
     comparte hay_llave
+    si no hay_azar y sorbos es menor que MINIMO_SORBOS
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  Este procesador no trae generador de azar, y aún no he visto"
+        pinta_linea con "  bastantes teclas para sacarlo de ti. Escribe algo y vuelve a probar."
+        pon_color con GRIS y NEGRO
+        devuelve falso
+    fin
     saca_sal con llave y 1
     saca_sal con llave y 17
     hay_llave es verdadero
+    devuelve verdadero
 fin
 
 funcion olvida_llave
@@ -4976,7 +5065,9 @@ funcion guarda_cifrado con nombre y suya y cuantos
         si hay_cerrojo
             devuelve SIN_LLAVE
         fin
-        nueva_llave
+        si no nueva_llave
+            devuelve SIN_LLAVE
+        fin
         hecho es guarda_llave
         si hecho es menor que 0
             olvida_llave
@@ -5277,7 +5368,9 @@ funcion termina_encargo con t y hecho
 fin
 
 funcion pide_permiso_de con t
-    comparte columna
+    comparte columna y foco
+    foco es CONSOLA
+    olvida_seleccion
     base es (fila menos 1) por ANCHO
     para cada c desde 1 hasta ANCHO
         elemento base mas c de pantalla es color por 256 mas 32
@@ -5302,6 +5395,7 @@ funcion pide_permiso_de con t
     pinta con ". Si no: niega "
     pinta_numero con t
     pinta_linea con ". Hasta que me contestes, espera."
+    pinta_linea con "  Y escondo las ventanas, para que ninguna tape esto ni pinte una falsa."
     pinta_linea con ""
     al_serie con (nombre_de con t)
     escribe " pide permiso para guardar"
@@ -5431,6 +5525,13 @@ funcion olvida
 fin
 
 funcion lee_archivo
+    si invitado y escritas es mayor que 8 y resto_es con escritas menos 3 y ".sis"
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  El invitado no lee los .sis: ahí va lo que protege tu contraseña."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
     respuesta es pide_archivo con (trozo_de_orden con 5) y "" y 0
     si respuesta es menor que 0 o respuesta es mayor que TOPE_BUZON
         fallo_de_disco con respuesta
@@ -5913,18 +6014,26 @@ funcion bloquea_ya con por_que
 fin
 
 funcion saca_sal con destino y desde
-    trozos es region con azar_en y 4 y 8
+    comparte vueltas_azar
     si hay_azar
+        trozos es region con azar_en y 2 y 8
         elemento 1 de trozos es azar_del_procesador
         elemento 2 de trozos es azar_del_procesador
-    si no
-        elemento 3 de trozos es tics
-        elemento 4 de trozos es segundos_del_dia
-        blake2b con taller_cerrojo y (region con azar_en mas 16 y 16) y 16 y "" y (region con azar_en y 16) y 16
+        copia_region con destino y desde y (region con azar_en y 16) y 1 y 16
+        elemento 1 de trozos es 0
+        elemento 2 de trozos es 0
+        devuelve nada
     fin
-    copia_region con destino y desde y (region con azar_en y 16) y 1 y 16
-    para cada i desde 1 hasta 4
-        elemento i de trozos es 0
+    vueltas_azar es vueltas_azar mas 1
+    elemento CABEN_SORBOS mas 1 de pozo es tics
+    elemento CABEN_SORBOS mas 2 de pozo es segundos_del_dia
+    elemento CABEN_SORBOS mas 3 de pozo es sorbos
+    elemento CABEN_SORBOS mas 4 de pozo es vueltas_azar
+    blake2b con taller_azar y pozo_bytes y CABEN_SORBOS por 8 mas 32 y estado_azar y salida_azar y 64
+    copia_region con estado_azar y 1 y salida_azar y 1 y 32
+    copia_region con destino y desde y salida_azar y 33 y 16
+    para cada i desde 1 hasta 64
+        elemento i de salida_azar es 0
     fin
 fin
 
@@ -6034,8 +6143,12 @@ funcion guarda_cerrojo
     saca_sal con fichero y 5
     huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 64)
     estrenada es no hay_llave
-    si estrenada
-        nueva_llave
+    si estrenada y no nueva_llave
+        para cada i desde 1 hasta TOPE_CERROJO
+            elemento i de fichero es 0
+        fin
+        pinta_linea con "  No la he guardado, así que todo sigue como estaba."
+        devuelve nada
     fin
     para cada i desde 1 hasta 32
         elemento 52 mas i de fichero es o_exclusivo con (elemento 52 mas i de fichero) y (elemento i de llave)
@@ -6273,7 +6386,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 18"
+    pinta con "día 19"
     pon_color con GRIS y NEGRO
 fin
 
@@ -6318,6 +6431,10 @@ funcion portada
     pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa, y lo que"
     pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
     pinta_linea con "  un programa solo se conecta a donde tú le dejes."
+    si no hay_azar
+        pinta_linea con "  Este procesador no trae generador de azar, así que las llaves las"
+        pinta_linea con "  saco del instante exacto en que pulsas cada tecla."
+    fin
     pon_color con AMARILLO y NEGRO
     pinta_linea con "  Escribe ayuda para ver lo que sé hacer, o reto si quieres romperme."
     pon_color con GRIS y NEGRO
@@ -6350,6 +6467,20 @@ fin
 prepara_raton
 si hay_raton
     escribe "ratón listo"
+fin
+si hay_azar
+    escribe "azar: del procesador"
+si no
+    escribe "azar: del reloj, en cada tecla"
+fin
+si no hay_8042
+    escribe "teclado: no hay controlador PS/2"
+    pon_color con ROJO_CLARO y NEGRO
+    pinta_linea con "  No encuentro el controlador del teclado PS/2, así que no podré leer"
+    pinta_linea con "  lo que escribas. Aún no sé usar teclados USB. Prueba a activar en la"
+    pinta_linea con "  BIOS la opción USB Legacy, o el CSM, que lo hacen pasar por PS/2."
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
 fin
 mira_el_reloj
 prepara_interrupciones

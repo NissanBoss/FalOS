@@ -1,0 +1,43 @@
+DUERME es 4
+LEE_TECLA es 11
+PIDE_VENTANA es 12
+PON_CASILLA es 13
+CONECTA es 17
+MESA es 807395328
+NEGADO es 0 menos 10
+GRIS es 7
+VERDE_CLARO es 10
+BLANCO es 15
+
+caja es region con MESA y 4096
+
+funcion pinta_en con renglon y texto y tinta
+    columna es 1
+    para cada letra en texto
+        llama_al_sistema con PON_CASILLA y renglon por 256 mas columna y tinta por 256 mas letra
+        columna es columna mas 1
+    fin
+fin
+
+llama_al_sistema con PIDE_VENTANA y 60 y 18
+pinta_en con 2 y "dame el teclado y pulsa una tecla" y BLANCO
+mientras (llama_al_sistema con LEE_TECLA) es 0
+    llama_al_sistema con DUERME y 5
+fin
+pinta_en con 14 y "  busca quiere conectarse a 10.0.2.3, puerto 53 (DNS)." y BLANCO
+pinta_en con 15 y "  Si le dejas: deja 1. Si no: niega 1." y GRIS
+elemento 1 de caja es 203
+elemento 2 de caja es 0
+elemento 3 de caja es 113
+elemento 4 de caja es 66
+elemento 5 de caja es 17
+elemento 6 de caja es 92
+elemento 7 de caja es 33
+si (llama_al_sistema con CONECTA y 0 y 7) es NEGADO
+    pinta_en con 17 y "no me han dejado" y GRIS
+si no
+    pinta_en con 17 y "me han dejado" y VERDE_CLARO
+fin
+mientras verdadero
+    llama_al_sistema con DUERME y 1000
+fin
