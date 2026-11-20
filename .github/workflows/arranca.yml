@@ -1244,7 +1244,7 @@ jobs:
           cp cifra.img invitado.img
           arranca invitado.img invitado1.txt "invitado" "lanza veces" "deja siempre 1" "para 1" "lanza veces" "deja 1" "para 1" "olvida veces" "cerrojo" "registro"
           cmp invitado.img cifra.img
-          grep -q "modo invitado|permisos.sis guardado" invitado1.txt
+          grep -q "modo invitado" invitado1.txt
           grep -q "FalOS apunte 25 0" invitado1.txt
           grep -q "veces leyó de la memoria: -3" invitado1.txt
           grep -q "veces guardó en la memoria: 2" invitado1.txt
@@ -1280,7 +1280,7 @@ jobs:
           cp llave.img bloqueado.img
           arranca bloqueado.img bloqueado.txt intro "lanza veces" "deja 1" "sin cerrojo" "lee cerrojo.sis" "lee llave.sis" "registro"
           cmp bloqueado.img llave.img
-          grep -q "modo invitado|permisos.sis guardado" bloqueado.txt
+          grep -q "modo invitado" bloqueado.txt
           grep -q "veces leyó de la memoria: -3" bloqueado.txt
           if grep -q "archivo leido: " bloqueado.txt; then
             echo "El invitado ha leído un .sis"
