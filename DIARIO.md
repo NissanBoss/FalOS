@@ -29,6 +29,11 @@ el historial, que vivía en ella, y nada más. `cuelga consola` la deja dando
 vueltas sin contestar, y el vigilante la cambia al segundo. Una prueba automática
 hace las dos cosas, y también `para 10`, cada vez que se sube algo.
 
+Y lo he probado en el ThinkPad L450, con la imagen que hizo GitHub. Por BIOS,
+como el día 17, y por primera vez por UEFI, sin Secure Boot: arranca igual por
+los dos caminos. En el portátil la consola rota vuelve en menos de 10 ms, y la
+colgada la cambia el vigilante al segundo, como en QEMU.
+
 **Lo que se aprende.** Mover el código fue lo fácil. Lo difícil fue el orden de
 las teclas. Escribes `cerrojo`, Intro y tu contraseña nueva muy deprisa. La
 consola tarda un poco en pedirle la orden al núcleo, y en ese rato las teclas de

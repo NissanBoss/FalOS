@@ -48,7 +48,8 @@ solo.
 
 FalOS arranca desde un pendrive con GRUB, por BIOS y por UEFI, y no se instala:
 su disco va entero en la memoria y no toca ningún disco del ordenador. Lo que
-guardes se borra al apagar. Se ha probado en un ThinkPad L450 de 2015.
+guardes se borra al apagar. Se ha probado en un ThinkPad L450 de 2015, por
+los dos caminos.
 
 La imagen la hace GitHub cada vez que se sube algo (en Actions, el artefacto
 `falos-pendrive`), o tú con GRUB y xorriso instalados:
@@ -83,7 +84,7 @@ Dónde ha arrancado ya:
 
 | Ordenador | Año | Por BIOS | Por UEFI | Teclado | Pantalla |
 |---|---|---|---|---|---|
-| ThinkPad L450 | 2015 | sí, día 17 | sin probar | sí | sí |
+| ThinkPad L450 | 2015 | sí, día 17 | sí, día 19 | sí | sí |
 
 Si lo pruebas en el tuyo, salga bien o mal, cuéntalo con la plantilla
 [arranca en mi ordenador](https://github.com/NissanBoss/FalOS/issues/new?template=arranca.yml):
