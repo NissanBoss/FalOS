@@ -409,13 +409,16 @@ que a los 30 segundos no queda nada que pegar y que al bloquear se borra. Da un
 permiso para siempre, reinicia y mira que no
 vuelve a preguntar; se lo quita y mira que pregunta. Busca el registro en el
 disco y no puede estar, y le mete un byte raro a la lista de permisos para ver
-que FalOS la tira entera en vez de creérsela.
+que FalOS la tira entera en vez de creérsela. Rompe la consola, la cuelga y la
+para, y mira que cada vez FalOS lanza otra y la orden siguiente funciona; y lanza
+`mandon`, que finge ser la consola, y mira que sus tres órdenes se rechazan.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
 programa y cada controlador en su propia caja, sin poder tocar lo que no se le
-ha dado expresamente. Los mensajes, las capacidades y cuatro controladores ya
-están. Falta sacar del núcleo lo que todavía vive en él.
+ha dado expresamente. Los mensajes y las capacidades ya están, y cuatro
+controladores y la consola ya viven fuera del núcleo. Falta sacar lo que todavía
+vive en él.
 
 ## Lo que no cubre
 
@@ -423,11 +426,17 @@ están. Falta sacar del núcleo lo que todavía vive en él.
   mande un mensaje y espere su respuesta. Un programa solo escribe su propio
   archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
   FalOS. Es el día 19.
-- **Aún no es un micronúcleo.** El teclado, el disco, la pantalla y la red ya salieron,
-  pero la consola, el cargador y el vigilante que los reinicia siguen dentro del
-  núcleo, y un fallo ahí para todo. El núcleo no adelgaza: tiene unas 6.500
+- **Aún no es un micronúcleo.** El teclado, el disco, la pantalla, la red y la
+  consola ya salieron, pero el cargador y el vigilante que los reinicia siguen
+  dentro del núcleo, y un fallo ahí para todo. La consola entiende lo que
+  escribes, pero lo que hace cada orden (lanzar un programa, enseñarte las
+  tareas) lo sigue haciendo el núcleo. Por eso apenas adelgaza: tiene unas 6.400
   líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
   él.
+- **La consola puede dar permisos.** Es lo que tiene que poder hacer: cuando
+  escribes `deja`, es ella quien se lo pide al núcleo. La separa de los demás que
+  es la única con esa llamada, que FalOS la lanza desde su propia imagen y no del
+  disco, y que lo único que le llega es lo que tecleas tú.
 - **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
   cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
   protege es la caja, no saber de dónde viene.

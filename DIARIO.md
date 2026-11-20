@@ -2,6 +2,50 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 19, por la tarde: la consola sale del núcleo, como prometí
+
+![rompe consola: la consola intenta apagar el ordenador, el procesador la para y FalOS lanza otra](capturas/dia-19-consola.png)
+
+**Lo que hay.** Ayer prometí sacar hoy la consola del núcleo. Por la mañana lo
+había pasado al día 20, porque arreglar iba primero, pero lo prometido era para
+hoy. Aquí está.
+
+La consola es lo que lees y escribes: la línea con su cursor, el historial con
+las flechas, entender qué orden has escrito, la ayuda y el reto. Hasta hoy todo
+eso corría dentro del núcleo, con todos los permisos. Ahora es
+[consola.fal](consola.fal), un programa en el anillo 3, en su caja, como el
+teclado o el disco: no toca puertos, ni el disco, ni la red, ni la memoria de
+nadie. FalOS la lanza desde su propia imagen y no desde el disco, así que nadie
+la puede cambiar por otra tocando el disco.
+
+Para hacer algo, la consola le pide la orden al núcleo con una llamada nueva, la
+18, que solo tiene ella. El núcleo mira quién llama, y a cualquier otro programa
+se la niega y la cuenta como rechazada. `mandon` lo intenta: finge ser la
+consola y pide `deja siempre`, `invitado` y `reinicia`. Las tres, rechazadas.
+
+Y si se rompe, FalOS sigue. `rompe consola` hace que intente apagar el ordenador
+por el puerto 100: el procesador la para, y en 10 ms hay otra esperando. Pierde
+el historial, que vivía en ella, y nada más. `cuelga consola` la deja dando
+vueltas sin contestar, y el vigilante la cambia al segundo. Una prueba automática
+hace las dos cosas, y también `para 10`, cada vez que se sube algo.
+
+**Lo que se aprende.** Mover el código fue lo fácil. Lo difícil fue el orden de
+las teclas. Escribes `cerrojo`, Intro y tu contraseña nueva muy deprisa. La
+consola tarda un poco en pedirle la orden al núcleo, y en ese rato las teclas de
+la contraseña ya le han llegado a ella, que es un programa. Antes daba igual,
+porque todo era el núcleo. Ahora, mientras hay una orden a medias, lo que
+escribes se queda en el núcleo, y lo que ya le había llegado a la consola vuelve
+atrás, en el mismo orden. Si la orden pide contraseña, se la queda el núcleo y
+la consola no la ve nunca. Si no, se lo devuelve.
+
+**Lo que queda.** Lo que hacen las órdenes sigue dentro: lanzar un programa o
+enseñarte las tareas y el registro lo hace el núcleo, y la consola solo le dice
+cuál. Por eso el núcleo apenas adelgaza, de 6.499 líneas a 6.434: lo que antes
+leía él del teclado ahora se lo manda un programa, y tiene que comprobarlo todo
+otra vez. Y la consola puede decir `deja` por ti, porque es lo que tiene que
+poder hacer. Lo que la separa de los demás es que solo ella tiene esa llamada,
+y que solo le llega lo que tecleas tú.
+
 ## Día 19: lo rompí yo antes que nadie, y lo arreglé
 
 ![trampa: su pregunta falsa dentro de la ventana, y la de verdad, ya contestada, fuera](capturas/dia-19.png)

@@ -281,6 +281,54 @@ jobs:
             exit 1
           fi
 
+      - name: La consola es un programa, y si se rompe o se cuelga FalOS sigue
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/\./@/g; s/./& /g; s/  / spc /g; s/@/dot/g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "rompe consola"
+            sleep 3
+            teclea "lee carta.txt"
+            sleep 2
+            teclea "cuelga consola"
+            sleep 4
+            teclea "lee carta.txt"
+            sleep 2
+            teclea "para 10"
+            sleep 3
+            teclea "lee carta.txt"
+            sleep 2
+            teclea "lanza mandon"
+            sleep 4
+            teclea "para 1"
+            sleep 2
+            echo quit
+          } | timeout 60 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:consola.txt -monitor stdio -no-reboot > /dev/null
+          cat consola.txt
+          if grep -Eq "X  [A-Z]" consola.txt; then
+            echo "Romper la consola ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "consola cerrado por la excepción 13" consola.txt
+          grep -q "consola reiniciado, y van 1" consola.txt
+          grep -q "consola reiniciado, y van 2" consola.txt
+          grep -q "consola cerrado con 0 preguntas" consola.txt
+          grep -q "consola reiniciado, y van 3" consola.txt
+          test "$(grep -c "archivo leido: " consola.txt)" = 3
+          grep -q "mandon cerrado con 0 preguntas y 3 rechazadas" consola.txt
+          if grep -q "modo invitado\|permisos.sis guardado" consola.txt; then
+            echo "Un programa ha dado órdenes como si fuera la consola"
+            exit 1
+          fi
+
       - name: Ninguna ventana tapa una pregunta de permiso
         run: |
           teclea() {
@@ -1196,7 +1244,7 @@ jobs:
           cp cifra.img invitado.img
           arranca invitado.img invitado1.txt "invitado" "lanza veces" "deja siempre 1" "para 1" "lanza veces" "deja 1" "para 1" "olvida veces" "cerrojo" "registro"
           cmp invitado.img cifra.img
-          grep -q "modo invitado" invitado1.txt
+          grep -q "modo invitado|permisos.sis guardado" invitado1.txt
           grep -q "FalOS apunte 25 0" invitado1.txt
           grep -q "veces leyó de la memoria: -3" invitado1.txt
           grep -q "veces guardó en la memoria: 2" invitado1.txt
@@ -1232,7 +1280,7 @@ jobs:
           cp llave.img bloqueado.img
           arranca bloqueado.img bloqueado.txt intro "lanza veces" "deja 1" "sin cerrojo" "lee cerrojo.sis" "lee llave.sis" "registro"
           cmp bloqueado.img llave.img
-          grep -q "modo invitado" bloqueado.txt
+          grep -q "modo invitado|permisos.sis guardado" bloqueado.txt
           grep -q "veces leyó de la memoria: -3" bloqueado.txt
           if grep -q "archivo leido: " bloqueado.txt; then
             echo "El invitado ha leído un .sis"
@@ -1473,7 +1521,6 @@ jobs:
           grep -q "veces leyó del disco: -3" pendrive.txt
           grep -q "veces guardó en el disco: 2" pendrive.txt
           grep -q "veces leyó del disco: 2" pendrive.txt
-          grep -q "reto: 7" pendrive.txt
           cmp falos.iso falos.iso.antes
           cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
           {

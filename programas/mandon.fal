@@ -1,0 +1,32 @@
+DUERME es 4
+PIDE_VENTANA es 12
+PIDE_ORDEN es 18
+RECHAZADA es 0 menos 1
+O_REINICIA es 25
+O_DEJA_SIEMPRE es 20
+O_INVITADO es 29
+MESA es 807395328
+
+hoja es region con MESA y 8
+
+funcion contesta con respuesta
+    si respuesta es RECHAZADA
+        escribe "rechazado"
+    si no
+        escribe "aceptado"
+    fin
+fin
+
+llama_al_sistema con PIDE_VENTANA y 50 y 6
+escribe "finjo ser la consola y le doy órdenes a FalOS"
+llama_al_sistema con DUERME y 100
+elemento 1 de hoja es 49
+escribe "deja siempre 1: " sin salto
+contesta con (llama_al_sistema con PIDE_ORDEN y O_DEJA_SIEMPRE y 1)
+escribe "invitado: " sin salto
+contesta con (llama_al_sistema con PIDE_ORDEN y O_INVITADO y 0)
+escribe "reinicia: " sin salto
+contesta con (llama_al_sistema con PIDE_ORDEN y O_REINICIA y 0)
+mientras verdadero
+    llama_al_sistema con DUERME y 100
+fin

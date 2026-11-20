@@ -1,0 +1,484 @@
+MANDA_LETRA es 1
+ESPERA_AVISO es 8
+LEE_TECLA es 11
+PIDE_ORDEN es 18
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+OLVIDA_TODO es 1
+
+TECLA_INTRO es 256
+TECLA_BORRA es 257
+TECLA_IZQUIERDA es 258
+TECLA_DERECHA es 259
+TECLA_INICIO es 260
+TECLA_FIN es 261
+TECLA_SUPRIME es 262
+TECLA_ARRIBA es 263
+TECLA_ABAJO es 264
+TECLA_REPINTA es 268
+TECLA_OLVIDA es 269
+
+GRIS es 7
+CIAN_CLARO es 11
+ROJO_CLARO es 12
+AMARILLO es 14
+CRUDA es 4096
+
+O_LIMPIA es 1
+O_HORA es 2
+O_COLORES es 3
+O_ENCENDIDO es 4
+O_MEMORIA es 5
+O_PROGRAMAS es 6
+O_TAREAS es 7
+O_PERMISOS es 8
+O_REGISTRO es 9
+O_PERMITE es 10
+O_PROHIBE es 11
+O_TECLADO es 12
+O_LANZA es 13
+O_PARA es 14
+O_DISCO es 15
+O_LEE es 16
+O_PORTAPAPELES es 17
+O_OLVIDA_PORTAPAPELES es 18
+O_OLVIDA es 19
+O_DEJA_SIEMPRE es 20
+O_DEJA es 21
+O_NIEGA es 22
+O_CUELGA es 23
+O_ROMPE es 24
+O_REINICIA es 25
+O_CERROJO es 26
+O_BLOQUEA es 27
+O_SIN_CERROJO es 28
+O_INVITADO es 29
+O_PING es 30
+O_RED es 31
+
+MESA es 807395328
+LARGO_ORDEN es 70
+CUPO_HISTORIAL es 16
+argumento es region con MESA y LARGO_ORDEN
+orden es region con MESA mas 128 y LARGO_ORDEN
+historial es region con MESA mas 1024 y CUPO_HISTORIAL por 80
+escritas es 0
+pos es 0
+guardadas es 0
+mirando es 1
+
+funcion manda con b y tinta
+    llama_al_sistema con MANDA_LETRA y tinta por 256 mas b
+fin
+
+funcion tecleada con b
+    llama_al_sistema con MANDA_LETRA y CRUDA mas GRIS por 256 mas b
+fin
+
+funcion di con texto y tinta
+    para cada b en texto
+        manda con b y tinta
+    fin
+fin
+
+funcion renglon con texto y tinta
+    di con texto y tinta
+    manda con 10 y tinta
+fin
+
+funcion indicador
+    di con "> " y CIAN_CLARO
+fin
+
+funcion pon_cursor
+    manda con 13 y GRIS
+    indicador
+    i es 1
+    mientras i es menor o igual que pos
+        tecleada con (elemento i de orden)
+        i es i mas 1
+    fin
+fin
+
+funcion repinta
+    manda con 13 y GRIS
+    indicador
+    para cada i desde 1 hasta LARGO_ORDEN mas 1
+        si i es menor o igual que escritas
+            tecleada con (elemento i de orden)
+        si no
+            tecleada con 32
+        fin
+    fin
+    pon_cursor
+fin
+
+funcion minuscula con c
+    si c es mayor o igual que 65 y c es menor o igual que 90
+        devuelve c mas 32
+    fin
+    devuelve c
+fin
+
+funcion teclea con c
+    comparte escritas y pos
+    si escritas es menor que LARGO_ORDEN
+        i es escritas
+        mientras i es mayor que pos
+            elemento i mas 1 de orden es elemento i de orden
+            i es i menos 1
+        fin
+        elemento pos mas 1 de orden es c
+        escritas es escritas mas 1
+        pos es pos mas 1
+        si pos es escritas
+            tecleada con c
+        si no
+            repinta
+        fin
+    fin
+fin
+
+funcion saca_letra con i
+    comparte escritas
+    mientras i es menor que escritas
+        elemento i de orden es elemento i mas 1 de orden
+        i es i mas 1
+    fin
+    escritas es escritas menos 1
+fin
+
+funcion borra
+    comparte pos
+    si pos es mayor que 0
+        saca_letra con pos
+        pos es pos menos 1
+        repinta
+    fin
+fin
+
+funcion suprime
+    si pos es menor que escritas
+        saca_letra con pos mas 1
+        repinta
+    fin
+fin
+
+funcion mueve_a con donde
+    comparte pos
+    si donde es mayor o igual que 0 y donde es menor o igual que escritas
+        pos es donde
+        pon_cursor
+    fin
+fin
+
+funcion sitio_en_historial con k
+    devuelve (k menos 1) por 80 mas 1
+fin
+
+funcion igual_que_la_ultima
+    si guardadas es 0
+        devuelve falso
+    fin
+    sitio es sitio_en_historial con guardadas
+    si (elemento sitio de historial) no es igual a escritas
+        devuelve falso
+    fin
+    i es 1
+    mientras i es menor o igual que escritas
+        si (elemento sitio mas i de historial) no es igual a (elemento i de orden)
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion guarda_en_historial
+    comparte guardadas y mirando
+    si escritas es mayor que 0 y no (igual_que_la_ultima)
+        si guardadas es CUPO_HISTORIAL
+            para cada i desde 1 hasta (CUPO_HISTORIAL menos 1) por 80
+                elemento i de historial es elemento i mas 80 de historial
+            fin
+            guardadas es guardadas menos 1
+        fin
+        guardadas es guardadas mas 1
+        sitio es sitio_en_historial con guardadas
+        elemento sitio de historial es escritas
+        para cada i desde 1 hasta escritas
+            elemento sitio mas i de historial es elemento i de orden
+        fin
+    fin
+    mirando es guardadas mas 1
+fin
+
+funcion recupera con k
+    comparte escritas y pos y mirando
+    mirando es k
+    escritas es 0
+    si k es menor o igual que guardadas
+        sitio es sitio_en_historial con k
+        escritas es elemento sitio de historial
+        i es 1
+        mientras i es menor o igual que escritas
+            elemento i de orden es elemento sitio mas i de historial
+            i es i mas 1
+        fin
+    fin
+    pos es escritas
+    repinta
+fin
+
+funcion empieza_de_cero
+    comparte escritas y pos y guardadas y mirando
+    para cada i desde 1 hasta CUPO_HISTORIAL por 80
+        elemento i de historial es 0
+    fin
+    para cada i desde 1 hasta LARGO_ORDEN
+        elemento i de orden es 0
+        elemento i de argumento es 0
+    fin
+    escritas es 0
+    pos es 0
+    guardadas es 0
+    mirando es 1
+fin
+
+funcion es_orden con nombre
+    si largo de nombre no es igual a escritas
+        devuelve falso
+    fin
+    para cada i desde 1 hasta escritas
+        si (minuscula con (elemento i de orden)) no es igual a (elemento i de nombre)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion empieza_por con nombre
+    si escritas es menor que largo de nombre
+        devuelve falso
+    fin
+    para cada i desde 1 hasta largo de nombre
+        si (minuscula con (elemento i de orden)) no es igual a (elemento i de nombre)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion pide con codigo y primera
+    cuantos es 0
+    si primera es mayor que 0
+        i es primera
+        mientras i es menor o igual que escritas
+            cuantos es cuantos mas 1
+            elemento cuantos de argumento es elemento i de orden
+            i es i mas 1
+        fin
+    fin
+    si (llama_al_sistema con PIDE_ORDEN y codigo y cuantos) es OLVIDA_TODO
+        empieza_de_cero
+    fin
+fin
+
+funcion ejecuta
+    comparte escritas y pos
+    manda con 10 y GRIS
+    guarda_en_historial
+    si escritas es 0
+        escritas es 0
+    si no si es_orden con "ayuda"
+        ayuda
+    si no si es_orden con "limpia"
+        pide con O_LIMPIA y 0
+    si no si es_orden con "hora"
+        pide con O_HORA y 0
+    si no si es_orden con "colores"
+        pide con O_COLORES y 0
+    si no si es_orden con "encendido"
+        pide con O_ENCENDIDO y 0
+    si no si es_orden con "memoria"
+        pide con O_MEMORIA y 0
+    si no si es_orden con "programas"
+        pide con O_PROGRAMAS y 0
+    si no si es_orden con "tareas"
+        pide con O_TAREAS y 0
+    si no si es_orden con "permisos"
+        pide con O_PERMISOS y 0
+    si no si es_orden con "registro"
+        pide con O_REGISTRO y 0
+    si no si empieza_por con "permite "
+        pide con O_PERMITE y 9
+    si no si empieza_por con "prohibe "
+        pide con O_PROHIBE y 9
+    si no si empieza_por con "teclado "
+        pide con O_TECLADO y 9
+    si no si empieza_por con "lanza "
+        pide con O_LANZA y 7
+    si no si empieza_por con "para "
+        pide con O_PARA y 6
+    si no si es_orden con "disco"
+        pide con O_DISCO y 0
+    si no si empieza_por con "lee "
+        pide con O_LEE y 5
+    si no si es_orden con "portapapeles"
+        pide con O_PORTAPAPELES y 0
+    si no si es_orden con "olvida portapapeles"
+        pide con O_OLVIDA_PORTAPAPELES y 0
+    si no si empieza_por con "olvida "
+        pide con O_OLVIDA y 8
+    si no si empieza_por con "deja siempre "
+        pide con O_DEJA_SIEMPRE y 14
+    si no si empieza_por con "deja "
+        pide con O_DEJA y 6
+    si no si empieza_por con "niega "
+        pide con O_NIEGA y 7
+    si no si empieza_por con "cuelga "
+        pide con O_CUELGA y 8
+    si no si empieza_por con "rompe "
+        pide con O_ROMPE y 7
+    si no si es_orden con "reinicia"
+        pide con O_REINICIA y 0
+    si no si es_orden con "cerrojo"
+        pide con O_CERROJO y 0
+    si no si es_orden con "bloquea"
+        pide con O_BLOQUEA y 0
+    si no si es_orden con "sin cerrojo"
+        pide con O_SIN_CERROJO y 0
+    si no si es_orden con "invitado"
+        pide con O_INVITADO y 0
+    si no si es_orden con "ping"
+        pide con O_PING y 0
+    si no si empieza_por con "ping "
+        pide con O_PING y 6
+    si no si es_orden con "red"
+        pide con O_RED y 0
+    si no si es_orden con "reto"
+        reto
+    si no
+        no_conozco
+    fin
+    escritas es 0
+    pos es 0
+    indicador
+fin
+
+funcion ayuda
+    renglon con "  ayuda  limpia  hora  colores  encendido  memoria  reinicia" y GRIS
+    renglon con "" y GRIS
+    renglon con "  programas      los programas que hay en el disco" y GRIS
+    renglon con "  lanza X        los carga del disco y los pone a correr" y GRIS
+    renglon con "  tareas         lo que está corriendo ahora" y GRIS
+    renglon con "  para N         cierra la tarea N" y GRIS
+    renglon con "  teclado N      lo que escribas va al programa N, y Esc lo devuelve" y GRIS
+    renglon con "" y GRIS
+    renglon con "  permisos       quién puede hablar con quién y tocar qué" y GRIS
+    renglon con "  permite N M    deja que la tarea N hable con la M" y GRIS
+    renglon con "  prohibe N M    se lo quita, en el acto" y GRIS
+    renglon con "  registro       qué programa ha leído o guardado qué, y cuándo" y GRIS
+    renglon con "" y GRIS
+    renglon con "  disco          lo que hay en el disco" y GRIS
+    renglon con "  lee X          enseña un archivo del disco" y GRIS
+    renglon con "  deja N         deja que el programa N guarde en su archivo, o se conecte" y GRIS
+    renglon con "  deja siempre N y no vuelve a preguntarte, aunque reinicies" y GRIS
+    renglon con "  niega N        no le deja guardar nada, y le quita el siempre" y GRIS
+    renglon con "  olvida X       borra de verdad lo que guardó X" y GRIS
+    renglon con "" y GRIS
+    renglon con "  cerrojo        pon o cambia la contraseña de la pantalla" y GRIS
+    renglon con "  bloquea        bloquea ya. Solo, a los 5 minutos sin tocarme" y GRIS
+    renglon con "  sin cerrojo    quita la contraseña" y GRIS
+    renglon con "  invitado       nada se escribe en el disco hasta que reinicies" y GRIS
+    renglon con "" y GRIS
+    renglon con "  ping           prueba la red con la salida, 10.0.2.2, o con otra" y GRIS
+    renglon con "  red            la tarjeta, y cuánto ha salido por ella" y GRIS
+    renglon con "" y GRIS
+    renglon con "  cuelga X       cuelga a propósito teclado, disco, pantalla, red o consola" y GRIS
+    renglon con "  rompe X        hace que intenten algo prohibido" y GRIS
+    renglon con "  reto           lo que tendría que hacer un programa para ganarme" y GRIS
+    renglon con "" y GRIS
+    renglon con "  Con el ratón, una ventana se mueve arrastrando su título, se cierra" y GRIS
+    renglon con "  con la x roja, y un clic en ella le da el teclado." y GRIS
+    renglon con "" y GRIS
+    renglon con "  Arrastrando el ratón sobre un texto lo marcas. Ctrl+C lo copia y" y GRIS
+    renglon con "  Ctrl+V lo pega en la ventana que tiene el teclado. Se borra solo a" y GRIS
+    renglon con "  los 30 segundos, y ningún programa lo puede leer ni cambiar." y GRIS
+    renglon con "  portapapeles   cuánto hay copiado, sin enseñarlo" y GRIS
+    renglon con "  olvida portapapeles   lo borra ya" y GRIS
+    renglon con "" y GRIS
+    renglon con "  Esta consola es un programa más, sin permisos. Lo que le pides lo" y GRIS
+    renglon con "  hace FalOS, y si la rompes, lanza otra." y GRIS
+    renglon con "" y GRIS
+fin
+
+funcion reto
+    renglon con "  El reto: haz un programa que consiga una de estas cosas." y AMARILLO
+    renglon con "" y GRIS
+    renglon con "  1  Leer lo que guarda otro programa, o lo que escribes en otra ventana." y GRIS
+    renglon con "  2  Salir a la red sin que digas deja, o ir a otro sitio del que dejaste." y GRIS
+    renglon con "  3  Guardar en el disco sin tu permiso, o pisar lo que guardó otro." y GRIS
+    renglon con "  4  Leer lo que copias sin que tú se lo pegues." y GRIS
+    renglon con "  5  Tocar memoria que no es suya, o un aparato, y seguir corriendo." y GRIS
+    renglon con "  6  Tirarme o colgarme entero, no solo a él." y GRIS
+    renglon con "  7  Ver o tocar algo con la pantalla bloqueada." y GRIS
+    renglon con "" y GRIS
+    renglon con "  Vale escribirlo en Fal o hacer el programa byte a byte. No vale" y GRIS
+    renglon con "  cambiar mi código, ni hacerlo desde fuera de la máquina." y GRIS
+    renglon con "" y GRIS
+    renglon con "  Las reglas y cómo avisar: fal-lang.org/falos#reto" y CIAN_CLARO
+    renglon con "" y GRIS
+fin
+
+funcion no_conozco
+    di con "  No conozco la orden «" y ROJO_CLARO
+    para cada i desde 1 hasta escritas
+        llama_al_sistema con MANDA_LETRA y CRUDA mas ROJO_CLARO por 256 mas (elemento i de orden)
+    fin
+    renglon con "». Escribe ayuda para ver las que sé." y ROJO_CLARO
+    renglon con "" y GRIS
+fin
+
+funcion atiende con tecla
+    si tecla es TECLA_REPINTA
+        repinta
+    si no si tecla es TECLA_OLVIDA
+        empieza_de_cero
+    si no si tecla es menor que TECLA_INTRO
+        teclea con tecla
+    si no si tecla es TECLA_INTRO
+        ejecuta
+    si no si tecla es TECLA_BORRA
+        borra
+    si no si tecla es TECLA_IZQUIERDA
+        mueve_a con pos menos 1
+    si no si tecla es TECLA_DERECHA
+        mueve_a con pos mas 1
+    si no si tecla es TECLA_INICIO
+        mueve_a con 0
+    si no si tecla es TECLA_FIN
+        mueve_a con escritas
+    si no si tecla es TECLA_SUPRIME
+        suprime
+    si no si tecla es TECLA_ARRIBA y mirando es mayor que 1
+        recupera con mirando menos 1
+    si no si tecla es TECLA_ABAJO y mirando es menor o igual que guardadas
+        recupera con mirando mas 1
+    fin
+fin
+
+mientras verdadero
+    pulsada es llama_al_sistema con LEE_TECLA
+    si pulsada es 0
+        aviso es llama_al_sistema con ESPERA_AVISO y 0
+        si aviso es AVISO_CUELGA
+            mientras verdadero
+            fin
+        si no si aviso es AVISO_ROMPE
+            pon_en_puerto con 100 y 254
+        fin
+    si no
+        atiende con pulsada
+    fin
+fin
