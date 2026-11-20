@@ -2,6 +2,64 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 19: lo rompí yo antes que nadie, y lo arreglé
+
+![trampa: su pregunta falsa dentro de la ventana, y la de verdad, ya contestada, fuera](capturas/dia-19.png)
+
+**Lo que hay.** Ayer abrí el reto. Antes de que nadie lo intentara, me puse a
+mirar FalOS como lo miraría quien quiere romperlo, y encontré cuatro fallos de
+los que cuentan. Hoy están arreglados, y cada uno tiene una prueba que lo
+intenta cada vez que se sube algo:
+
+- **Una sola llamada tiraba FalOS entero.** Guardar, leer o conectar desde una
+  posición enorme de la mesa hacía que el núcleo sumara dos números que no caben
+  en 64 bits. Fal no deja que un número dé la vuelta, a propósito, porque eso
+  es un agujero: para el núcleo. Pero aquí lo que se paraba era todo. Ahora se
+  compara restando, y `tumba` lo intenta.
+- **Una ventana podía mentir.** Un programa ponía su ventana encima de la
+  pregunta de permiso de la consola y pintaba dentro otra: que `busca` quería
+  hablar con el DNS, cuando el que pedía era él, y a otro sitio. Ahora, mientras
+  FalOS pregunta, las ventanas se esconden y el teclado vuelve a la consola.
+  `trampa` lo intenta: su pregunta falsa solo se ve cuando ya has contestado a
+  la de verdad.
+- **Sin RDRAND, la llave salía de la hora.** En un procesador sin generador de
+  azar, o en QEMU sin `-cpu max`, la llave que cifra lo que guardan los
+  programas salía del reloj. Con un disco copiado y la hora del archivo, un
+  guion de Python la sacaba en 3 segundos, también con contraseña. Ahora FalOS
+  lee el contador del reloj del ordenador, que va a 1,19 MHz, en cada tecla y
+  cada movimiento del ratón, y encadena esas medidas con BLAKE2b. El mismo guion
+  ya no encuentra nada, y la prueba automática lo comprueba.
+- **Dos archivos con el mismo nombre.** Un disco con un `serpiente.prg` de más
+  arrancaba el falso, y el falso heredaba la clave y el permiso para siempre del
+  de verdad. Ahora `haz_disco` no deja hacerlo, y si alguien escribe el disco a
+  mano, FalOS no abre ninguno de los dos.
+
+![tumba: las tres llamadas que ayer tumbaban FalOS, rechazadas](capturas/dia-19-tumba.png)
+
+**Lo que se aprende.** Repasando las pruebas encontré otro fallo, este en las
+pruebas mismas. Cuando el núcleo se para, Fal escribe "X" al principio de la
+línea, y las pruebas buscaban "  X  ", con dos espacios delante: así lo escribía
+Fal cuando escribí la prueba, el día 1, y cambió esa misma mañana. Desde
+entonces, 18 días, esa comprobación no miraba nada. Si algo hubiera parado FalOS
+en mitad de una prueba, solo lo habría pillado otra comprobación, por suerte.
+Ahora busca bien, y no había nada escondido. Una prueba que nunca falla también
+puede ser una que no mira.
+
+**Más cosas.** Si el ordenador no tiene teclado PS/2, FalOS lo dice en rojo al
+arrancar, en vez de quedarse sin hacer caso. Sin RDRAND, la portada lo avisa. El
+invitado ya no puede leer `cerrojo.sis`. El programa de la pantalla ya no ve la
+memoria de al lado si la pantalla no empieza en un borde de 2 MB. Y el README
+tiene una tabla de los ordenadores donde ha arrancado, con una
+[plantilla](https://github.com/NissanBoss/FalOS/issues/new?template=arranca.yml)
+para que añadas el tuyo.
+
+**Lo que queda.** Hay uno que no se arregla en un día: Meltdown. Cada programa
+lleva en sus tablas de memoria la del núcleo entera, marcada como prohibida, y
+en un Intel de antes de 2019, como el del portátil donde arrancó FalOS, eso se
+puede leer por especulación. El arreglo es separar las tablas del núcleo de las
+de los programas, como hizo Linux en 2018. Tendrá su día, y mientras tanto está
+contado en el README.
+
 ## Día 18: la imagen para que lo arranques tú, y un reto para romperlo
 
 ![reto: las siete cosas que tendría que conseguir un programa para ganarme](capturas/dia-18.png)

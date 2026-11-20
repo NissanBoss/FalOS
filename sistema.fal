@@ -4511,7 +4511,11 @@ funcion pide_permiso_red con t
     pon_color con GRIS y NEGRO
     pinta con "  Mandaría "
     pinta_numero con mandaria
-    pinta con " bytes. Si le dejas: deja "
+    si mandaria es 1
+        pinta con " byte. Si le dejas: deja "
+    si no
+        pinta con " bytes. Si le dejas: deja "
+    fin
     pinta_numero con t
     pinta con ". Si no: niega "
     pinta_numero con t
@@ -5031,7 +5035,7 @@ funcion lee_llave
         devuelve nada
     fin
     traido es pide_archivo con "llave" y ".sis" y 0
-    si traido es NO_ESTA
+    si traido es NO_ESTA o traido es NO_HAY_DISCO
         devuelve nada
     fin
     buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
@@ -6340,7 +6344,7 @@ fin
 funcion lee_cerrojo
     comparte hay_cerrojo
     traido es pide_archivo con "cerrojo" y ".sis" y 0
-    si traido es menor que 0
+    si traido es menor que 0 y traido no es igual a REPETIDO
         devuelve nada
     fin
     buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
