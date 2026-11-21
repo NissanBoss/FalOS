@@ -2,6 +2,62 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 20: Meltdown, como prometí
+
+![tablas 10: la consola ve 7 páginas del núcleo, cuando antes eran 196.607, y espia ya no lo encuentra en sus tablas](capturas/dia-20.png)
+
+**Lo que hay.** Ayer prometí Meltdown para hoy. Aquí está.
+
+Hasta ayer, cada programa llevaba en sus tablas de memoria el núcleo entero:
+196.607 páginas, marcadas como prohibidas. El procesador no le dejaba leerlas,
+y `espia` lo comprobaba cada día: lee la memoria del núcleo y FalOS lo cierra.
+Pero muchos Intel de antes de 2019, como el del ThinkPad L450 donde arranca
+FalOS, leen por adelantado, antes de mirar el permiso, y lo leído deja huella
+en la caché. Midiendo tiempos, un programa puede sacar byte a byte lo que no le
+dejan leer. Eso es [Meltdown](https://meltdownattack.com), y lo prohibido
+incluía la llave que cifra lo que guardas, el portapapeles y las teclas que van
+a otros programas.
+
+El arreglo es que no esté. Ahora cada programa tiene en sus tablas su memoria y
+siete páginas del núcleo: el código de la puerta por donde se entra, las tablas
+que el procesador lee para encontrarla y la pila de entrada del propio
+programa. Al entrar, lo primero que hace FalOS es pasar a sus tablas, y lo
+último antes de volver, poner las del programa. Linux hizo lo mismo en 2018 y
+lo llama KPTI.
+
+`tablas N` lo cuenta: la consola ve 7 páginas del núcleo, cuando antes eran
+196.607. Y `espia` ya no choca con un permiso: la dirección que lee no existe
+para él. La prueba automática comprueba las dos cosas cada vez que se sube algo,
+y Fal tiene una suya que monta dos juegos de tablas y mira lo mismo.
+
+**Lo que cuesta.** Cada cambio de tablas tira lo que el procesador tenía
+traducido, y hay dos por llamada. Lo he medido con un programa nuevo, `mide`,
+que cuenta cuántas veces puede llamar a FalOS en un segundo. En una máquina
+virtual con aceleración, ayer eran 5,1 millones, y hoy, 2,3: cada llamada pasa
+de 0,2 a 0,44 µs. Para lo que hace FalOS no se nota, pero es más del doble.
+
+![mide: 2,3 millones de llamadas por segundo; ayer eran 5,1](capturas/dia-20-mide.png)
+
+**Lo que se aprende.** Lo delicado es el instante del cambio. Justo después de
+cargar las tablas nuevas, el procesador sigue ejecutando la instrucción
+siguiente, y la pila sigue donde estaba. Así que todo lo que se toca en ese
+instante tiene que estar en los dos juegos de tablas y en la misma dirección:
+el código que corre, la pila con los registros del programa y lo que lee el
+procesador para entrar. Si falta una sola página, el fallo llega cuando el
+procesador ya no puede avisar de nada, y el ordenador se reinicia en silencio.
+Por eso el compilador de Fal ahora junta todo eso en sus propias páginas,
+aparte del resto del núcleo, y FalOS solo pone esas.
+
+Y otra: para cerrar Meltdown no hace falta reproducirlo. En QEMU sin KVM no
+sale, y no he lanzado el ataque en el portátil. Lo que se comprueba es que no
+hay nada que leer, y eso se cuenta.
+
+**Lo que queda.** Linux abarata el coste marcando cada juego de tablas con un
+número, PCID, para que el procesador no lo tire al cambiar. FalOS aún no, y lo
+paga también un procesador que no lo necesita. Y Spectre es otra cosa: engaña
+a la predicción de saltos para que el propio núcleo lea por adelantado lo que
+no debería, y pide otros arreglos.
+
 ## Día 19, por la tarde: la consola sale del núcleo, como prometí
 
 ![rompe consola: la consola intenta apagar el ordenador, el procesador la para y FalOS lanza otra](capturas/dia-19-consola.png)

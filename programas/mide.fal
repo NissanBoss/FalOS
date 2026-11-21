@@ -1,0 +1,17 @@
+funcion tics
+    devuelve llama_al_sistema con 3
+fin
+
+escribe "llamadas a FalOS en un segundo:"
+para cada vuelta desde 1 hasta 4
+    inicio es tics
+    mientras tics es inicio
+    fin
+    inicio es tics
+    veces es 0
+    mientras tics menos inicio es menor que 100
+        veces es veces mas 1
+    fin
+    escribe "  " sin salto
+    escribe veces
+fin

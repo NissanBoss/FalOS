@@ -470,6 +470,7 @@ funcion protege_memoria
         fin
     fin
     usa_tablas con raiz
+    tablas_al_entrar con raiz
 fin
 
 reparte_memoria
@@ -702,6 +703,7 @@ O_SIN_CERROJO es 28
 O_INVITADO es 29
 O_PING es 30
 O_RED es 31
+O_TABLAS es 32
 
 CONTROLADOR es 32
 CONTROLADOR_DATOS es 33
@@ -2090,7 +2092,7 @@ funcion cambia_de_tarea
     si siguiente no es igual a actual
         actual es siguiente
         abre_puertos_de con actual
-        usa_tablas con (elemento actual de raices)
+        tablas_al_volver con (elemento actual de raices)
         si actual no es igual a CONSOLA
             pila_de_entrada con (elemento actual de pilas)
         fin
@@ -2365,7 +2367,6 @@ funcion da_memoria
     elemento t de memoria_grande_de es fisica
     directorio es region con (elemento t de directorios) y 512 y 8
     elemento SITIO_GRANDE de directorio es fisica mas PRESENTE mas ESCRIBIBLE mas USUARIO mas GRANDE mas prohibe_ejecutar
-    usa_tablas con (elemento t de raices)
     devuelve MEMORIA_GRANDE
 fin
 
@@ -2750,7 +2751,7 @@ funcion recibe_orden con codigo y cuantos
     si t no es igual a TAREA_CONSOLA
         devuelve rechaza_a_actual
     fin
-    si codigo es menor que 1 o codigo es mayor que O_RED o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
+    si codigo es menor que 1 o codigo es mayor que O_TABLAS o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
         devuelve rechaza_a_actual
     fin
     mesa es region con (elemento t de mesas) y LARGO_ORDEN
@@ -2858,6 +2859,8 @@ funcion haz_la_orden
         orden_ping con 1
     si no si codigo es O_RED
         orden_red
+    si no si codigo es O_TABLAS
+        orden_tablas
     fin
     vuelve_la_consola
 fin
@@ -3158,11 +3161,18 @@ funcion pagina_de_tarea con t
     devuelve nueva
 fin
 
-funcion copia_directorio con destino
-    de_nucleo es region con directorio_nucleo y 512 y 8
-    copia es region con destino y 512 y 8
-    para cada i desde 1 hasta 512
-        elemento i de copia es elemento i de de_nucleo
+funcion pon_del_nucleo con t y principio y tope y permisos
+    directorio es region con (elemento t de directorios) y 512 y 8
+    direccion es principio
+    mientras direccion es menor que tope
+        sitio es (cociente con direccion y DOS_MEGAS) mas 1
+        si (elemento sitio de directorio) es 0
+            elemento sitio de directorio es (pagina_de_tarea con t) mas PRESENTE mas ESCRIBIBLE
+        fin
+        tabla es elemento sitio de directorio
+        hojas es region con (tabla menos (tabla resto PAGINA)) y 512 y 8
+        elemento ((cociente con direccion y PAGINA) resto 512) mas 1 de hojas es direccion mas permisos
+        direccion es direccion mas PAGINA
     fin
 fin
 
@@ -3176,8 +3186,9 @@ funcion monta_programa con t y archivo y total
     medio es region con nivel_3 y 512 y 8
     directorio es region con nivel_2 y 512 y 8
     entradas es region con hojas y 512 y 8
-    copia_directorio con nivel_2
     elemento t de directorios es nivel_2
+    pon_del_nucleo con t y inicio_de_la_entrada y final_de_la_entrada y PRESENTE
+    pon_del_nucleo con t y inicio_de_los_descriptores y final_de_los_descriptores y (PRESENTE mas prohibe_ejecutar)
     elemento 1 de arriba es nivel_3 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento 1 de medio es nivel_2 mas PRESENTE mas ESCRIBIBLE mas USUARIO
     elemento (cociente con DONDE_VAN y DOS_MEGAS) mas 1 de directorio es hojas mas PRESENTE mas ESCRIBIBLE mas USUARIO
@@ -3290,6 +3301,7 @@ funcion reserva_tarea con t y archivo y total y entrada
     elemento t de destino_permiso es 0
     elemento t de raices es monta_programa con t y archivo y total
     pila es pagina_de_tarea con t
+    pon_del_nucleo con t y pila y (pila mas PAGINA) y (PRESENTE mas ESCRIBIBLE mas prohibe_ejecutar)
     elemento t de pilas es pila mas PAGINA
     marco es region con pila mas PAGINA menos TAMANO_MARCO y 20 y 8
     elemento EN_RIP de marco es entrada
@@ -3468,6 +3480,70 @@ funcion para_tarea
         activa_interrupciones
         recoge_tareas con falso
     fin
+fin
+
+funcion cuenta_paginas con directorio y sitios y de_usuario
+    entradas es region con directorio y 512 y 8
+    cuantas es 0
+    para cada d desde 1 hasta sitios
+        bits es mitad_baja con (elemento d de entradas)
+        suya es ((cociente con bits y USUARIO) resto 2) es 1
+        si (bits resto 2) es 1 y ((cociente con bits y GRANDE) resto 2) es 1
+            si suya es de_usuario
+                cuantas es cuantas mas 512
+            fin
+        si no si (bits resto 2) es 1
+            tabla es elemento d de entradas
+            hojas es region con (tabla menos (tabla resto PAGINA)) y 512 y 8
+            para cada i desde 1 hasta 512
+                hoja es mitad_baja con (elemento i de hojas)
+                suya es ((cociente con hoja y USUARIO) resto 2) es 1
+                si (hoja resto 2) es 1 y suya es de_usuario
+                    cuantas es cuantas mas 1
+                fin
+            fin
+        fin
+    fin
+    devuelve cuantas
+fin
+
+funcion orden_tablas
+    t es numero_entre con 1 y escritas
+    si t es menor que 1 o t es mayor que ULTIMA_TAREA o t es CONSOLA o (elemento t de estados_tarea) es SIN_USAR
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No hay ninguna tarea con ese número. Mira: tareas"
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
+    suyas es cuenta_paginas con (elemento t de directorios) y 512 y verdadero
+    del_nucleo es cuenta_paginas con (elemento t de directorios) y 512 y falso
+    antes es cuenta_paginas con directorio_nucleo y (cociente con VISIBLE y DOS_MEGAS) y falso
+    pinta con "  En las tablas de "
+    pon_color con (color_de con t) y NEGRO
+    pinta con (nombre_de con t)
+    pon_color con GRIS y NEGRO
+    pinta con " hay "
+    pon_color con BLANCO y NEGRO
+    pinta_numero con suyas
+    pon_color con GRIS y NEGRO
+    pinta con " páginas suyas y "
+    pon_color con BLANCO y NEGRO
+    pinta_numero con del_nucleo
+    pon_color con GRIS y NEGRO
+    pinta_linea con " del núcleo:"
+    pinta_linea con "  las justas para entrar en FalOS y volver."
+    pinta con "  Antes eran "
+    pinta_numero con antes
+    pinta_linea con ": todo el núcleo, con un permiso que Meltdown se salta."
+    pinta_linea con ""
+    al_serie con (nombre_de con t)
+    escribe " tablas: " sin salto
+    escribe suyas sin salto
+    escribe " suyas, " sin salto
+    escribe del_nucleo sin salto
+    escribe " del núcleo, antes " sin salto
+    escribe antes
 fin
 
 funcion da_el_teclado
@@ -3827,7 +3903,13 @@ funcion cuenta_pagina con t
         fin
         pinta_hex con direccion
         pinta_linea con ", que es memoria del núcleo."
-        pinta_linea con "  Esa memoria no es suya, y el procesador no le deja tocarla."
+        si (codigo resto 2) es 1
+            pinta_linea con "  Esa memoria no es suya, y el procesador no le deja tocarla."
+        si no
+            pinta_linea con "  Ni siquiera está en sus tablas: desde ahí, el núcleo no existe."
+            al_serie con (nombre_de con t)
+            escribe " no tiene el núcleo en sus tablas"
+        fin
     fin
 fin
 
@@ -6324,7 +6406,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 19"
+    pinta con "día 20"
     pon_color con GRIS y NEGRO
 fin
 
@@ -6368,7 +6450,8 @@ funcion portada
     pinta_linea con "  Con cerrojo, la pantalla pide contraseña para entrar."
     pinta_linea con "  Lo que copias con Ctrl+C no lo puede leer ningún programa, y lo que"
     pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
-    pinta_linea con "  un programa solo se conecta a donde tú le dejes."
+    pinta_linea con "  un programa solo se conecta a donde tú le dejes. Y mi memoria ni"
+    pinta_linea con "  siquiera está en sus tablas: Meltdown no encuentra nada que leer."
     si no hay_azar
         pinta_linea con "  Este procesador no trae generador de azar, así que las llaves las"
         pinta_linea con "  saco del instante exacto en que pulsas cada tecla."

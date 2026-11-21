@@ -55,6 +55,7 @@ O_SIN_CERROJO es 28
 O_INVITADO es 29
 O_PING es 30
 O_RED es 31
+O_TABLAS es 32
 
 MESA es 807395328
 LARGO_ORDEN es 70
@@ -320,6 +321,8 @@ funcion ejecuta
         pide con O_LANZA y 7
     si no si empieza_por con "para "
         pide con O_PARA y 6
+    si no si empieza_por con "tablas "
+        pide con O_TABLAS y 8
     si no si es_orden con "disco"
         pide con O_DISCO y 0
     si no si empieza_por con "lee "
@@ -374,6 +377,7 @@ funcion ayuda
     renglon con "  tareas         lo que está corriendo ahora" y GRIS
     renglon con "  para N         cierra la tarea N" y GRIS
     renglon con "  teclado N      lo que escribas va al programa N, y Esc lo devuelve" y GRIS
+    renglon con "  tablas N       cuánto del núcleo ve la tarea N en sus tablas" y GRIS
     renglon con "" y GRIS
     renglon con "  permisos       quién puede hablar con quién y tocar qué" y GRIS
     renglon con "  permite N M    deja que la tarea N hable con la M" y GRIS

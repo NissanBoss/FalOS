@@ -109,7 +109,7 @@ cada día está en el [diario](DIARIO.md).
 Hoy FalOS arranca, pasa al modo de 64 bits, escribe en la pantalla con
 colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
-`programas`, `lanza`, `tareas`, `para`, `teclado`, `permisos`, `permite`, `prohibe`,
+`programas`, `lanza`, `tareas`, `para`, `teclado`, `tablas`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
 `sin cerrojo`, `portapapeles`, `ping`, `red`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
@@ -128,6 +128,17 @@ una sola cuenta con ella, y si miente, no los carga. Van en el anillo 3, sin per
 no ven la memoria de nadie. Para hacer algo, tienen que pedírselo al sistema.
 Si intentan tocar un aparato o leer memoria ajena, el procesador los para y
 FalOS los cierra sin que caiga nada más.
+
+Y en sus tablas no está el núcleo. Hasta el día 19 estaba entero, marcado como
+prohibido, y eso no basta: en muchos Intel de antes de 2019, como el del
+ThinkPad L450, un programa puede leer por especulación lo prohibido. Es
+[Meltdown](https://meltdownattack.com). Ahora cada programa solo lleva siete
+páginas del núcleo, las justas para entrar y volver: el código de la puerta,
+la tabla de interrupciones y su propia pila de entrada. Al entrar, FalOS
+cambia a sus tablas, y al volver, a las del programa. Es lo que Linux llama
+[KPTI](https://docs.kernel.org/arch/x86/pti.html). `tablas N` cuenta lo que ve
+la tarea N, y la prueba automática comprueba que son menos de 16, cuando antes
+eran 196.607.
 
 ```
 lanza cuenta
@@ -600,13 +611,25 @@ vive en él.
 - **Solo el teclado español.** Y sin €: todavía no lo he dibujado.
 - **Solo el primer giga de memoria.** Si el ordenador tiene más, el resto
   no se usa todavía.
-- **Meltdown, en procesadores de antes de 2019.** Cada programa lleva en sus
-  tablas de memoria el primer giga entero, marcado como solo para el núcleo. En
-  un Intel anterior a 2019, como el del ThinkPad L450, un programa puede leerlo
-  por especulación aunque no tenga permiso: la llave, el portapapeles, las
-  teclas que van a otros. Es [Meltdown](https://meltdownattack.com), y el arreglo
-  es lo que Linux llama KPTI: que un programa solo vea lo justo para entrar y
-  salir del núcleo. Llega en un día propio. En QEMU sin KVM no se reproduce.
+- **Parar Meltdown cuesta, y se paga siempre.** Sin PCID, cada cambio de
+  tablas tira lo que el procesador tenía traducido. Con `lanza mide`, en una
+  máquina virtual con aceleración, una llamada al sistema pasa de 0,2 a 0,44 µs:
+  de 5,1 millones por segundo a 2,3. Linux lo abarata marcando cada juego de
+  tablas con un número para no tirarlo, y FalOS aún no. Y lo paga también un
+  procesador que no lo necesita, como un AMD o un Intel moderno: FalOS no
+  pregunta.
+- **Las siete páginas se pueden leer.** Son el código de la puerta, que está en
+  este repositorio, las tablas que el procesador necesita para entrar y la pila
+  de entrada del propio programa, con sus registros. Nada de otro programa ni
+  del núcleo, pero sí dicen dónde están sus tablas, y en FalOS nada cambia de
+  sitio entre un arranque y otro.
+- **Meltdown no se ha lanzado contra FalOS.** Lo que se comprueba es que el
+  núcleo no está en las tablas: la prueba cuenta las páginas, y `espia` ya no
+  choca con un permiso sino con una página que no existe. En QEMU sin KVM el
+  ataque no se reproduce, y en el portátil no lo he intentado.
+- **Spectre es otra cosa.** Engaña a la predicción de saltos para que el
+  propio núcleo, u otro programa, lea por adelantado lo que su código no
+  leería. Pide otros arreglos, y FalOS no tiene ninguno.
 - **Dos programas pueden hablarse a escondidas.** El núcleo no guarda los
   registros del x87 de cada programa, así que dos hechos a mano pueden pasarse
   datos por ahí, y también midiendo el tiempo. Uno sin red se lo puede contar a

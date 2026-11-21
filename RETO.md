@@ -78,8 +78,9 @@ cabecera antes de creérsela: [haz_disco.fal](haz_disco.fal) fabrica así
 
 ## Lo que tiene un programa
 
-Corre en el anillo 3, con su memoria y nada más. Lo que escribe con `escribe`
-sale en su ventana. Para lo demás tiene una mesa de 4.096 bytes que comparte con
+Corre en el anillo 3, con su memoria y nada más. En sus tablas están sus
+páginas y siete del núcleo, las justas para entrar y volver, y `tablas N` te
+las cuenta. Lo que escribe con `escribe` sale en su ventana. Para lo demás tiene una mesa de 4.096 bytes que comparte con
 el núcleo:
 
 ```
@@ -107,7 +108,6 @@ núcleo se lo niega, el número es negativo.
 | 15 | Leer su archivo en la mesa, desde el `a`. |
 | 16 | Dos megas más de memoria, una vez. |
 | 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
-
 | 18 | Solo la consola: pedirle una orden a FalOS. A cualquier otro se le niega. |
 
 Del 19 en adelante no hay nada, y pedirlo cuenta como rechazado.

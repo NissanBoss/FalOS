@@ -77,6 +77,45 @@ jobs:
           test "$(grep -c "apaga cerrado por la excepción 13" programas.txt)" = 2
           grep -q "espia cerrado por la excepción 14" programas.txt
 
+      - name: El núcleo no está en las tablas de los programas
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/./& /g; s/  / spc /g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          {
+            sleep 4
+            teclea "lanza bucle"
+            sleep 2
+            teclea "tablas 1"
+            teclea "tablas 10"
+            sleep 1
+            teclea "lanza espia"
+            sleep 4
+            echo quit
+          } | timeout 40 qemu-system-x86_64 -kernel sistema.bin -display none \
+            -drive file=disco.img,format=raw,if=ide \
+            -serial file:tablas.txt -monitor stdio -no-reboot > /dev/null
+          cat tablas.txt
+          if grep -Eq "X  [A-Z]" tablas.txt; then
+            echo "Cambiar de tablas ha tumbado a FalOS"
+            exit 1
+          fi
+          grep -q "espia no tiene el núcleo en sus tablas" tablas.txt
+          grep -q "espia cerrado por la excepción 14" tablas.txt
+          for quien in bucle consola; do
+            linea=$(grep "$quien tablas: " tablas.txt)
+            nucleo=$(echo "$linea" | sed 's/.* suyas, \([0-9]*\) del núcleo.*/\1/')
+            antes=$(echo "$linea" | sed 's/.*antes \([0-9]*\).*/\1/')
+            echo "$quien ve $nucleo páginas del núcleo; antes, $antes"
+            test "$nucleo" -gt 0
+            test "$nucleo" -lt 16
+            test "$antes" -gt 100000
+          done
+
       - name: Permisos que se dan y se quitan
         run: |
           teclea() {
