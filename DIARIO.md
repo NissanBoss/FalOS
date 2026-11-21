@@ -34,7 +34,9 @@ y Fal tiene una suya que monta dos juegos de tablas y mira lo mismo.
 traducido, y hay dos por llamada. Lo he medido con un programa nuevo, `mide`,
 que cuenta cuántas veces puede llamar a FalOS en un segundo. En una máquina
 virtual con aceleración, ayer eran 5,1 millones, y hoy, 2,3: cada llamada pasa
-de 0,2 a 0,44 µs. Para lo que hace FalOS no se nota, pero es más del doble.
+de 0,2 a 0,44 µs. En QEMU sin aceleración, que es lo que usa la prueba
+automática, es peor: de 1,1 millones a 0,14, porque QEMU tira toda su caché en
+cada cambio. Para lo que hace FalOS no se nota, pero el precio está ahí.
 
 ![mide: 2,3 millones de llamadas por segundo; ayer eran 5,1](capturas/dia-20-mide.png)
 

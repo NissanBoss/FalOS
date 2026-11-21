@@ -614,10 +614,11 @@ vive en él.
 - **Parar Meltdown cuesta, y se paga siempre.** Sin PCID, cada cambio de
   tablas tira lo que el procesador tenía traducido. Con `lanza mide`, en una
   máquina virtual con aceleración, una llamada al sistema pasa de 0,2 a 0,44 µs:
-  de 5,1 millones por segundo a 2,3. Linux lo abarata marcando cada juego de
-  tablas con un número para no tirarlo, y FalOS aún no. Y lo paga también un
-  procesador que no lo necesita, como un AMD o un Intel moderno: FalOS no
-  pregunta.
+  de 5,1 millones por segundo a 2,3. En QEMU sin aceleración es peor, de 1,1
+  millones a 0,14, porque QEMU tira toda su caché en cada cambio. Linux lo
+  abarata marcando cada juego de tablas con un número para no tirarlo, y FalOS
+  aún no. Y lo paga también un procesador que no lo necesita, como un AMD o un
+  Intel moderno: FalOS no pregunta.
 - **Las siete páginas se pueden leer.** Son el código de la puerta, que está en
   este repositorio, las tablas que el procesador necesita para entrar y la pila
   de entrada del propio programa, con sus registros. Nada de otro programa ni
