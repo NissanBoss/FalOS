@@ -5526,6 +5526,9 @@ funcion olvida
         pinta_linea con ""
     si no si respuesta es menor que 0
         fallo_de_disco con respuesta
+        al_serie con nombre
+        escribe " no se ha olvidado: " sin salto
+        escribe respuesta
     si no
         pon_color con VERDE_CLARO y NEGRO
         pinta con "  He borrado "

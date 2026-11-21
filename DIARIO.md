@@ -52,6 +52,16 @@ Y otra: para cerrar Meltdown no hace falta reproducirlo. En QEMU sin KVM no
 sale, y no he lanzado el ataque en el portátil. Lo que se comprueba es que no
 hay nada que leer, y eso se cuenta.
 
+**Más cosas.** La prueba automática falló ayer y hoy en GitHub, una vez cada
+día y en sitios distintos del disco, y en mi ordenador nunca. Ayer dejó la
+pista: "el disco no me deja escribir". Después de escribir, el controlador del
+disco le pide que vacíe su caché y espera a que acabe, pero contaba 200.000
+vueltas en vez de tiempo. En una máquina lenta, el disco tardaba más que esas
+vueltas y el controlador daba la escritura por fallida. Ahora espera hasta 5
+segundos, cediendo su turno mientras tanto. Y si `olvida` falla, ya no lo dice
+solo en la pantalla: también queda en lo que lee la prueba, para que la próxima
+vez se vea por qué.
+
 **Lo que queda.** Linux abarata el coste marcando cada juego de tablas con un
 número, PCID, para que el procesador no lo tire al cambiar. FalOS aún no, y lo
 paga también un procesador que no lo necesita. Y Spectre es otra cosa: engaña

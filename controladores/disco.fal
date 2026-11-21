@@ -1,3 +1,5 @@
+CEDE es 2
+PIDE_TICS es 3
 ESPERA es 8
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
@@ -35,6 +37,7 @@ LARGO_NOMBRE es 32
 TOPE_SECTORES es 8
 TOPE_ARCHIVO es 4096
 PACIENCIA es 200000
+TICS_PARA_VACIAR es 500
 INDICE_NUEVO es 2560
 TOPE_INDICE es 1024
 MODELO es 3700
@@ -132,6 +135,25 @@ funcion acaba_bien
     devuelve falso
 fin
 
+funcion cache_vaciada
+    pon_en_puerto con ESTADO y VACIA_CACHE
+    limite es (llama_al_sistema con PIDE_TICS) mas TICS_PARA_VACIAR
+    mientras (llama_al_sistema con PIDE_TICS) es menor que limite
+        visto es lee_puerto de ESTADO
+        si visto es 0 o visto es 255
+            devuelve falso
+        fin
+        si no (bit_de con visto y 128)
+            si bit_de con visto y 1
+                devuelve falso
+            fin
+            devuelve no (bit_de con visto y 32)
+        fin
+        llama_al_sistema con CEDE
+    fin
+    devuelve falso
+fin
+
 funcion apunta_a con numero y orden
     n es numero
     pon_en_puerto con UNIDAD y 224 mas (cociente con n y 16777216)
@@ -186,8 +208,7 @@ funcion escribe_sector con numero y origen y desde
     si no acaba_bien
         devuelve falso
     fin
-    pon_en_puerto con ESTADO y VACIA_CACHE
-    devuelve acaba_bien
+    devuelve cache_vaciada
 fin
 
 funcion saca_letra con b
