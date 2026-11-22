@@ -651,6 +651,370 @@ fin
 
 busca_red
 
+SIN_CACHE es 24
+HUECO_ACPI es 505
+HUECO_IOMMU es 507
+HUECO_APARATO es 509
+BIT_31 es 2147483648
+BIT_30 es 1073741824
+ULTIMO_BIT es 0 menos 9223372036854775807 menos 1
+MAX_RMRR es 16
+VUELTAS_IOMMU es 1000000
+
+IOMMU_SIN_ACPI es 1
+IOMMU_SIN_DMAR es 2
+IOMMU_RMRR_RARO es 3
+IOMMU_SIN_NIVELES es 4
+IOMMU_NO_RESPONDE es 5
+
+hay_iommu es falso
+por_que_no_iommu es IOMMU_SIN_ACPI
+fisica_iommu es 0
+registros_iommu es 0
+raiz_iommu es 0
+niveles_iommu es 3
+ancho_iommu es 1
+iotlb_en es 0
+faltas_en es 0
+faltas_cuantas es 0
+unidades_sin_tocar es 0
+unidad_grafica es falso
+rmrr_en es 0
+rmrr_cuantos es 0
+rmrr_raros es 0
+siguiente_dominio es 1
+
+funcion por_ventana con hueco y fisica
+    entradas es region con directorio_nucleo y 512 y 8
+    principio es fisica menos fisica resto DOS_MEGAS
+    elemento hueco de entradas es principio mas PRESENTE mas ESCRIBIBLE mas GRANDE mas SIN_CACHE mas prohibe_ejecutar
+    elemento hueco mas 1 de entradas es principio mas DOS_MEGAS mas PRESENTE mas ESCRIBIBLE mas GRANDE mas SIN_CACHE mas prohibe_ejecutar
+    usa_tablas con raiz_nucleo
+    devuelve (hueco menos 1) por DOS_MEGAS mas fisica resto DOS_MEGAS
+fin
+
+funcion mira_acpi con fisica
+    si fisica mas DOS_MEGAS es menor o igual que VISIBLE
+        devuelve fisica
+    fin
+    devuelve por_ventana con HUECO_ACPI y fisica
+fin
+
+funcion numero_en con zona y sitio y bytes
+    n es 0
+    i es bytes
+    mientras i es mayor que 0
+        n es n por 256 mas elemento sitio mas i menos 1 de zona
+        i es i menos 1
+    fin
+    devuelve n
+fin
+
+funcion firma_en con zona y sitio y firma
+    para cada i desde 1 hasta largo de firma
+        si (elemento sitio mas i menos 1 de zona) no es igual a (elemento i de firma)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion busca_rsdp_en con inicio y bytes
+    zona es region con inicio y bytes
+    sitio es 1
+    mientras sitio mas 19 es menor o igual que bytes
+        si firma_en con zona y sitio y "RSD PTR "
+            suma es 0
+            para cada i desde 0 hasta 19
+                suma es suma mas elemento sitio mas i de zona
+            fin
+            si (suma resto 256) es 0
+                devuelve inicio mas sitio menos 1
+            fin
+        fin
+        sitio es sitio mas 16
+    fin
+    devuelve 0
+fin
+
+funcion busca_rsdp
+    sitio es busca_rsdp_en con 524288 y 131072
+    si sitio no es igual a 0
+        devuelve sitio
+    fin
+    devuelve busca_rsdp_en con 917504 y 131072
+fin
+
+funcion busca_tabla_acpi con rsdp y firma
+    puntero es region con rsdp y 36
+    raiz es numero_en con puntero y 17 y 4
+    salto es 4
+    si (elemento 16 de puntero) es mayor o igual que 2
+        extendida es numero_en con puntero y 25 y 8
+        si extendida no es igual a 0
+            raiz es extendida
+            salto es 8
+        fin
+    fin
+    cabeza es region con (mira_acpi con raiz) y 36
+    total es numero_en con cabeza y 5 y 4
+    si total es menor que 36 o total es mayor que DOS_MEGAS
+        devuelve 0
+    fin
+    cuantas es cociente con (total menos 36) y salto
+    i es 0
+    mientras i es menor que cuantas
+        i es i mas 1
+        indice es region con (mira_acpi con raiz) y total
+        donde es numero_en con indice y 37 mas (i menos 1) por salto y salto
+        si donde no es igual a 0
+            cabeza es region con (mira_acpi con donde) y 8
+            si firma_en con cabeza y 1 y firma
+                devuelve donde
+            fin
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion lee_pci_en con bus y ranura y parte y registro
+    pon_doble con PCI_DIRECCION y PCI_ACTIVO mas bus por 65536 mas ranura por 2048 mas parte por 256 mas registro
+    devuelve lee_doble de PCI_DATOS
+fin
+
+funcion apunta_rmrr con t y sitio y cuanto
+    comparte rmrr_cuantos y rmrr_raros
+    primero es numero_en con t y sitio mas 8 y 8
+    ultimo es numero_en con t y sitio mas 16 y 8
+    lista es region con rmrr_en y MAX_RMRR por 5 y 8
+    s es sitio mas 24
+    mientras s mas 5 es menor o igual que sitio mas cuanto menos 1
+        alcance es elemento s mas 1 de t
+        si alcance es menor que 8
+            rmrr_raros es rmrr_raros mas 1
+            devuelve nada
+        fin
+        bus es elemento s mas 5 de t
+        pasos es cociente con (alcance menos 6) y 2
+        p es 1
+        mientras p es menor que pasos
+            puente es lee_pci_en con bus y (elemento s mas 4 mas p por 2 de t) y (elemento s mas 5 mas p por 2 de t) y 24
+            bus es (cociente con puente y 256) resto 256
+            p es p mas 1
+        fin
+        si (elemento s de t) es 1 y rmrr_cuantos es menor que MAX_RMRR y ultimo menos primero es menor que 64 por MEGA
+            k es rmrr_cuantos por 5
+            elemento k mas 1 de lista es bus
+            elemento k mas 2 de lista es elemento s mas 4 mas pasos por 2 de t
+            elemento k mas 3 de lista es elemento s mas 5 mas pasos por 2 de t
+            elemento k mas 4 de lista es primero
+            elemento k mas 5 de lista es ultimo
+            rmrr_cuantos es rmrr_cuantos mas 1
+        si no
+            rmrr_raros es rmrr_raros mas 1
+        fin
+        s es s mas alcance
+    fin
+fin
+
+funcion es_la_grafica con t y sitio y cuanto
+    si cuanto no es igual a 24
+        devuelve falso
+    fin
+    devuelve (elemento sitio mas 16 de t) es 1 y (elemento sitio mas 21 de t) es 0 y (elemento sitio mas 22 de t) es 2 y (elemento sitio mas 23 de t) es 0
+fin
+
+funcion lee_dmar con rsdp
+    comparte fisica_iommu y unidades_sin_tocar y unidad_grafica
+    dmar es busca_tabla_acpi con rsdp y "DMAR"
+    si dmar es 0
+        devuelve falso
+    fin
+    cabeza es region con (mira_acpi con dmar) y 8
+    total es numero_en con cabeza y 5 y 4
+    si total es menor que 48 o total es mayor que DOS_MEGAS
+        devuelve falso
+    fin
+    t es region con (mira_acpi con dmar) y total
+    sitio es 49
+    mientras sitio mas 3 es menor o igual que total
+        clase es numero_en con t y sitio y 2
+        cuanto es numero_en con t y sitio mas 2 y 2
+        si cuanto es menor que 4 o sitio mas cuanto menos 1 es mayor que total
+            devuelve fisica_iommu no es igual a 0
+        fin
+        si clase es 0 y (es_la_grafica con t y sitio y cuanto)
+            unidad_grafica es verdadero
+        si no si clase es 0 y fisica_iommu es 0
+            fisica_iommu es numero_en con t y sitio mas 8 y 8
+        si no si clase es 0
+            unidades_sin_tocar es unidades_sin_tocar mas 1
+        si no si clase es 1
+            apunta_rmrr con t y sitio y cuanto
+        fin
+        sitio es sitio mas cuanto
+    fin
+    devuelve fisica_iommu no es igual a 0
+fin
+
+funcion mapea_para_aparato con arriba y direccion y permisos
+    tabla es arriba
+    paso es PAGINA
+    para cada n desde 2 hasta niveles_iommu
+        paso es paso por 512
+    fin
+    nivel es niveles_iommu
+    mientras nivel es mayor que 1
+        entradas es region con tabla y 512 y 8
+        cual es ((cociente con direccion y paso) resto 512) mas 1
+        si (elemento cual de entradas) es 0
+            nueva es pide_pagina
+            elemento cual de entradas es nueva mas 3
+        fin
+        tabla es (elemento cual de entradas) menos 3
+        paso es cociente con paso y 512
+        nivel es nivel menos 1
+    fin
+    hojas es region con tabla y 512 y 8
+    elemento ((cociente con direccion y PAGINA) resto 512) mas 1 de hojas es direccion mas permisos
+fin
+
+funcion dominio_de con bus y ranura y parte
+    comparte siguiente_dominio
+    raices es region con raiz_iommu y 512 y 8
+    si (elemento bus por 2 mas 1 de raices) es 0
+        nueva es pide_pagina
+        elemento bus por 2 mas 1 de raices es nueva mas 1
+    fin
+    contextos es region con ((elemento bus por 2 mas 1 de raices) menos 1) y 512 y 8
+    k es (ranura por 8 mas parte) por 2
+    si (elemento k mas 1 de contextos) no es igual a 0
+        devuelve (elemento k mas 1 de contextos) menos 1
+    fin
+    arriba es pide_pagina
+    elemento k mas 2 de contextos es ancho_iommu mas siguiente_dominio por 256
+    elemento k mas 1 de contextos es arriba mas 1
+    siguiente_dominio es siguiente_dominio mas 1
+    devuelve arriba
+fin
+
+funcion sin_bit con valor y bit
+    si ((cociente con valor y bit) resto 2) es 1
+        devuelve valor menos bit
+    fin
+    devuelve valor
+fin
+
+funcion estado_iommu
+    r es region con registros_iommu y 1024 y 4
+    estado es elemento 8 de r
+    estado es sin_bit con estado y BIT_30
+    estado es sin_bit con estado y 536870912
+    estado es sin_bit con estado y 134217728
+    devuelve sin_bit con estado y 16777216
+fin
+
+funcion espera_estado con bit y encendido
+    r es region con registros_iommu y 1024 y 4
+    para cada vuelta desde 1 hasta VUELTAS_IOMMU
+        puesto es ((cociente con (elemento 8 de r) y bit) resto 2) es 1
+        si puesto es encendido
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion espera_que_acabe con k
+    r es region con registros_iommu y 512 y 8
+    para cada vuelta desde 1 hasta VUELTAS_IOMMU
+        si (elemento k de r) es mayor o igual que 0
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion iommu_olvida
+    vacia_caches
+    r es region con registros_iommu y 512 y 8
+    elemento 6 de r es ULTIMO_BIT mas 2305843009213693952
+    espera_que_acabe con 6
+    elemento iotlb_en de r es ULTIMO_BIT mas 1152921504606846976
+    espera_que_acabe con iotlb_en
+fin
+
+funcion prepara_iommu
+    comparte hay_iommu y por_que_no_iommu y registros_iommu y raiz_iommu y niveles_iommu y ancho_iommu y iotlb_en y faltas_en y faltas_cuantas y rmrr_en
+    rsdp es busca_rsdp
+    si rsdp es 0
+        por_que_no_iommu es IOMMU_SIN_ACPI
+        devuelve nada
+    fin
+    rmrr_en es pide_pagina
+    si no (lee_dmar con rsdp)
+        por_que_no_iommu es IOMMU_SIN_DMAR
+        devuelve nada
+    fin
+    si rmrr_raros es mayor que 0
+        por_que_no_iommu es IOMMU_RMRR_RARO
+        devuelve nada
+    fin
+    registros_iommu es por_ventana con HUECO_IOMMU y fisica_iommu
+    r es region con registros_iommu y 1024 y 4
+    cap_bajo es elemento 3 de r
+    cap_alto es elemento 4 de r
+    sagaw es (cociente con cap_bajo y 256) resto 32
+    si ((cociente con sagaw y 2) resto 2) es 1
+        niveles_iommu es 3
+        ancho_iommu es 1
+    si no si ((cociente con sagaw y 4) resto 2) es 1
+        niveles_iommu es 4
+        ancho_iommu es 2
+    si no
+        por_que_no_iommu es IOMMU_SIN_NIVELES
+        devuelve nada
+    fin
+    faltas_en es ((cociente con cap_bajo y 16777216) mas (cap_alto resto 4) por 256) por 4 mas 1
+    faltas_cuantas es ((cociente con cap_alto y 256) resto 256) mas 1
+    iotlb_en es ((cociente con (elemento 5 de r) y 256) resto 1024) por 2 mas 2
+    raiz_iommu es pide_pagina
+    lista es region con rmrr_en y MAX_RMRR por 5 y 8
+    c es 0
+    mientras c es menor que rmrr_cuantos por 5
+        arriba es dominio_de con (elemento c mas 1 de lista) y (elemento c mas 2 de lista) y (elemento c mas 3 de lista)
+        direccion es (elemento c mas 4 de lista) menos (elemento c mas 4 de lista) resto PAGINA
+        mientras direccion es menor o igual que elemento c mas 5 de lista
+            mapea_para_aparato con arriba y direccion y 3
+            direccion es direccion mas PAGINA
+        fin
+        c es c mas 5
+    fin
+    vacia_caches
+    estado es estado_iommu
+    si ((cociente con estado y BIT_31) resto 2) es 1
+        estado es estado menos BIT_31
+        elemento 7 de r es estado
+        espera_estado con BIT_31 y falso
+    fin
+    r8 es region con registros_iommu y 512 y 8
+    elemento 5 de r8 es raiz_iommu
+    elemento 7 de r es estado mas BIT_30
+    si no (espera_estado con BIT_30 y verdadero)
+        por_que_no_iommu es IOMMU_NO_RESPONDE
+        devuelve nada
+    fin
+    iommu_olvida
+    elemento 7 de r es estado mas BIT_31
+    si no (espera_estado con BIT_31 y verdadero)
+        por_que_no_iommu es IOMMU_NO_RESPONDE
+        devuelve nada
+    fin
+    hay_iommu es verdadero
+fin
+
+prepara_iommu
+
 funcion sin_parpadeo
     basura es lee_puerto de 986
     pon_en_puerto con 960 y 48
@@ -704,6 +1068,7 @@ O_INVITADO es 29
 O_PING es 30
 O_RED es 31
 O_TABLAS es 32
+O_DMA es 33
 
 CONTROLADOR es 32
 CONTROLADOR_DATOS es 33
@@ -2751,7 +3116,7 @@ funcion recibe_orden con codigo y cuantos
     si t no es igual a TAREA_CONSOLA
         devuelve rechaza_a_actual
     fin
-    si codigo es menor que 1 o codigo es mayor que O_TABLAS o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
+    si codigo es menor que 1 o codigo es mayor que O_DMA o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
         devuelve rechaza_a_actual
     fin
     mesa es region con (elemento t de mesas) y LARGO_ORDEN
@@ -2861,6 +3226,8 @@ funcion haz_la_orden
         orden_red
     si no si codigo es O_TABLAS
         orden_tablas
+    si no si codigo es O_DMA
+        orden_dma
     fin
     vuelve_la_consola
 fin
@@ -4828,6 +5195,247 @@ funcion orden_ping con primera
     escribe llegadas
 fin
 
+APARATO_EDU es 300421684
+BUFFER_EDU es 262144
+DE_LA_MEMORIA es 1
+A_LA_MEMORIA es 3
+BYTES_DMA es 16
+primera_falta es 0
+trozo_del_aparato es 0
+
+funcion pon_pci con ranura y registro y valor
+    pon_doble con PCI_DIRECCION y PCI_ACTIVO mas ranura por 2048 mas registro
+    pon_doble con PCI_DATOS y valor
+fin
+
+funcion cuenta_faltas
+    comparte primera_falta
+    si no hay_iommu
+        devuelve 0
+    fin
+    r es region con registros_iommu y 1024 y 4
+    vistas es 0
+    para cada i desde 0 hasta faltas_cuantas menos 1
+        k es faltas_en mas i por 4
+        arriba_falta es elemento k mas 3 de r
+        si ((cociente con arriba_falta y BIT_31) resto 2) es 1
+            si vistas es 0
+                primera_falta es (elemento k de r) menos (elemento k de r) resto PAGINA mas (elemento k mas 1 de r) por 4294967296
+            fin
+            vistas es vistas mas 1
+            elemento k mas 3 de r es BIT_31
+        fin
+    fin
+    elemento 14 de r es 1
+    devuelve vistas
+fin
+
+funcion dma_edu con aparato y origen y destino y sentido
+    r es region con aparato y 64 y 8
+    elemento 17 de r es origen
+    elemento 18 de r es destino
+    elemento 19 de r es BYTES_DMA
+    elemento 20 de r es sentido
+    empezo es tics
+    mientras ((elemento 20 de r) resto 2) es 1 y tics menos empezo es menor que TICS_POR_SEGUNDO
+    fin
+fin
+
+funcion bytes_iguales con a y b
+    para cada i desde 1 hasta BYTES_DMA
+        si (elemento i de a) no es igual a (elemento i de b)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion pinta_byte con b
+    cifras_de es "0123456789ABCDEF"
+    pon_letra con elemento (cociente con b y 16) mas 1 de cifras_de
+    pon_letra con elemento (b resto 16) mas 1 de cifras_de
+    mueve_cursor
+fin
+
+funcion pinta_estado_iommu
+    si hay_iommu
+        pon_color con VERDE_CLARO y NEGRO
+        pinta con "  IOMMU encendido"
+        pon_color con GRIS y NEGRO
+        pinta con ", en "
+        pinta_hex con fisica_iommu
+        pinta_linea con ". Ningún aparato toca la memoria"
+        pinta_linea con "  si no le doy un trozo."
+        si rmrr_cuantos es mayor que 0
+            pinta con "  La BIOS ha pedido "
+            pinta_numero con rmrr_cuantos
+            pinta_linea con " trozos para sus aparatos, y se los he dado."
+        fin
+        si unidad_grafica
+            pinta_linea con "  La unidad que vigila la tarjeta gráfica la dejo apagada."
+        fin
+        si unidades_sin_tocar es mayor que 0
+            pon_color con AMARILLO y NEGRO
+            pinta con "  Hay "
+            pinta_numero con unidades_sin_tocar
+            pinta_linea con " unidades más que aún no sé encender."
+            pon_color con GRIS y NEGRO
+        fin
+        devuelve nada
+    fin
+    pon_color con ROJO_CLARO y NEGRO
+    si por_que_no_iommu es IOMMU_SIN_ACPI
+        pinta_linea con "  No hay IOMMU: no encuentro las tablas ACPI que dicen dónde está."
+    si no si por_que_no_iommu es IOMMU_SIN_DMAR
+        pinta_linea con "  No hay IOMMU: este ordenador no tiene, o está apagado en la BIOS."
+    si no si por_que_no_iommu es IOMMU_RMRR_RARO
+        pinta_linea con "  No enciendo el IOMMU: la BIOS pide trozos que no sé dar."
+    si no si por_que_no_iommu es IOMMU_SIN_NIVELES
+        pinta_linea con "  No enciendo el IOMMU: sus tablas no son de 3 ni de 4 niveles."
+    si no
+        pinta_linea con "  No enciendo el IOMMU: no responde."
+    fin
+    pinta_linea con "  Cualquier aparato puede leer y escribir toda la memoria."
+    pon_color con GRIS y NEGRO
+fin
+
+funcion orden_dma
+    comparte trozo_del_aparato
+    pinta_estado_iommu
+    ranura es 0 menos 1
+    para cada r desde 0 hasta 31
+        si ranura es menor que 0 y (lee_pci con r y 0) es APARATO_EDU
+            ranura es r
+        fin
+    fin
+    si ranura es menor que 0
+        pinta_linea con "  Para probarlo hace falta el aparato de prueba de QEMU: -device edu"
+        pinta_linea con ""
+        al_serie con "dma: no hay aparato de prueba"
+        escribe ""
+        devuelve nada
+    fin
+    barra_pci es lee_pci con ranura y BAR_0
+    mando es (lee_pci con ranura y 4) resto 65536
+    mando es (sin_bit con (sin_bit con mando y 4) y 2) mas 6
+    pon_pci con ranura y 4 y mando
+    aparato es por_ventana con HUECO_APARATO y (barra_pci menos barra_pci resto 16)
+    si trozo_del_aparato es 0
+        trozo_del_aparato es pide_pagina
+        si hay_iommu
+            arriba es dominio_de con 0 y ranura y 0
+            mapea_para_aparato con arriba y trozo_del_aparato y 3
+            iommu_olvida
+        fin
+    fin
+    cuenta_faltas
+    trozo es trozo_del_aparato
+    ajena es pide_pagina
+    suyo es region con trozo y PAGINA
+    otra es region con ajena y BYTES_DMA
+    para cada i desde 1 hasta PAGINA
+        elemento i de suyo es 0
+    fin
+    para cada i desde 1 hasta BYTES_DMA
+        elemento i de suyo es i por 13
+        elemento i de otra es 255
+    fin
+    dma_edu con aparato y trozo y BUFFER_EDU y DE_LA_MEMORIA
+    dma_edu con aparato y BUFFER_EDU y trozo mas 2048 y A_LA_MEMORIA
+    copia_bien es bytes_iguales con suyo y (region con trozo mas 2048 y BYTES_DMA)
+    codigo es region con inicio_del_codigo y BYTES_DMA
+    dma_edu con aparato y inicio_del_codigo y BUFFER_EDU y DE_LA_MEMORIA
+    dma_edu con aparato y BUFFER_EDU y trozo mas 1024 y A_LA_MEMORIA
+    leido es region con trozo mas 1024 y BYTES_DMA
+    lo_ha_leido es bytes_iguales con codigo y leido
+    faltas_leyendo es cuenta_faltas
+    leyendo_en es primera_falta
+    dma_edu con aparato y trozo y BUFFER_EDU y DE_LA_MEMORIA
+    dma_edu con aparato y BUFFER_EDU y ajena y A_LA_MEMORIA
+    intacta es verdadero
+    para cada i desde 1 hasta BYTES_DMA
+        si (elemento i de otra) no es igual a 255
+            intacta es falso
+        fin
+    fin
+    faltas_escribiendo es cuenta_faltas
+    escribiendo_en es primera_falta
+    faltas es faltas_leyendo mas faltas_escribiendo
+    suelta_pagina con ajena
+    pinta con "  El aparato de prueba, en la ranura "
+    pinta_numero con ranura
+    pinta con ", tiene una página suya, la "
+    pinta_hex con trozo
+    pinta_linea con "."
+    pinta con "  Copiar dentro de su página:"
+    hasta_columna con 45
+    si copia_bien
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "bien"
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "no ha podido"
+    fin
+    pon_color con GRIS y NEGRO
+    pinta con "  Leer mi código, en "
+    pinta_hex con inicio_del_codigo
+    pinta con ":"
+    hasta_columna con 45
+    si lo_ha_leido
+        pon_color con ROJO_CLARO y NEGRO
+        pinta con "lo ha leído:"
+        para cada i desde 1 hasta 4
+            pinta con " "
+            pinta_byte con elemento i de leido
+        fin
+        pinta_linea con ""
+    si no
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "bloqueado"
+    fin
+    pon_color con GRIS y NEGRO
+    pinta con "  Escribir en una página que no es suya:"
+    hasta_columna con 45
+    si intacta
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "bloqueado"
+    si no
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "la ha escrito"
+    fin
+    pon_color con GRIS y NEGRO
+    si faltas_leyendo es 1 y faltas_escribiendo es 1
+        pinta con "  El IOMMU ha apuntado los dos intentos: leer "
+        pinta_hex con leyendo_en
+        pinta_linea con ""
+        pinta con "  y escribir en "
+        pinta_hex con escribiendo_en
+        pinta_linea con "."
+    si no si faltas es mayor que 0
+        pinta con "  El IOMMU ha apuntado "
+        pinta_numero con faltas
+        pinta_linea con " intentos."
+    fin
+    pinta_linea con ""
+    al_serie con "dma: copia "
+    si copia_bien
+        al_serie con "bien"
+    si no
+        al_serie con "mal"
+    fin
+    si lo_ha_leido
+        al_serie con ", lee el núcleo"
+    si no
+        al_serie con ", lee bloqueado"
+    fin
+    si intacta
+        al_serie con ", escribe bloqueado, faltas "
+    si no
+        al_serie con ", escribe en lo ajeno, faltas "
+    fin
+    escribe faltas
+fin
+
 funcion orden_red
     si no hay_red
         sin_tarjeta
@@ -6409,7 +7017,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 20"
+    pinta con "día 21"
     pon_color con GRIS y NEGRO
 fin
 
@@ -6489,6 +7097,14 @@ si hay_red
     escribe puerto_red
 fin
 lanza_controlador con TAREA_CONSOLA
+si hay_iommu
+    al_serie con "iommu: encendido, todo el DMA bloqueado salvo "
+    escribe rmrr_cuantos sin salto
+    escribe " trozos de la BIOS"
+si no
+    al_serie con "iommu: no, motivo "
+    escribe por_que_no_iommu
+fin
 prepara_raton
 si hay_raton
     escribe "ratón listo"

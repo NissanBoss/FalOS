@@ -140,6 +140,23 @@ cambia a sus tablas, y al volver, a las del programa. Es lo que Linux llama
 la tarea N, y la prueba automática comprueba que son menos de 16, cuando antes
 eran 196.607.
 
+Y los aparatos tampoco tocan la memoria por su cuenta. Una tarjeta de red, un
+disco o un controlador USB escriben en la memoria directamente (es el DMA), sin
+pasar por el procesador ni por sus tablas, así que nada de lo de arriba los
+para. Si el ordenador tiene IOMMU, que Intel llama
+[VT-d](https://docs.kernel.org/arch/x86/iommu.html),
+FalOS lo enciende al arrancar con todas las puertas cerradas: ningún aparato
+lee ni escribe nada que no se le haya dado. `dma` lo prueba con el aparato de
+prueba de QEMU: lo deja copiar dentro de su página, le pide leer el código del
+núcleo y escribir en una página ajena, y cuenta lo que el IOMMU ha parado y
+dónde. La prueba automática lo hace con IOMMU y sin él, para que se vea que
+el aparato de verdad lee cuando nadie lo para: sin IOMMU, se trae `02 B0 AD 1B`,
+la firma con la que empieza FalOS.
+
+```bash
+qemu-system-x86_64 -machine q35 -device intel-iommu -device edu -kernel sistema.bin
+```
+
 ```
 lanza cuenta
 lanza primos
@@ -643,6 +660,25 @@ vive en él.
 - **Pocos ordenadores de verdad.** Los de la tabla de arriba, y nada más. En
   otro puede fallar el teclado, el reloj o la pantalla, y la red no va en
   ninguno: solo sé usar la NE2000, que es la de QEMU.
+- **El IOMMU solo se ha probado en QEMU.** El L450 tiene VT-d, pero arranca
+  por UEFI, y FalOS solo busca las tablas ACPI donde las deja una BIOS clásica:
+  GRUB, por multiboot 1, no dice dónde están. Allí `dma` dirá que no las
+  encuentra, y el IOMMU se queda apagado.
+- **Lo que pide la BIOS se da sin mirar.** Algunos aparatos, como el USB que
+  imita un teclado PS/2, usan trozos de memoria que la BIOS se reserva (RMRR).
+  FalOS se los da tal cual, y si pide algo que no sabe dar, no enciende el
+  IOMMU. Ese camino no se ha probado: QEMU no pide ninguno.
+- **Una sola unidad de IOMMU.** Un ordenador puede tener varias. FalOS
+  enciende la primera que no sea la de la gráfica integrada. Esa la deja
+  apagada, porque la pantalla se lee de la memoria por su cuenta, y cerrarle
+  la puerta la dejaría en negro. Si hay más, `dma` lo dice, y lo que vigilan
+  sigue sin vigilar.
+- **Sin remapeo de interrupciones.** Un aparato que escribe donde van las
+  interrupciones puede fingir una. Pararlo es la otra mitad de VT-d, y FalOS
+  aún no la usa.
+- **Hoy ningún aparato de verdad pasa por él.** FalOS habla con el teclado,
+  el disco y la red por puertos, sin DMA. El IOMMU está listo para cuando
+  llegue el USB.
 - **Solo x86-64**, arrancado por multiboot: con QEMU o con GRUB. Ni ARM ni
   Secure Boot.
 

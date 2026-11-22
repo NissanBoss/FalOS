@@ -116,6 +116,36 @@ jobs:
             test "$antes" -gt 100000
           done
 
+      - name: Un aparato no lee la memoria del núcleo
+        run: |
+          teclea() {
+            for letra in $(echo "$1" | sed 's/./& /g; s/  / spc /g'); do
+              echo "sendkey $letra"
+              sleep 0.1
+            done
+            echo "sendkey ret"
+          }
+          for maquina in con sin; do
+            iommu=""
+            if [ "$maquina" = con ]; then
+              iommu="-device intel-iommu"
+            fi
+            {
+              sleep 6
+              teclea "dma"
+              sleep 6
+              echo quit
+            } | timeout 40 qemu-system-x86_64 -machine q35 $iommu -device edu -kernel sistema.bin -display none               -serial file:dma_$maquina.txt -monitor stdio -no-reboot > /dev/null
+            cat dma_$maquina.txt
+            if grep -Eq "X  [A-Z]" dma_$maquina.txt; then
+              echo "La prueba del IOMMU ha tumbado a FalOS"
+              exit 1
+            fi
+          done
+          grep -q "iommu: encendido" dma_con.txt
+          grep -q "dma: copia bien, lee bloqueado, escribe bloqueado, faltas 2" dma_con.txt
+          grep -q "dma: copia bien, lee el núcleo, escribe en lo ajeno" dma_sin.txt
+
       - name: Permisos que se dan y se quitan
         run: |
           teclea() {

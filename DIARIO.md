@@ -2,6 +2,71 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 21: el IOMMU, como prometí
+
+![dma con IOMMU: el aparato de prueba copia dentro de su página, y leer el núcleo o escribir en una página ajena queda bloqueado](capturas/dia-21.png)
+
+**Lo que hay.** Ayer prometí el IOMMU para hoy. Aquí está.
+
+Hasta ayer, todo lo que protegía la memoria lo vigilaba el procesador: las
+tablas de páginas, los permisos, el anillo 3. Pero hay aparatos que escriben
+en la memoria sin pasar por él. Una tarjeta de red deja ahí lo que llega, un
+disco lo que lee, un controlador USB lo que tecleas. Es el DMA, y el aparato no
+tiene tablas ni permisos: escribe en la dirección que le digan, o en la que
+quiera si alguien lo ha trucado. Así se lee la memoria entera desde fuera, la
+llave de lo cifrado incluida. [Thunderclap](https://thunderclap.io) lo
+demostró en 2019 con un aparato enchufado por Thunderbolt.
+
+El IOMMU se pone en medio, e Intel lo llama VT-d. Hace con los aparatos lo que
+las tablas de páginas hacen con los programas: cada aparato tiene las suyas, y
+lo que no está en ellas no existe para él. Desde hoy FalOS lo enciende al
+arrancar con las tablas vacías. Ningún aparato toca nada que no se le haya
+dado.
+
+Para verlo hace falta un aparato con DMA, y FalOS aún no maneja ninguno: el
+teclado, el disco y la red van por puertos. Así que `dma` usa el aparato de
+prueba de QEMU (`-device edu`), que copia lo que le pidas. FalOS le da una
+página suya y le pide tres cosas: copiar dentro de esa página, leer el código
+del núcleo y escribir en una página ajena. Con IOMMU, la primera sale y las
+otras dos no, y el IOMMU apunta qué intentó y dónde. Sin IOMMU, el aparato se
+trae `02 B0 AD 1B`, los cuatro bytes con los que empieza FalOS, y escribe donde
+no debe.
+
+![dma sin IOMMU: el aparato lee el código del núcleo y escribe en una página que no es suya](capturas/dia-21-sin.png)
+
+La prueba automática arranca las dos máquinas cada vez que subo algo. La de sin
+IOMMU está para que la otra no pueda aprobar a ciegas: si el aparato no
+copiara nada, las dos dirían "bloqueado".
+
+**Lo que se aprende.** Para encontrar el IOMMU hay que leer las tablas ACPI que
+deja la BIOS: una con la firma `RSD PTR ` lleva a la lista de tablas, y en ella
+está DMAR, que dice dónde están los registros de cada unidad. Mi primera regla
+era encender solo la unidad marcada "para todos los aparatos", y QEMU 11 ya no
+marca la suya así: FalOS decía que no había IOMMU teniendo uno delante. Ahora
+enciende la primera que no sea la de la gráfica integrada, que en un portátil
+lee la pantalla de la memoria por su cuenta.
+
+Otra: muchos IOMMU de Intel de la época del L450 no miran la caché del
+procesador cuando leen sus tablas. Lo que FalOS acaba de escribir puede estar
+aún en la caché, y el IOMMU leería lo de antes. Fal tiene desde hoy
+`vacia_caches`, que lo baja todo a la memoria, y FalOS la llama antes de cada
+aviso al IOMMU.
+
+Y una trampa de mi propio lenguaje que ya me mordió el día 5: en Fal,
+`para cada k desde 1 hasta 0` cuenta hacia atrás, 1 y 0, en vez de no hacer
+nada. En QEMU la BIOS no reserva ningún trozo de memoria para sus aparatos, así
+que el bucle que los repasa iba de 1 a 0, y FalOS se paraba buscando el trozo
+número 0. Los bucles que pueden quedarse vacíos ahora son `mientras`.
+
+**Lo que queda.** Solo lo he probado en QEMU. El L450 arranca por UEFI, y por
+ese camino GRUB no le dice a FalOS dónde están las tablas ACPI, así que allí el
+IOMMU se queda apagado y `dma` lo dice. Lo que la BIOS reserva para sus
+aparatos (el USB que imita un teclado PS/2, por ejemplo) FalOS se lo da sin
+mirar, y ese camino tampoco se ha probado: QEMU no reserva nada. Falta el
+remapeo de interrupciones, la otra mitad de VT-d, sin el que un aparato puede
+fingir una interrupción. Y hoy ningún aparato de verdad pasa por el IOMMU: el
+primero será el teclado USB.
+
 ## Día 20: Meltdown, como prometí
 
 ![tablas 10: la consola ve 7 páginas del núcleo, cuando antes eran 196.607, y espia ya no lo encuentra en sus tablas](capturas/dia-20.png)

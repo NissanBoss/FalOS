@@ -56,6 +56,7 @@ O_INVITADO es 29
 O_PING es 30
 O_RED es 31
 O_TABLAS es 32
+O_DMA es 33
 
 MESA es 807395328
 LARGO_ORDEN es 70
@@ -359,6 +360,8 @@ funcion ejecuta
         pide con O_PING y 6
     si no si es_orden con "red"
         pide con O_RED y 0
+    si no si es_orden con "dma"
+        pide con O_DMA y 0
     si no si es_orden con "reto"
         reto
     si no
@@ -398,6 +401,7 @@ funcion ayuda
     renglon con "" y GRIS
     renglon con "  ping           prueba la red con la salida, 10.0.2.2, o con otra" y GRIS
     renglon con "  red            la tarjeta, y cuánto ha salido por ella" y GRIS
+    renglon con "  dma            si un aparato puede leer mi memoria por su cuenta" y GRIS
     renglon con "" y GRIS
     renglon con "  cuelga X       cuelga a propósito teclado, disco, pantalla, red o consola" y GRIS
     renglon con "  rompe X        hace que intenten algo prohibido" y GRIS
