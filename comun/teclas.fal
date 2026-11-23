@@ -1,0 +1,119 @@
+funcion teclas_solas
+    devuelve "~~1234567890'~~~qwertyuiop~+~~asdfghjkl~~~~~zxcvbnm,.-~*~ "
+fin
+
+funcion teclas_con_mayus
+    devuelve "~~!\"~$%&/()=?~~~QWERTYUIOP~*~~ASDFGHJKL~~~~~ZXCVBNM;:_~*~ "
+fin
+
+funcion con_altgr con codigo
+    si codigo es 2
+        devuelve 124
+    si no si codigo es 3
+        devuelve 64
+    si no si codigo es 4
+        devuelve 35
+    si no si codigo es 5
+        devuelve 126
+    si no si codigo es 7
+        devuelve 170
+    si no si codigo es 26
+        devuelve 91
+    si no si codigo es 27
+        devuelve 93
+    si no si codigo es 40
+        devuelve 123
+    si no si codigo es 41
+        devuelve 92
+    si no si codigo es 43
+        devuelve 125
+    fin
+    devuelve 0
+fin
+
+funcion es_letra con c
+    devuelve c es mayor o igual que 97 y c es menor o igual que 122
+fin
+
+funcion letra_de con codigo y con_mayus y con_bloq
+    grande es con_mayus no es igual a con_bloq
+    si codigo es 13
+        si con_mayus
+            devuelve 168
+        fin
+        devuelve 173
+    fin
+    si codigo es 39
+        si grande
+            devuelve 165
+        fin
+        devuelve 164
+    fin
+    si codigo es 43
+        si grande
+            devuelve 128
+        fin
+        devuelve 135
+    fin
+    si codigo es 41
+        si con_mayus
+            devuelve 166
+        fin
+        devuelve 167
+    fin
+    si codigo es 4 y con_mayus
+        devuelve 250
+    fin
+    si codigo es 86
+        si con_mayus
+            devuelve 62
+        fin
+        devuelve 60
+    fin
+    si codigo es mayor que 57
+        devuelve 0
+    fin
+    letra es elemento codigo mas 1 de teclas_solas
+    si es_letra con letra
+        si grande
+            devuelve letra menos 32
+        fin
+        devuelve letra
+    fin
+    si con_mayus
+        letra es elemento codigo mas 1 de teclas_con_mayus
+    fin
+    si letra es 126
+        devuelve 0
+    fin
+    devuelve letra
+fin
+
+funcion con_tilde con c y cual
+    si cual es 1
+        si c es 97
+            devuelve 160
+        si no si c es 101
+            devuelve 130
+        si no si c es 105
+            devuelve 161
+        si no si c es 111
+            devuelve 162
+        si no si c es 117
+            devuelve 163
+        si no si c es 69
+            devuelve 144
+        si no si c es 32
+            devuelve 39
+        fin
+    si no si cual es 2
+        si c es 117
+            devuelve 129
+        si no si c es 85
+            devuelve 154
+        si no si c es 32
+            devuelve 34
+        fin
+    fin
+    devuelve c
+fin

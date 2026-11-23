@@ -109,6 +109,7 @@ núcleo se lo niega, el número es negativo.
 | 16 | Dos megas más de memoria, una vez. |
 | 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
 | 18 | Solo la consola: pedirle una orden a FalOS. A cualquier otro se le niega. |
+| 19 | Solo el controlador USB: decir en qué puerto hay un teclado. A cualquier otro se le niega. |
 
 Del 19 en adelante no hay nada, y pedirlo cuenta como rechazado.
 

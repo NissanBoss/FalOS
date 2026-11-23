@@ -75,10 +75,13 @@ el ordenador con el pendrive puesto y elige el pendrive en el menú de arranque
   lo arranca. Se vuelve a poner después.
 - **Si no arranca por UEFI, prueba por BIOS.** En la BIOS se llama CSM, Legacy o
   "Both". La misma imagen vale para los dos.
-- **Si arranca pero no puedes escribir,** FalOS solo sabe usar el teclado PS/2.
-  Los de los portátiles casi siempre lo son por dentro. Un teclado USB funciona
-  si la BIOS tiene "USB Legacy Support" encendido, que lo hace pasar por PS/2.
-  Si no hay nada de eso, FalOS lo dice en rojo al arrancar.
+- **Si se queda parado al arrancar,** elige en el menú "FalOS sin IOMMU". Encender
+  el IOMMU solo se ha probado en QEMU, y cada ordenador es un mundo.
+- **Si arranca pero no puedes escribir,** mira el teclado. Los de los portátiles
+  casi siempre son PS/2 por dentro y van solos. Uno USB va si el ordenador tiene
+  IOMMU y está encendido en la BIOS (VT-d en Intel), o si tiene "USB Legacy
+  Support", que lo hace pasar por PS/2. Si no hay nada de eso, FalOS lo dice en
+  rojo al arrancar.
 
 Dónde ha arrancado ya:
 
@@ -111,7 +114,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `tablas`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
-`sin cerrojo`, `portapapeles`, `ping`, `red`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
+`sin cerrojo`, `portapapeles`, `ping`, `red`, `dma`, `usb`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -145,8 +148,9 @@ disco o un controlador USB escriben en la memoria directamente (es el DMA), sin
 pasar por el procesador ni por sus tablas, así que nada de lo de arriba los
 para. Si el ordenador tiene IOMMU, que Intel llama
 [VT-d](https://docs.kernel.org/arch/x86/iommu.html),
-FalOS lo enciende al arrancar con todas las puertas cerradas: ningún aparato
-lee ni escribe nada que no se le haya dado. `dma` lo prueba con el aparato de
+FalOS lo enciende al arrancar con todas las puertas cerradas: ningún aparato de
+los que vigila lee ni escribe nada que no se le haya dado, ni puede fingir una
+interrupción. `dma` lo prueba con el aparato de
 prueba de QEMU: lo deja copiar dentro de su página, le pide leer el código del
 núcleo y escribir en una página ajena, y cuenta lo que el IOMMU ha parado y
 dónde. La prueba automática lo hace con IOMMU y sin él, para que se vea que
@@ -155,6 +159,21 @@ la firma con la que empieza FalOS.
 
 ```bash
 qemu-system-x86_64 -machine q35 -device intel-iommu -device edu -kernel sistema.bin
+```
+
+El teclado USB es el primer aparato de verdad que vive ahí dentro. Su controlador
+es un programa del anillo 3 que solo tiene los registros del aparato y 64 páginas,
+y el aparato ve esas 64 y ninguna más. `rompe usb` le hace pedir al aparato que
+lea el núcleo, y el IOMMU lo para. Sin IOMMU, FalOS no lo enciende.
+
+El teclado que está al arrancar vale. El que se enchufa después no escribe nada
+hasta que se teclea en él el código de 6 cifras que sale en la pantalla, porque
+un pendrive trucado puede hacerse pasar por teclado y escribir órdenes por ti
+(es el [BadUSB](https://srlabs.de/blog/usb-peripherals-turn)). `usb` dice qué hay
+enchufado y a qué le hace caso.
+
+```bash
+qemu-system-x86_64 -machine q35,i8042=off -device intel-iommu,intremap=on -device qemu-xhci -device usb-kbd -kernel sistema.bin
 ```
 
 ```
@@ -499,6 +518,14 @@ vive en él.
   muchos portátiles. Al hacer clic en su ventana, QEMU se queda con el ratón, y
   lo suelta con la combinación que pone en su título. Ni ratones USB ni
   pantallas táctiles.
+- **Del USB, solo teclados, y con IOMMU.** Ni pendrives, ni ratones, ni nada que
+  vaya por un hub, y como mucho 4 aparatos a la vez. Solo controladores xHCI, los
+  de USB 3. Las luces del teclado no se encienden. Y solo se ha probado en QEMU.
+- **El código del teclado nuevo para a un aparato, no a una persona.** Quien está
+  delante lo lee en la pantalla igual que tú. El que ya está enchufado al arrancar
+  no pasa por ahí, así que un aparato trucado que lleve puesto desde antes
+  escribe. Y en un procesador sin generador de azar, recién arrancado y sin haber
+  tecleado nada, el código sale de poco más que la hora.
 - **En un ordenador de verdad, la pantalla es la de 1024x768 que da GRUB.**
   FalOS pinta su cuadro de 960x600 en el centro, y una pantalla más ancha lo
   estira. Si la tarjeta no tiene ese modo a 32 bits, la pantalla se queda en
@@ -660,25 +687,20 @@ vive en él.
 - **Pocos ordenadores de verdad.** Los de la tabla de arriba, y nada más. En
   otro puede fallar el teclado, el reloj o la pantalla, y la red no va en
   ninguno: solo sé usar la NE2000, que es la de QEMU.
-- **El IOMMU solo se ha probado en QEMU.** El L450 tiene VT-d, pero arranca
-  por UEFI, y FalOS solo busca las tablas ACPI donde las deja una BIOS clásica:
-  GRUB, por multiboot 1, no dice dónde están. Allí `dma` dirá que no las
-  encuentra, y el IOMMU se queda apagado.
+- **El IOMMU solo se ha probado en QEMU.** Por BIOS y por UEFI, pero nunca en un
+  ordenador de verdad.
 - **Lo que pide la BIOS se da sin mirar.** Algunos aparatos, como el USB que
   imita un teclado PS/2, usan trozos de memoria que la BIOS se reserva (RMRR).
-  FalOS se los da tal cual, y si pide algo que no sabe dar, no enciende el
-  IOMMU. Ese camino no se ha probado: QEMU no pide ninguno.
+  FalOS se los da tal cual, salvo al USB, al que se los quita cuando lo coge, y
+  si pide algo que no sabe dar, no enciende el IOMMU. Ese camino no se ha probado: QEMU no pide ninguno.
 - **Una sola unidad de IOMMU.** Un ordenador puede tener varias. FalOS
   enciende la primera que no sea la de la gráfica integrada. Esa la deja
   apagada, porque la pantalla se lee de la memoria por su cuenta, y cerrarle
   la puerta la dejaría en negro. Si hay más, `dma` lo dice, y lo que vigilan
   sigue sin vigilar.
-- **Sin remapeo de interrupciones.** Un aparato que escribe donde van las
-  interrupciones puede fingir una. Pararlo es la otra mitad de VT-d, y FalOS
-  aún no la usa.
-- **Hoy ningún aparato de verdad pasa por él.** FalOS habla con el teclado,
-  el disco y la red por puertos, sin DMA. El IOMMU está listo para cuando
-  llegue el USB.
+- **Las interrupciones, solo si el IOMMU sabe.** Si no trae remapeo de
+  interrupciones, o al encenderlo FalOS deja de oír su propio reloj, lo apaga, y
+  entonces un aparato puede fingir una. `dma` lo dice.
 - **Solo x86-64**, arrancado por multiboot: con QEMU o con GRUB. Ni ARM ni
   Secure Boot.
 
@@ -708,6 +730,13 @@ vive en él.
   y Linux, y de él salen los bordes de colores y la idea del portapapeles: entre
   dos cajas, lo copiado solo pasa con Ctrl+Mayús+C y Ctrl+Mayús+V. FalOS busca
   ese aislamiento en el diseño del propio núcleo, sin máquinas virtuales.
+  También encierra el USB, en una máquina virtual aparte, y
+  [puede preguntarte](https://doc.qubes-os.org/en/latest/user/how-to-guides/how-to-use-usb-devices.html)
+  antes de hacer caso a un teclado nuevo.
+- [USBGuard](https://usbguard.github.io) deja elegir qué aparatos USB acepta
+  Linux, con una lista hecha de lo que cada uno dice ser, y un aparato puede
+  mentir en eso. El código de FalOS no pregunta al aparato quién es: comprueba
+  que quien teclea está viendo la pantalla.
 - [Tails](https://tails.net) arranca sin tocar el disco del ordenador y lo olvida
   todo al apagar. El modo invitado de FalOS es esa idea dentro del sistema de
   siempre: entras sin contraseña, usas lo que hay, y no se escribe nada.

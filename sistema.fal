@@ -256,6 +256,28 @@ funcion busca_modulo
     fin
 fin
 
+sin_iommu es falso
+
+funcion lee_opciones
+    comparte sin_iommu
+    si no (bit_de_arranque con 4)
+        devuelve nada
+    fin
+    info es region con datos_de_arranque y 13 y 4
+    donde es elemento 5 de info
+    si donde es menor que PAGINA o donde es mayor que ARRANQUE_CERCA
+        devuelve nada
+    fin
+    letras es region con donde y 256
+    i es 1
+    mientras i es menor que 248 y (elemento i de letras) no es igual a 0
+        si firma_en con letras y i y "sin_iommu"
+            sin_iommu es verdadero
+        fin
+        i es i mas 1
+    fin
+fin
+
 funcion deja_atras con direccion y largo
     comparte libre_desde
     hasta es direccion mas largo
@@ -289,6 +311,7 @@ funcion reparte_memoria
         falla "El cargador no me ha dado el mapa de la memoria."
     fin
     busca_modulo
+    lee_opciones
     aparta_lo_del_cargador
     tope es 0
     mapa es elemento 13 de info
@@ -666,6 +689,7 @@ IOMMU_SIN_DMAR es 2
 IOMMU_RMRR_RARO es 3
 IOMMU_SIN_NIVELES es 4
 IOMMU_NO_RESPONDE es 5
+IOMMU_LO_PEDISTE es 6
 
 hay_iommu es falso
 por_que_no_iommu es IOMMU_SIN_ACPI
@@ -683,6 +707,18 @@ rmrr_en es 0
 rmrr_cuantos es 0
 rmrr_raros es 0
 siguiente_dominio es 1
+unidad_en es 0
+unidad_mide es 0
+cola_iommu es 0
+cola_pone es 0
+con_cola es falso
+puede_remapear es falso
+interrupciones_cerradas es falso
+con_drenaje es 0
+BIT_26 es 67108864
+BIT_25 es 33554432
+BIT_24 es 16777216
+TOPE_ACPI es 64 por MEGA
 
 funcion por_ventana con hueco y fisica
     entradas es region con directorio_nucleo y 512 y 8
@@ -720,7 +756,7 @@ funcion firma_en con zona y sitio y firma
 fin
 
 funcion busca_rsdp_en con inicio y bytes
-    zona es region con inicio y bytes
+    zona es region con (mira_acpi con inicio) y bytes
     sitio es 1
     mientras sitio mas 19 es menor o igual que bytes
         si firma_en con zona y sitio y "RSD PTR "
@@ -742,11 +778,43 @@ funcion busca_rsdp
     si sitio no es igual a 0
         devuelve sitio
     fin
-    devuelve busca_rsdp_en con 917504 y 131072
+    sitio es busca_rsdp_en con 917504 y 131072
+    si sitio no es igual a 0
+        devuelve sitio
+    fin
+    devuelve busca_rsdp_en_el_mapa
+fin
+
+funcion busca_rsdp_en_el_mapa
+    info es region con datos_de_arranque y 13 y 4
+    mapa es elemento 13 de info
+    fin_mapa es mapa mas elemento 12 de info
+    mientras mapa es menor que fin_mapa
+        entrada es region con mapa y 6 y 4
+        clase es elemento 6 de entrada
+        trozo es (elemento 2 de entrada) mas (elemento 3 de entrada) por 4294967296
+        queda es (elemento 4 de entrada) mas (elemento 5 de entrada) por 4294967296
+        si (clase es 3 o clase es 4) y trozo es mayor o igual que MEGA y queda es menor o igual que TOPE_ACPI
+            mientras queda es mayor o igual que 36
+                cuanto es queda
+                si cuanto es mayor que MEGA
+                    cuanto es MEGA
+                fin
+                sitio es busca_rsdp_en con trozo y cuanto
+                si sitio no es igual a 0
+                    devuelve sitio
+                fin
+                trozo es trozo mas cuanto
+                queda es queda menos cuanto
+            fin
+        fin
+        mapa es mapa mas 4 mas elemento 1 de entrada
+    fin
+    devuelve 0
 fin
 
 funcion busca_tabla_acpi con rsdp y firma
-    puntero es region con rsdp y 36
+    puntero es region con (mira_acpi con rsdp) y 36
     raiz es numero_en con puntero y 17 y 4
     salto es 4
     si (elemento 16 de puntero) es mayor o igual que 2
@@ -825,7 +893,7 @@ funcion es_la_grafica con t y sitio y cuanto
 fin
 
 funcion lee_dmar con rsdp
-    comparte fisica_iommu y unidades_sin_tocar y unidad_grafica
+    comparte fisica_iommu y unidades_sin_tocar y unidad_grafica y unidad_mide
     dmar es busca_tabla_acpi con rsdp y "DMAR"
     si dmar es 0
         devuelve falso
@@ -847,6 +915,10 @@ funcion lee_dmar con rsdp
             unidad_grafica es verdadero
         si no si clase es 0 y fisica_iommu es 0
             fisica_iommu es numero_en con t y sitio mas 8 y 8
+            si cuanto es menor o igual que PAGINA
+                copia_region con (region con unidad_en y cuanto) y 1 y t y sitio y cuanto
+                unidad_mide es cuanto
+            fin
         si no si clase es 0
             unidades_sin_tocar es unidades_sin_tocar mas 1
         si no si clase es 1
@@ -857,7 +929,29 @@ funcion lee_dmar con rsdp
     devuelve fisica_iommu no es igual a 0
 fin
 
-funcion mapea_para_aparato con arriba y direccion y permisos
+funcion la_cubre con bus y ranura y parte
+    si unidad_mide es 0
+        devuelve falso
+    fin
+    t es region con unidad_en y unidad_mide
+    si ((elemento 5 de t) resto 2) es 1
+        devuelve unidades_sin_tocar es 0
+    fin
+    s es 17
+    mientras s mas 7 es menor o igual que unidad_mide
+        alcance es elemento s mas 1 de t
+        si alcance es menor que 8 o s mas alcance menos 1 es mayor que unidad_mide
+            devuelve falso
+        fin
+        si alcance es 8 y (elemento s de t) es 1 y (elemento s mas 5 de t) es bus y (elemento s mas 6 de t) es ranura y (elemento s mas 7 de t) es parte
+            devuelve verdadero
+        fin
+        s es s mas alcance
+    fin
+    devuelve falso
+fin
+
+funcion mapea_para_aparato con arriba y direccion y fisica y permisos
     tabla es arriba
     paso es PAGINA
     para cada n desde 2 hasta niveles_iommu
@@ -876,7 +970,7 @@ funcion mapea_para_aparato con arriba y direccion y permisos
         nivel es nivel menos 1
     fin
     hojas es region con tabla y 512 y 8
-    elemento ((cociente con direccion y PAGINA) resto 512) mas 1 de hojas es direccion mas permisos
+    elemento ((cociente con direccion y PAGINA) resto 512) mas 1 de hojas es fisica mas permisos
 fin
 
 funcion dominio_de con bus y ranura y parte
@@ -895,6 +989,15 @@ funcion dominio_de con bus y ranura y parte
     elemento k mas 2 de contextos es ancho_iommu mas siguiente_dominio por 256
     elemento k mas 1 de contextos es arriba mas 1
     siguiente_dominio es siguiente_dominio mas 1
+    devuelve arriba
+fin
+
+funcion dominio_limpio con bus y ranura y parte
+    viejo es dominio_de con bus y ranura y parte
+    raices es region con raiz_iommu y 512 y 8
+    contextos es region con ((elemento bus por 2 mas 1 de raices) menos 1) y 512 y 8
+    arriba es pide_pagina
+    elemento (ranura por 8 mas parte) por 2 mas 1 de contextos es arriba mas 1
     devuelve arriba
 fin
 
@@ -935,23 +1038,133 @@ funcion espera_que_acabe con k
     devuelve falso
 fin
 
+funcion a_la_cola con primera y segunda
+    comparte cola_pone
+    cola es region con cola_iommu y 512 y 8
+    elemento cola_pone por 2 mas 1 de cola es primera
+    elemento cola_pone por 2 mas 2 de cola es segunda
+    cola_pone es (cola_pone mas 1) resto 256
+fin
+
+funcion vacia_cola
+    aviso_en es cola_iommu mas PAGINA
+    hecha es region con aviso_en y 1 y 4
+    elemento 1 de hecha es 0
+    a_la_cola con 4294967296 mas 37 y aviso_en
+    vacia_caches
+    r es region con registros_iommu y 512 y 8
+    elemento 18 de r es cola_pone por 16
+    para cada vuelta desde 1 hasta VUELTAS_IOMMU
+        si (elemento 1 de hecha) es 1
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
 funcion iommu_olvida
+    si con_cola
+        a_la_cola con 17 y 0
+        a_la_cola con 18 mas con_drenaje y 0
+        devuelve vacia_cola
+    fin
     vacia_caches
     r es region con registros_iommu y 512 y 8
     elemento 6 de r es ULTIMO_BIT mas 2305843009213693952
-    espera_que_acabe con 6
+    si no (espera_que_acabe con 6)
+        devuelve falso
+    fin
     elemento iotlb_en de r es ULTIMO_BIT mas 1152921504606846976
-    espera_que_acabe con iotlb_en
+    devuelve espera_que_acabe con iotlb_en
+fin
+
+funcion apaga_en_iommu con bit
+    r es region con registros_iommu y 1024 y 4
+    estado es estado_iommu
+    si ((cociente con estado y bit) resto 2) es 0
+        devuelve verdadero
+    fin
+    elemento 7 de r es estado menos bit
+    devuelve espera_estado con bit y falso
+fin
+
+funcion enciende_en_iommu con bit
+    r es region con registros_iommu y 1024 y 4
+    elemento 7 de r es estado_iommu mas bit
+    devuelve espera_estado con bit y verdadero
+fin
+
+funcion estrena_cola
+    comparte cola_iommu y con_cola
+    cola_iommu es pide_dos_paginas
+    si cola_iommu es 0
+        devuelve falso
+    fin
+    r es region con registros_iommu y 512 y 8
+    elemento 18 de r es 0
+    elemento 19 de r es cola_iommu
+    vacia_caches
+    si no (enciende_en_iommu con BIT_26)
+        devuelve falso
+    fin
+    con_cola es verdadero
+    devuelve verdadero
+fin
+
+funcion pide_dos_paginas
+    una es pide_pagina
+    otra es pide_pagina
+    si otra es una mas PAGINA
+        devuelve una
+    fin
+    devuelve 0
+fin
+
+funcion cierra_interrupciones_ajenas
+    comparte interrupciones_cerradas
+    si no hay_iommu o no con_cola o no puede_remapear
+        devuelve nada
+    fin
+    r es region con registros_iommu y 512 y 8
+    elemento 24 de r es pide_pagina mas 7
+    a_la_cola con 4 y 0
+    si no (enciende_en_iommu con BIT_24)
+        devuelve nada
+    fin
+    si no vacia_cola
+        devuelve nada
+    fin
+    si no (enciende_en_iommu con BIT_25)
+        devuelve nada
+    fin
+    empezo es tics
+    vuelta es 0
+    mientras tics es menor que empezo mas 2 y vuelta es menor que VUELTAS_IOMMU
+        basura es lee_puerto de 128
+        vuelta es vuelta mas 1
+    fin
+    si tics es menor que empezo mas 2
+        apagado es apaga_en_iommu con BIT_25
+        devuelve nada
+    fin
+    interrupciones_cerradas es verdadero
+    al_serie con "iommu: ningún aparato puede fingir interrupciones"
+    escribe ""
 fin
 
 funcion prepara_iommu
-    comparte hay_iommu y por_que_no_iommu y registros_iommu y raiz_iommu y niveles_iommu y ancho_iommu y iotlb_en y faltas_en y faltas_cuantas y rmrr_en
+    comparte hay_iommu y por_que_no_iommu y registros_iommu y raiz_iommu y niveles_iommu y ancho_iommu y iotlb_en y faltas_en y faltas_cuantas y rmrr_en y unidad_en y puede_remapear y con_drenaje
+    si sin_iommu
+        por_que_no_iommu es IOMMU_LO_PEDISTE
+        devuelve nada
+    fin
     rsdp es busca_rsdp
     si rsdp es 0
         por_que_no_iommu es IOMMU_SIN_ACPI
         devuelve nada
     fin
     rmrr_en es pide_pagina
+    unidad_en es pide_pagina
     si no (lee_dmar con rsdp)
         por_que_no_iommu es IOMMU_SIN_DMAR
         devuelve nada
@@ -977,7 +1190,10 @@ funcion prepara_iommu
     fin
     faltas_en es ((cociente con cap_bajo y 16777216) mas (cap_alto resto 4) por 256) por 4 mas 1
     faltas_cuantas es ((cociente con cap_alto y 256) resto 256) mas 1
-    iotlb_en es ((cociente con (elemento 5 de r) y 256) resto 1024) por 2 mas 2
+    ecap_bajo es elemento 5 de r
+    iotlb_en es ((cociente con ecap_bajo y 256) resto 1024) por 2 mas 2
+    puede_remapear es ((cociente con ecap_bajo y 8) resto 2) es 1
+    con_drenaje es ((cociente con cap_alto y 4194304) resto 4) por 64
     raiz_iommu es pide_pagina
     lista es region con rmrr_en y MAX_RMRR por 5 y 8
     c es 0
@@ -985,35 +1201,222 @@ funcion prepara_iommu
         arriba es dominio_de con (elemento c mas 1 de lista) y (elemento c mas 2 de lista) y (elemento c mas 3 de lista)
         direccion es (elemento c mas 4 de lista) menos (elemento c mas 4 de lista) resto PAGINA
         mientras direccion es menor o igual que elemento c mas 5 de lista
-            mapea_para_aparato con arriba y direccion y 3
+            mapea_para_aparato con arriba y direccion y direccion y 3
             direccion es direccion mas PAGINA
         fin
         c es c mas 5
     fin
     vacia_caches
-    estado es estado_iommu
-    si ((cociente con estado y BIT_31) resto 2) es 1
-        estado es estado menos BIT_31
-        elemento 7 de r es estado
-        espera_estado con BIT_31 y falso
+    por_que_no_iommu es IOMMU_NO_RESPONDE
+    si no (apaga_en_iommu con BIT_31)
+        devuelve nada
+    fin
+    si no (apaga_en_iommu con BIT_25)
+        devuelve nada
+    fin
+    si no (apaga_en_iommu con BIT_26)
+        devuelve nada
     fin
     r8 es region con registros_iommu y 512 y 8
     elemento 5 de r8 es raiz_iommu
-    elemento 7 de r es estado mas BIT_30
-    si no (espera_estado con BIT_30 y verdadero)
-        por_que_no_iommu es IOMMU_NO_RESPONDE
+    si no (enciende_en_iommu con BIT_30)
         devuelve nada
     fin
-    iommu_olvida
-    elemento 7 de r es estado mas BIT_31
-    si no (espera_estado con BIT_31 y verdadero)
-        por_que_no_iommu es IOMMU_NO_RESPONDE
+    si ((cociente con ecap_bajo y 2) resto 2) es 1
+        si no estrena_cola
+            devuelve nada
+        fin
+    fin
+    si no iommu_olvida
+        devuelve nada
+    fin
+    si no (enciende_en_iommu con BIT_31)
         devuelve nada
     fin
     hay_iommu es verdadero
 fin
 
 prepara_iommu
+
+CLASE_XHCI es 787248
+CLASE_EHCI es 787232
+PAGINAS_USB es 64
+TOPE_REGISTROS_USB es 16
+CAJA_USB es 857735168
+USB_NO_HAY es 0
+USB_SIN_IOMMU es 1
+USB_SIN_CUBRIR es 2
+USB_NO_PARA es 3
+USB_RARO es 4
+USB_LISTO es 5
+USB_SE_CAE es 6
+
+usb_como es USB_NO_HAY
+usb_ranura es 0
+usb_parte es 0
+usb_quien es 0
+usb_registros es 0
+usb_mide es 0
+usb_hojas es region con pide_pagina y 512 y 8
+
+funcion pon_pci_en con ranura y parte y registro y valor
+    pon_doble con PCI_DIRECCION y PCI_ACTIVO mas ranura por 2048 mas parte por 256 mas registro
+    pon_doble con PCI_DATOS y valor
+fin
+
+funcion busca_usb
+    comparte usb_ranura y usb_parte y usb_quien
+    para cada ranura desde 0 hasta 31
+        para cada parte desde 0 hasta 7
+            si (lee_pci_en con 0 y ranura y parte y 0) no es igual a 4294967295
+                si (cociente con (lee_pci_en con 0 y ranura y parte y 8) y 256) es CLASE_XHCI
+                    usb_ranura es ranura
+                    usb_parte es parte
+                    usb_quien es lee_pci_en con 0 y ranura y parte y 0
+                    devuelve verdadero
+                fin
+            fin
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion mando_usb con encendido
+    mando es (lee_pci_en con 0 y usb_ranura y usb_parte y 4) resto 65536
+    mando es sin_bit con (sin_bit con (sin_bit con (sin_bit con mando y 1) y 2) y 4) y 1024
+    pon_pci_en con usb_ranura y usb_parte y 4 y mando mas 1024 mas encendido
+fin
+
+funcion mide_usb
+    comparte usb_registros y usb_mide
+    barra_usb es lee_pci_en con 0 y usb_ranura y usb_parte y BAR_0
+    si (barra_usb resto 2) es 1
+        devuelve falso
+    fin
+    clase es (cociente con barra_usb y 2) resto 4
+    barra_alta es 0
+    si clase es 2
+        barra_alta es lee_pci_en con 0 y usb_ranura y usb_parte y BAR_0 mas 4
+    fin
+    mando_usb con 0
+    pon_pci_en con usb_ranura y usb_parte y BAR_0 y 4294967295
+    cabe es lee_pci_en con 0 y usb_ranura y usb_parte y BAR_0
+    pon_pci_en con usb_ranura y usb_parte y BAR_0 y barra_usb
+    cabe es 4294967296 menos (cabe menos cabe resto 16)
+    usb_registros es barra_usb menos barra_usb resto 16 mas barra_alta por 4294967296
+    usb_mide es cociente con cabe y PAGINA
+    si usb_mide es mayor que TOPE_REGISTROS_USB
+        usb_mide es TOPE_REGISTROS_USB
+    fin
+    devuelve usb_mide es mayor que 0 y (usb_registros resto PAGINA) es 0 y usb_registros es mayor que 0 y barra_alta es menor que 1048576
+fin
+
+funcion puertos_de_intel
+    si (usb_quien resto 65536) no es igual a 32902
+        devuelve nada
+    fin
+    para cada ranura desde 0 hasta 31
+        para cada parte desde 0 hasta 7
+            si (cociente con (lee_pci_en con 0 y ranura y parte y 8) y 256) es CLASE_EHCI
+                pon_pci_en con usb_ranura y usb_parte y 216 y (lee_pci_en con 0 y usb_ranura y usb_parte y 220)
+                pon_pci_en con usb_ranura y usb_parte y 208 y (lee_pci_en con 0 y usb_ranura y usb_parte y 212)
+                devuelve nada
+            fin
+        fin
+    fin
+fin
+
+funcion espera_usb con r y sitio y bit y valor
+    para cada vuelta desde 1 hasta VUELTAS_IOMMU
+        si ((cociente con (elemento sitio de r) y bit) resto 2) es valor
+            devuelve verdadero
+        fin
+        basura es lee_puerto de 128
+    fin
+    devuelve falso
+fin
+
+funcion quita_usb_a_la_bios con r
+    e es (cociente con (elemento 5 de r) y 65536) mas 1
+    vueltas es 0
+    tope es usb_mide por 1024
+    mientras e es mayor que 1 y e es menor que tope y vueltas es menor que 64
+        extra es elemento e de r
+        si (extra resto 256) es 1
+            si ((cociente con extra y 16777216) resto 2) es 0
+                elemento e de r es extra mas 16777216
+            fin
+            suelto es espera_usb con r y e y 65536 y 0
+            si no suelto
+                elemento e de r es 16777217 mas ((cociente con extra y 256) resto 256) por 256
+            fin
+            ajustes es elemento e mas 1 de r
+            quedan es (ajustes resto 16) menos (ajustes resto 2)
+            quedan es quedan mas (ajustes resto 8192) menos (ajustes resto 32)
+            quedan es quedan mas (ajustes resto 1048576) menos (ajustes resto 131072)
+            elemento e mas 1 de r es quedan mas 3758096384
+        fin
+        salto es (cociente con extra y 256) resto 256
+        si salto es 0
+            devuelve nada
+        fin
+        e es e mas salto
+        vueltas es vueltas mas 1
+    fin
+fin
+
+funcion calla_usb
+    r es region con (por_ventana con HUECO_APARATO y usb_registros) y usb_mide por 1024 y 4
+    mando_usb con 2
+    quita_usb_a_la_bios con r
+    puertos_de_intel
+    op es cociente con ((elemento 1 de r) resto 256) y 4
+    elemento op mas 1 de r es 0
+    si no (espera_usb con r y op mas 2 y 1 y 1)
+        devuelve falso
+    fin
+    elemento op mas 1 de r es 2
+    si no (espera_usb con r y op mas 1 y 2 y 0)
+        devuelve falso
+    fin
+    devuelve espera_usb con r y op mas 2 y 2048 y 0
+fin
+
+funcion prepara_usb
+    comparte usb_como
+    si no busca_usb
+        devuelve nada
+    fin
+    si no hay_iommu
+        usb_como es USB_SIN_IOMMU
+        devuelve nada
+    fin
+    si no (la_cubre con 0 y usb_ranura y usb_parte)
+        usb_como es USB_SIN_CUBRIR
+        devuelve nada
+    fin
+    si no mide_usb
+        usb_como es USB_RARO
+        devuelve nada
+    fin
+    usb_como es USB_NO_PARA
+    si no calla_usb
+        mando_usb con 0
+        devuelve nada
+    fin
+    mando_usb con 0
+    arriba es dominio_limpio con 0 y usb_ranura y usb_parte
+    para cada k desde 1 hasta PAGINAS_USB
+        hoja es pide_pagina
+        elemento k de usb_hojas es hoja
+        mapea_para_aparato con arriba y CAJA_USB mas (TOPE_REGISTROS_USB mas k menos 1) por PAGINA y hoja y 3
+    fin
+    si iommu_olvida
+        usb_como es USB_LISTO
+    fin
+fin
+
+prepara_usb
 
 funcion sin_parpadeo
     basura es lee_puerto de 986
@@ -1069,6 +1472,7 @@ O_PING es 30
 O_RED es 31
 O_TABLAS es 32
 O_DMA es 33
+O_USB es 34
 
 CONTROLADOR es 32
 CONTROLADOR_DATOS es 33
@@ -1149,6 +1553,7 @@ LEE_GUARDADO es 15
 PIDE_MEMORIA es 16
 CONECTA es 17
 PIDE_ORDEN es 18
+AVISA_TECLADO es 19
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -1157,7 +1562,8 @@ TAREA_DISCO es 7
 TAREA_PANTALLA es 8
 TAREA_RED es 9
 TAREA_CONSOLA es 10
-ULTIMA_TAREA es 10
+TAREA_USB es 11
+ULTIMA_TAREA es 11
 SIN_USAR es 0
 EN_MARCHA es 1
 DORMIDA es 2
@@ -1174,10 +1580,12 @@ LLAVES es 4
 SALIO es 0 menos 1
 LA_PARARON es 0 menos 2
 SE_COLGO es 0 menos 3
+TOCO_LO_AJENO es 0 menos 4
 
 AVISO_TECLA es 1
 AVISO_RATON es 2
 AVISO_PINTA es 1
+AVISO_TIC es 1
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
 SIN_RESPUESTA es 0 menos 100
@@ -1315,6 +1723,11 @@ R_HABLO es 31
 R_RED_NEGADA es 32
 R_DEJASTE_RED es 33
 R_NEGASTE_RED es 34
+R_USB es 35
+R_USB_NUEVO es 36
+R_USB_BUENO es 37
+R_USB_MALO es 38
+R_USB_DMA es 39
 
 TOPE_LLAVE es 36
 MARCA_LLAVE es "LLA1"
@@ -1388,7 +1801,10 @@ comprobada es region con clave_en mas 128 y 64
 azar_en es clave_en mas 192
 taller_cerrojo es clave_en mas 1024
 CABEN_SORBOS es 64
-MINIMO_SORBOS es 16
+MINIMO_AZAR es 64
+VALE_INTERRUPCION es 4
+VALE_USB es 1
+calidad_azar es 0
 pozo_en es pide_pagina
 estado_azar es region con pozo_en y 32
 salida_azar es region con pozo_en mas 64 y 64
@@ -1437,6 +1853,7 @@ teclado_imagen es incluye_programa de "controladores/teclado.fal"
 disco_imagen es incluye_programa de "controladores/disco.fal"
 pantalla_imagen es incluye_programa de "controladores/pantalla.fal"
 red_imagen es incluye_programa de "controladores/red.fal"
+usb_imagen es incluye_programa de "controladores/usb.fal"
 consola_imagen es incluye_programa de "consola.fal"
 
 funcion imagen_de con t
@@ -1446,6 +1863,8 @@ funcion imagen_de con t
         devuelve disco_imagen
     si no si t es TAREA_RED
         devuelve red_imagen
+    si no si t es TAREA_USB
+        devuelve usb_imagen
     si no si t es TAREA_CONSOLA
         devuelve consola_imagen
     fin
@@ -1461,6 +1880,8 @@ funcion nombre_de con t
         devuelve "pantalla"
     si no si t es TAREA_RED
         devuelve "red"
+    si no si t es TAREA_USB
+        devuelve "usb"
     si no si t es TAREA_CONSOLA
         devuelve "consola"
     fin
@@ -1892,6 +2313,7 @@ funcion compone
         pinta_aviso_pegado
         pinta_portapapeles
         pinta_invitado
+        pinta_codigo_usb
     fin
     pinta_reloj
     sitio es cursor_sitio
@@ -1961,6 +2383,12 @@ funcion pinta_cerrojo
     si no si mensaje_cerrojo es COMPROBANDO
         pon_frase_en_vista con 14 y 37 y "Comprobando..." y fondo
     fin
+    si usb_con_codigo
+        marca es (AMARILLO por 16 mas NEGRO) por 256
+        pon_frase_en_vista con 21 y 20 y " Teclado USB nuevo: teclea en él " y marca
+        pon_texto_en_vista con 21 y 53 y (region con usb_en mas 1024 y CIFRAS_USB) y marca
+        pon_en_vista con 21 y 59 y marca mas 32
+    fin
     pon_frase_en_vista con 18 y 12 y "Los programas siguen, pero no ven tus teclas ni tu ratón," y (NEGRO por 16 mas GRIS_OSCURO) por 256
     pon_frase_en_vista con 19 y 12 y "y lo que pintan no sale hasta que vuelvas." y (NEGRO por 16 mas GRIS_OSCURO) por 256
 fin
@@ -1991,6 +2419,16 @@ funcion pinta_invitado
         devuelve nada
     fin
     pon_texto_en_vista con 1 y 50 y " invitado " y (MAGENTA_CLARO por 16 mas NEGRO) por 256
+fin
+
+funcion pinta_codigo_usb
+    si no usb_con_codigo
+        devuelve nada
+    fin
+    marca es (AMARILLO por 16 mas NEGRO) por 256
+    pon_frase_en_vista con 1 y 24 y " USB nuevo: teclea en él " y marca
+    pon_texto_en_vista con 1 y 49 y (region con usb_en mas 1024 y CIFRAS_USB) y marca
+    pon_en_vista con 1 y 55 y marca mas 32
 fin
 
 funcion pinta_aviso_disco
@@ -2407,7 +2845,7 @@ fin
 
 funcion se_puede_correr con t
     si t es CONSOLA
-        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_orden o hay_encargos o disco_listo o red_lista o (despierta_consola_en no es igual a 0 y tics es mayor o igual que despierta_consola_en)
+        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_orden o hay_encargos o falta_codigo o disco_listo o red_lista o (despierta_consola_en no es igual a 0 y tics es mayor o igual que despierta_consola_en)
     fin
     si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
         elemento t de estados_tarea es EN_MARCHA
@@ -2625,11 +3063,208 @@ funcion aguarda_aviso con respuesta
     devuelve 0
 fin
 
-funcion recibe_tecla con tecla
-    comparte entra y foco y ultima_actividad
-    si actual no es igual a TAREA_TECLADO
+TOPE_DE_PUERTOS es 64
+USB_NADA es 0
+USB_ACEPTADO es 1
+USB_ESPERA es 2
+USB_IGNORADO es 3
+USB_DE_ARRANQUE es 300
+USB_ESTABLE es 1000
+USB_CASTIGO es 3000
+INTENTOS_USB es 3
+CIFRAS_USB es 6
+usb_en es pide_pagina
+puertos_usb es region con usb_en y TOPE_DE_PUERTOS y 8
+codigo_usb es region con usb_en mas 1024 y 16
+escrito_usb es region con usb_en mas 1040 y 16
+usb_desde es 0
+usb_caidas es 0
+usb_probando es 0
+usb_con_codigo es falso
+usb_llevan es 0
+usb_fallos es 0
+usb_castigo_hasta es 0
+falta_codigo es falso
+usb_falta es 0
+usb_falta_leia es falso
+usb_falta_interrupcion es falso
+probando_dma es falso
+
+funcion olvida_puertos_usb
+    comparte usb_probando y usb_con_codigo
+    para cada p desde 1 hasta TOPE_DE_PUERTOS
+        elemento p de puertos_usb es USB_NADA
+    fin
+    usb_probando es 0
+    usb_con_codigo es falso
+    ensucia
+fin
+
+funcion recibe_teclado con puerto y enchufado
+    comparte usb_probando y usb_con_codigo y falta_codigo
+    si actual no es igual a TAREA_USB
         devuelve rechaza_a_actual
     fin
+    si puerto es menor que 1 o puerto es mayor que TOPE_DE_PUERTOS o enchufado es menor que 0 o enchufado es mayor que 1
+        devuelve rechaza_a_actual
+    fin
+    si enchufado es 0
+        elemento puerto de puertos_usb es USB_NADA
+        si usb_probando es puerto
+            usb_probando es 0
+            usb_con_codigo es falso
+            ensucia
+        fin
+        devuelve 0
+    fin
+    si (elemento puerto de puertos_usb) no es igual a USB_NADA
+        devuelve 0
+    fin
+    bebe_del_reloj con 0
+    si (elemento TAREA_USB de generaciones) es 1 y tics es menor que usb_desde mas USB_DE_ARRANQUE
+        elemento puerto de puertos_usb es USB_ACEPTADO
+        apunta con R_USB y "FalOS" y BLANCO y puerto
+    si no
+        elemento puerto de puertos_usb es USB_ESPERA
+        apunta con R_USB_NUEVO y "FalOS" y BLANCO y puerto
+        falta_codigo es verdadero
+    fin
+    devuelve 0
+fin
+
+funcion recibe_tecla_usb con tecla y puerto
+    si puerto es menor que 1 o puerto es mayor que TOPE_DE_PUERTOS
+        devuelve rechaza_a_actual
+    fin
+    si (elemento puerto de puertos_usb) es USB_ACEPTADO
+        bebe_del_reloj con VALE_USB
+        devuelve entra_tecla con tecla
+    fin
+    si (elemento puerto de puertos_usb) es USB_ESPERA y usb_probando es puerto y usb_con_codigo
+        cifra_de_codigo con tecla
+        devuelve 0
+    fin
+    devuelve RECHAZADA
+fin
+
+funcion cifra_de_codigo con tecla
+    comparte usb_llevan y usb_probando y usb_con_codigo y usb_fallos y usb_castigo_hasta y falta_codigo
+    si tecla es TECLA_BORRA y usb_llevan es mayor que 0
+        usb_llevan es usb_llevan menos 1
+    fin
+    si tecla es menor que 48 o tecla es mayor que 57
+        devuelve nada
+    fin
+    usb_llevan es usb_llevan mas 1
+    elemento usb_llevan de escrito_usb es tecla
+    si usb_llevan es menor que CIFRAS_USB
+        devuelve nada
+    fin
+    acierta es verdadero
+    para cada i desde 1 hasta CIFRAS_USB
+        si (elemento i de escrito_usb) no es igual a (elemento i de codigo_usb)
+            acierta es falso
+        fin
+    fin
+    usb_llevan es 0
+    usb_con_codigo es falso
+    ensucia
+    si acierta
+        elemento usb_probando de puertos_usb es USB_ACEPTADO
+        apunta con R_USB_BUENO y "FalOS" y BLANCO y usb_probando
+        usb_probando es 0
+        usb_fallos es 0
+        devuelve nada
+    fin
+    usb_fallos es usb_fallos mas 1
+    si usb_fallos es menor que INTENTOS_USB
+        falta_codigo es verdadero
+        devuelve nada
+    fin
+    elemento usb_probando de puertos_usb es USB_IGNORADO
+    apunta con R_USB_MALO y "FalOS" y BLANCO y usb_probando
+    usb_fallos es 0
+    usb_probando es 0
+    usb_castigo_hasta es tics mas USB_CASTIGO
+fin
+
+funcion hay_teclado_esperando
+    para cada p desde 1 hasta TOPE_DE_PUERTOS
+        si (elemento p de puertos_usb) es USB_ESPERA
+            devuelve p
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion nuevo_codigo
+    comparte falta_codigo y usb_probando y usb_con_codigo y usb_llevan
+    desactiva_interrupciones
+    falta_codigo es falso
+    puerto es usb_probando
+    si puerto es 0
+        puerto es hay_teclado_esperando
+    fin
+    aplaza es puerto es 0 o usb_con_codigo o tics es menor que usb_castigo_hasta
+    activa_interrupciones
+    si aplaza
+        devuelve nada
+    fin
+    saca_sal con escrito_usb y 1
+    desactiva_interrupciones
+    para cada i desde 1 hasta CIFRAS_USB
+        elemento i de codigo_usb es 48 mas ((elemento i por 2 de escrito_usb) por 256 mas elemento i por 2 menos 1 de escrito_usb) resto 10
+    fin
+    si (elemento puerto de puertos_usb) es USB_ESPERA
+        usb_probando es puerto
+        usb_llevan es 0
+        usb_con_codigo es verdadero
+        ensucia
+    fin
+    activa_interrupciones
+    al_serie con "usb: teclado nuevo en el puerto "
+    escribe puerto sin salto
+    escribe ", pide código"
+fin
+
+funcion mira_faltas_usb
+    comparte usb_falta y usb_falta_leia y usb_falta_interrupcion
+    r es region con registros_iommu y 1024 y 4
+    si ((elemento 14 de r) resto 4) es menor que 2
+        devuelve nada
+    fin
+    suya es falso
+    para cada i desde 0 hasta faltas_cuantas menos 1
+        k es faltas_en mas i por 4
+        arriba_falta es elemento k mas 3 de r
+        si (cociente con arriba_falta y BIT_31) es 1
+            si ((elemento k mas 2 de r) resto 65536) es usb_ranura por 8 mas usb_parte
+                suya es verdadero
+                usb_falta es (elemento k de r) menos (elemento k de r) resto PAGINA mas (elemento k mas 1 de r) por 4294967296
+                usb_falta_leia es ((cociente con arriba_falta y BIT_30) resto 2) es 1
+                usb_falta_interrupcion es (arriba_falta resto 256) es mayor o igual que 32
+            fin
+            elemento k mas 3 de r es BIT_31
+        fin
+    fin
+    elemento 14 de r es 1
+    si suya y sigue_viva con TAREA_USB
+        cierra_tarea con TAREA_USB y TOCO_LO_AJENO
+        apunta con R_USB_DMA y "usb" y AZUL_CLARO y 0
+    fin
+fin
+
+funcion recibe_tecla con tecla y puerto
+    si actual es TAREA_USB
+        devuelve recibe_tecla_usb con tecla y puerto
+    si no si actual no es igual a TAREA_TECLADO
+        devuelve rechaza_a_actual
+    fin
+    devuelve entra_tecla con tecla
+fin
+
+funcion entra_tecla con tecla
+    comparte entra y foco y ultima_actividad
     si tecla es menor que 1 o tecla es mayor que TECLA_PEGA
         devuelve RECHAZADA
     fin
@@ -2817,7 +3452,7 @@ funcion al_llamar
     si no si numero es ESPERA_AVISO
         elemento EN_RAX de marco es aguarda_aviso con a
     si no si numero es ENTREGA_TECLA
-        elemento EN_RAX de marco es recibe_tecla con a
+        elemento EN_RAX de marco es recibe_tecla con a y (elemento EN_RSI de marco)
     si no si numero es ENTREGA_RATON
         elemento EN_RAX de marco es recibe_raton con a y (elemento EN_RSI de marco)
     si no si numero es LEE_TECLA
@@ -2832,6 +3467,8 @@ funcion al_llamar
         elemento EN_RAX de marco es encarga con numero y a y (elemento EN_RSI de marco)
     si no si numero es CONECTA
         elemento EN_RAX de marco es pide_red con a y (elemento EN_RSI de marco)
+    si no si numero es AVISA_TECLADO
+        elemento EN_RAX de marco es recibe_teclado con a y (elemento EN_RSI de marco)
     si no si numero es PIDE_ORDEN
         elemento EN_RAX de marco es recibe_orden con a y (elemento EN_RSI de marco)
     si no
@@ -2866,19 +3503,20 @@ funcion cierra_entrada
     pon_en_puerto con ESCLAVO_DATOS y ESCLAVO_CERRADO
 fin
 
-funcion bebe_del_reloj
-    comparte sorbos
+funcion bebe_del_reloj con cuanto_vale
+    comparte sorbos y calidad_azar
     pon_en_puerto con RELOJ_ORDEN y 0
     byte_bajo es lee_puerto de RELOJ
     byte_alto es lee_puerto de RELOJ
     sorbos es sorbos mas 1
+    calidad_azar es calidad_azar mas cuanto_vale
     elemento (sorbos resto CABEN_SORBOS) mas 1 de pozo es tics por 65536 mas byte_alto por 256 mas byte_bajo
 fin
 
 funcion al_pulsar
     comparte tecla_sin_leer
     tecla_sin_leer es verdadero
-    bebe_del_reloj
+    bebe_del_reloj con VALE_INTERRUPCION
     cierra_entrada
     pon_en_puerto con CONTROLADOR y YA_ESTA
     avisa_a con TAREA_TECLADO y AVISO_TECLA
@@ -2888,7 +3526,7 @@ fin
 funcion al_mover
     comparte raton_sin_leer
     raton_sin_leer es verdadero
-    bebe_del_reloj
+    bebe_del_reloj con VALE_INTERRUPCION
     cierra_entrada
     pon_en_puerto con ESCLAVO y YA_ESTA
     pon_en_puerto con CONTROLADOR y YA_ESTA
@@ -2983,6 +3621,19 @@ funcion vigila con t
     fin
 fin
 
+funcion tic_del_usb
+    comparte falta_codigo
+    si (tics resto 10) es 0 y no probando_dma
+        mira_faltas_usb
+    fin
+    si (tics resto TICS_POR_SEGUNDO) es 0 y usb_probando es 0 y hay_teclado_esperando no es igual a 0
+        falta_codigo es verdadero
+    fin
+    si (elemento TAREA_USB de avisos) es 0
+        avisa_a con TAREA_USB y AVISO_TIC
+    fin
+fin
+
 funcion al_tic
     comparte tics y tics_dormido y pantalla_sucia y aviso_disco_hasta y aviso_pegado_hasta y aviso_red_hasta
     tics es tics mas 1
@@ -3021,6 +3672,10 @@ funcion al_tic
     vigila con TAREA_PANTALLA
     vigila con TAREA_RED
     vigila con TAREA_CONSOLA
+    vigila con TAREA_USB
+    si usb_como es USB_LISTO
+        tic_del_usb
+    fin
     si pantalla_sucia y no hay_graficos
         pantalla_sucia es falso
         compone
@@ -3045,6 +3700,9 @@ funcion siguiente_tecla
         si no si hay_encargos
             activa_interrupciones
             atiende_encargos
+        si no si falta_codigo
+            activa_interrupciones
+            nuevo_codigo
         si no
             esperando es verdadero
             espera_interrupcion
@@ -3116,7 +3774,7 @@ funcion recibe_orden con codigo y cuantos
     si t no es igual a TAREA_CONSOLA
         devuelve rechaza_a_actual
     fin
-    si codigo es menor que 1 o codigo es mayor que O_DMA o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
+    si codigo es menor que 1 o codigo es mayor que O_USB o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
         devuelve rechaza_a_actual
     fin
     mesa es region con (elemento t de mesas) y LARGO_ORDEN
@@ -3228,6 +3886,8 @@ funcion haz_la_orden
         orden_tablas
     si no si codigo es O_DMA
         orden_dma
+    si no si codigo es O_USB
+        orden_usb
     fin
     vuelve_la_consola
 fin
@@ -3578,6 +4238,9 @@ funcion monta_programa con t y archivo y total
             elemento SITIO_VIDEO mas k menos 1 de directorio es entrada
         fin
     si no si (es_controlador con t) y t no es igual a TAREA_CONSOLA
+        si t es TAREA_USB
+            monta_usb con t y directorio
+        fin
         buzon es pagina_de_tarea con t
         elemento t de buzones es buzon
         elemento SITIO_BUZON de entradas es buzon mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
@@ -3597,6 +4260,25 @@ funcion monta_programa con t y archivo y total
         fin
     fin
     devuelve raiz
+fin
+
+SITIO_USB es 410
+
+funcion monta_usb con t y directorio
+    tabla es pagina_de_tarea con t
+    hojas es region con tabla y 512 y 8
+    para cada k desde 1 hasta usb_mide
+        elemento k de hojas es usb_registros mas (k menos 1) por PAGINA mas PRESENTE mas ESCRIBIBLE mas USUARIO mas SIN_CACHE mas prohibe_ejecutar
+    fin
+    para cada k desde 1 hasta PAGINAS_USB
+        hoja es elemento k de usb_hojas
+        ceros es region con hoja y 512 y 8
+        para cada i desde 1 hasta 512
+            elemento i de ceros es 0
+        fin
+        elemento TOPE_REGISTROS_USB mas k de hojas es hoja mas PRESENTE mas ESCRIBIBLE mas USUARIO mas prohibe_ejecutar
+    fin
+    elemento SITIO_USB de directorio es tabla mas PRESENTE mas ESCRIBIBLE mas USUARIO
 fin
 
 funcion paginas_de con bytes
@@ -3697,7 +4379,20 @@ funcion lanza_controlador con t
         fin
         copia_region con hoja y 1 y imagen y desde mas 1 y cuantas
     fin
+    si t es TAREA_USB
+        estrena_usb
+    fin
     estrena_tarea con t
+fin
+
+funcion estrena_usb
+    comparte usb_desde
+    buzon es region con (elemento TAREA_USB de buzones) y 1024 y 4
+    elemento 1 de buzon es usb_mide
+    usb_desde es tics
+    olvida_puertos_usb
+    faltas es cuenta_faltas
+    mando_usb con 6
 fin
 
 funcion trozo_de_orden con primera
@@ -4009,6 +4704,9 @@ funcion tareas
     si hay_red
         linea_de_tarea con TAREA_RED
     fin
+    si usb_como es USB_LISTO
+        linea_de_tarea con TAREA_USB
+    fin
     linea_de_tarea con TAREA_CONSOLA
     pinta_linea con ""
 fin
@@ -4072,6 +4770,14 @@ funcion permisos
         pinta con " al "
         pinta_numero con puerto_red mas 31
         pinta_linea con ", los de la tarjeta"
+    fin
+    si usb_como es USB_LISTO
+        cabecera_de_tarea con TAREA_USB
+        pinta con "solo los registros del controlador USB y sus "
+        pinta_numero con PAGINAS_USB
+        pinta_linea con " páginas"
+        hasta_columna con 17
+        pinta_linea con "y lo mismo el aparato: de lo demás no ve nada"
     fin
     pinta_linea con ""
     pinta_siempre
@@ -4298,6 +5004,26 @@ funcion ultima_linea con t
     mueve_cursor
 fin
 
+funcion cuenta_falta_usb
+    pon_color con ROJO_CLARO y NEGRO
+    pinta con "  usb"
+    pon_color con BLANCO y NEGRO
+    si usb_falta_interrupcion
+        pinta_linea con " quiso fingir una interrupción. El IOMMU no le ha dejado."
+    si no
+        si usb_falta_leia
+            pinta con " mandó al aparato leer "
+        si no
+            pinta con " mandó al aparato escribir en "
+        fin
+        pinta_hex con usb_falta
+        pinta_linea con ", que no es suyo."
+        pinta_linea con "  El IOMMU no le ha dejado."
+    fin
+    al_serie con "usb: DMA parado por el IOMMU en "
+    escribe usb_falta
+fin
+
 funcion cuenta_el_final con t
     causa es elemento t de causas
     nombre es nombre_de con t
@@ -4341,6 +5067,8 @@ funcion cuenta_el_final con t
         escribe " preguntas y " sin salto
         escribe (elemento t de rechazos_de) sin salto
         escribe " rechazadas"
+    si no si causa es TOCO_LO_AJENO
+        cuenta_falta_usb
     si no
         pon_color con ROJO_CLARO y NEGRO
         pinta con "  "
@@ -4429,7 +5157,9 @@ funcion recoge_tareas con en_el_indicador
             alguna es verdadero
             cuenta_el_final con t
             suelta_tarea con t
-            si es_controlador con t
+            si t es TAREA_USB
+                recoge_usb
+            si no si es_controlador con t
                 vuelve_a_lanzar con t
             fin
             pinta_linea con ""
@@ -4438,6 +5168,31 @@ funcion recoge_tareas con en_el_indicador
     si alguna y en_el_indicador
         vuelve_la_consola
     fin
+fin
+
+funcion recoge_usb
+    comparte usb_caidas y usb_como
+    mando_usb con 0
+    si (elemento TAREA_USB de cerrada_en) menos usb_desde es mayor que USB_ESTABLE
+        usb_caidas es 0
+    fin
+    usb_caidas es usb_caidas mas 1
+    si usb_caidas es mayor que 5
+        usb_como es USB_SE_CAE
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  El controlador USB se cae en cuanto arranca. No lanzo más."
+        pon_color con GRIS y NEGRO
+        al_serie con "usb: no lanzo más"
+        escribe ""
+        devuelve nada
+    fin
+    si no calla_usb
+        usb_como es USB_NO_PARA
+        mando_usb con 0
+        pinta_por_que_no_usb
+        devuelve nada
+    fin
+    vuelve_a_lanzar con TAREA_USB
 fin
 
 ORDEN_ARRANCA_RED es 1
@@ -5264,8 +6019,8 @@ funcion pinta_estado_iommu
         pon_color con GRIS y NEGRO
         pinta con ", en "
         pinta_hex con fisica_iommu
-        pinta_linea con ". Ningún aparato toca la memoria"
-        pinta_linea con "  si no le doy un trozo."
+        pinta_linea con ". Ningún aparato de los que vigila"
+        pinta_linea con "  toca la memoria si no le doy un trozo."
         si rmrr_cuantos es mayor que 0
             pinta con "  La BIOS ha pedido "
             pinta_numero con rmrr_cuantos
@@ -5281,6 +6036,13 @@ funcion pinta_estado_iommu
             pinta_linea con " unidades más que aún no sé encender."
             pon_color con GRIS y NEGRO
         fin
+        si interrupciones_cerradas
+            pinta_linea con "  Y ninguno de esos puede fingir una interrupción."
+        si no
+            pon_color con AMARILLO y NEGRO
+            pinta_linea con "  Pero todavía pueden fingir una interrupción."
+            pon_color con GRIS y NEGRO
+        fin
         devuelve nada
     fin
     pon_color con ROJO_CLARO y NEGRO
@@ -5292,6 +6054,8 @@ funcion pinta_estado_iommu
         pinta_linea con "  No enciendo el IOMMU: la BIOS pide trozos que no sé dar."
     si no si por_que_no_iommu es IOMMU_SIN_NIVELES
         pinta_linea con "  No enciendo el IOMMU: sus tablas no son de 3 ni de 4 niveles."
+    si no si por_que_no_iommu es IOMMU_LO_PEDISTE
+        pinta_linea con "  No enciendo el IOMMU: me lo pediste al arrancar, con sin_iommu."
     si no
         pinta_linea con "  No enciendo el IOMMU: no responde."
     fin
@@ -5299,8 +6063,104 @@ funcion pinta_estado_iommu
     pon_color con GRIS y NEGRO
 fin
 
+funcion pinta_por_que_no_usb
+    pon_color con AMARILLO y NEGRO
+    si usb_como es USB_NO_HAY
+        pinta_linea con "  No encuentro ningún controlador USB 3 (xHCI)."
+    si no si usb_como es USB_SIN_IOMMU
+        pinta_linea con "  Hay un controlador USB, pero no lo enciendo: sin IOMMU podría leer y"
+        pinta_linea con "  escribir toda la memoria. Mira dma."
+    si no si usb_como es USB_SIN_CUBRIR
+        pinta_linea con "  Hay un controlador USB, pero no lo enciendo: el IOMMU no lo vigila."
+    si no si usb_como es USB_NO_PARA
+        pinta_linea con "  Hay un controlador USB, pero no me obedece, y no lo enciendo."
+    si no si usb_como es USB_RARO
+        pinta_linea con "  Hay un controlador USB con los registros donde no los sé usar."
+    si no
+        pinta_linea con "  El controlador USB se caía en cuanto arrancaba, y ya no lo lanzo."
+    fin
+    pon_color con GRIS y NEGRO
+fin
+
+funcion pinta_cuatro_hex con n
+    pinta_byte con cociente con n y 256
+    pinta_byte con n resto 256
+fin
+
+funcion orden_usb
+    si usb_como no es igual a USB_LISTO
+        pinta_por_que_no_usb
+        pinta_linea con ""
+        al_serie con "usb: apagado, motivo "
+        escribe usb_como
+        devuelve nada
+    fin
+    pinta con "  Controlador xHCI "
+    pinta_cuatro_hex con usb_quien resto 65536
+    pinta con ":"
+    pinta_cuatro_hex con cociente con usb_quien y 65536
+    pinta con ", en la ranura "
+    pinta_numero con usb_ranura
+    pinta_linea con ". Lo lleva un programa sin"
+    pinta con "  permisos, y el aparato solo alcanza "
+    pinta_numero con PAGINAS_USB
+    pinta_linea con " páginas: lo vigila el IOMMU."
+    buzon es region con (elemento TAREA_USB de buzones) y 1024 y 4
+    si (elemento 2 de buzon) no es igual a 1
+        pon_color con AMARILLO y NEGRO
+        pinta con "  Todavía no funciona. Dice "
+        pinta_numero con elemento 2 de buzon
+        pinta_linea con "."
+        pon_color con GRIS y NEGRO
+    fin
+    vistos es 0
+    para cada p desde 1 hasta TOPE_DE_PUERTOS
+        si (elemento 512 mas (p menos 1) por 4 mas 4 de buzon) no es igual a 0
+            vistos es vistos mas 1
+            linea_de_puerto con p y (elemento 512 mas (p menos 1) por 4 mas 1 de buzon) y (elemento 512 mas (p menos 1) por 4 mas 2 de buzon)
+        fin
+    fin
+    si vistos es 0
+        pinta_linea con "  No hay nada enchufado."
+    fin
+    pinta_linea con ""
+    al_serie con "usb: en marcha, enchufados "
+    escribe vistos
+fin
+
+funcion linea_de_puerto con p y clase y quien
+    pinta con "  puerto "
+    pinta_numero con p
+    hasta_columna con 14
+    pinta_cuatro_hex con cociente con quien y 65536
+    pinta con ":"
+    pinta_cuatro_hex con quien resto 65536
+    hasta_columna con 26
+    suyo es elemento p de puertos_usb
+    si clase es 1 y suyo es USB_ACEPTADO
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "teclado"
+    si no si clase es 1 y suyo es USB_IGNORADO
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "teclado, y no le hago caso: falló el código 3 veces"
+    si no si clase es 1
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "teclado, y no le hago caso hasta que teclee el código"
+    si no si clase es 2
+        pinta_linea con "no es un teclado, y no lo uso"
+    si no si clase es 3
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "no me entiendo con él"
+    si no si clase es 4
+        pinta_linea con "no cabe: solo llevo 4 aparatos a la vez"
+    si no
+        pinta_linea con "recién enchufado"
+    fin
+    pon_color con GRIS y NEGRO
+fin
+
 funcion orden_dma
-    comparte trozo_del_aparato
+    comparte trozo_del_aparato y probando_dma
     pinta_estado_iommu
     ranura es 0 menos 1
     para cada r desde 0 hasta 31
@@ -5324,10 +6184,11 @@ funcion orden_dma
         trozo_del_aparato es pide_pagina
         si hay_iommu
             arriba es dominio_de con 0 y ranura y 0
-            mapea_para_aparato con arriba y trozo_del_aparato y 3
-            iommu_olvida
+            mapea_para_aparato con arriba y trozo_del_aparato y trozo_del_aparato y 3
+            olvidado es iommu_olvida
         fin
     fin
+    probando_dma es verdadero
     cuenta_faltas
     trozo es trozo_del_aparato
     ajena es pide_pagina
@@ -5361,6 +6222,7 @@ funcion orden_dma
     faltas_escribiendo es cuenta_faltas
     escribiendo_en es primera_falta
     faltas es faltas_leyendo mas faltas_escribiendo
+    probando_dma es falso
     suelta_pagina con ajena
     pinta con "  El aparato de prueba, en la ranura "
     pinta_numero con ranura
@@ -5389,16 +6251,22 @@ funcion orden_dma
             pinta_byte con elemento i de leido
         fin
         pinta_linea con ""
-    si no
+    si no si faltas_leyendo es mayor que 0
         pon_color con VERDE_CLARO y NEGRO
         pinta_linea con "bloqueado"
+    si no
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "no lo ha leído, y no sé por qué"
     fin
     pon_color con GRIS y NEGRO
     pinta con "  Escribir en una página que no es suya:"
     hasta_columna con 45
-    si intacta
+    si intacta y faltas_escribiendo es mayor que 0
         pon_color con VERDE_CLARO y NEGRO
         pinta_linea con "bloqueado"
+    si no si intacta
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "no la ha escrito, y no sé por qué"
     si no
         pon_color con ROJO_CLARO y NEGRO
         pinta_linea con "la ha escrito"
@@ -5583,7 +6451,7 @@ fin
 
 funcion nueva_llave
     comparte hay_llave
-    si no hay_azar y sorbos es menor que MINIMO_SORBOS
+    si no hay_azar y calidad_azar es menor que MINIMO_AZAR
         pon_color con AMARILLO y NEGRO
         pinta_linea con "  Este procesador no trae generador de azar, y aún no he visto"
         pinta_linea con "  bastantes teclas para sacarlo de ti. Escribe algo y vuelve a probar."
@@ -6188,10 +7056,12 @@ funcion estropea con primera y aviso
         objetivo es TAREA_RED
     si no si resto_es con primera y "consola"
         objetivo es TAREA_CONSOLA
+    si no si usb_como es USB_LISTO y resto_es con primera y "usb"
+        objetivo es TAREA_USB
     fin
     si objetivo es 0
         pon_color con ROJO_CLARO y NEGRO
-        pinta_linea con "  Solo sé hacerlo con el teclado, el disco, la pantalla, la red o la consola."
+        pinta_linea con "  Solo sé hacerlo con teclado, disco, pantalla, red, usb o consola."
         pon_color con GRIS y NEGRO
         pinta_linea con ""
         devuelve nada
@@ -6426,6 +7296,23 @@ funcion pinta_apunte con k
         pinta_de con nombre y tinta
         pinta con " hablar con "
         pinta con destino
+    si no si clase es R_USB
+        pinta con "aceptó el teclado del puerto USB "
+        pinta_cuantos con n
+        pinta con ", al arrancar"
+    si no si clase es R_USB_NUEVO
+        pinta con "vio un teclado nuevo en el puerto USB "
+        pinta_cuantos con n
+    si no si clase es R_USB_BUENO
+        pinta con "aceptó el teclado del puerto USB "
+        pinta_cuantos con n
+        pinta con ": tecleó el código"
+    si no si clase es R_USB_MALO
+        pinta_de con "no acepta el teclado del puerto USB " y ROJO_CLARO
+        pinta_cuantos con n
+        pinta con ": 3 códigos malos"
+    si no si clase es R_USB_DMA
+        pinta_de con "quiso salir de su memoria; lo paró el IOMMU" y ROJO_CLARO
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -7017,7 +7904,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 21"
+    pinta con "día 22"
     pon_color con GRIS y NEGRO
 fin
 
@@ -7097,6 +7984,11 @@ si hay_red
     escribe puerto_red
 fin
 lanza_controlador con TAREA_CONSOLA
+si usb_como es USB_LISTO
+    lanza_controlador con TAREA_USB
+fin
+al_serie con "usb: "
+escribe usb_como
 si hay_iommu
     al_serie con "iommu: encendido, todo el DMA bloqueado salvo "
     escribe rmrr_cuantos sin salto
@@ -7116,15 +8008,18 @@ si no
 fin
 si no hay_8042
     escribe "teclado: no hay controlador PS/2"
-    pon_color con ROJO_CLARO y NEGRO
-    pinta_linea con "  No encuentro el controlador del teclado PS/2, así que no podré leer"
-    pinta_linea con "  lo que escribas. Aún no sé usar teclados USB. Prueba a activar en la"
-    pinta_linea con "  BIOS la opción USB Legacy, o el CSM, que lo hacen pasar por PS/2."
-    pon_color con GRIS y NEGRO
-    pinta_linea con ""
+    si usb_como no es igual a USB_LISTO
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  No encuentro el teclado PS/2, y tampoco puedo usar uno USB, así que no"
+        pinta_linea con "  podré leer lo que escribas."
+        pinta_por_que_no_usb
+        pinta_linea con "  Prueba a activar en la BIOS el VT-d, o USB Legacy y el CSM."
+        pinta_linea con ""
+    fin
 fin
 mira_el_reloj
 prepara_interrupciones
+cierra_interrupciones_ajenas
 lee_siempre
 lee_cerrojo
 lee_llave

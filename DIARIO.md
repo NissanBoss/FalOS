@@ -2,6 +2,81 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 22: un teclado USB, como prometí
+
+![Un teclado recién enchufado: arriba, en amarillo, FalOS dice qué código hay que teclear en él](capturas/dia-22.png)
+
+**Lo que hay.** Ayer prometí el teclado USB, el primer aparato de verdad que pasa
+por el IOMMU. Aquí está, y FalOS ya se puede usar en un ordenador sin PS/2, si
+tiene IOMMU.
+
+El controlador USB (xHCI) es el primer aparato de FalOS con DMA. Lo lleva un
+programa del anillo 3, como los demás, que solo tiene los registros del aparato
+y 64 páginas de memoria. Y el aparato ve esas mismas 64 páginas y ninguna más:
+el IOMMU se encarga. Hacen falta las dos cosas. Un controlador encerrado en una
+caja no sirve de nada si puede pedirle al aparato que lea la memoria por él.
+
+`rompe usb` hace justo eso: le pide al controlador que mande al aparato leer en
+`0x100000`, donde empieza FalOS. El IOMMU lo para y lo apunta, y FalOS cierra el
+controlador y lanza otro. Todo lo demás sigue.
+
+![rompe usb: el controlador mandó al aparato leer la memoria del núcleo, el IOMMU no le dejó y FalOS lanza otro](capturas/dia-22-rompe.png)
+
+Sin IOMMU, o si el IOMMU dice que no vigila ese aparato, FalOS no enciende el
+USB, y explica por qué. Podría encenderlo sin más, como hace casi todo el mundo,
+pero entonces la caja sería de mentira.
+
+**Un teclado que no es un teclado.** Un pendrive trucado puede decir que es un
+teclado y escribir órdenes más rápido que tú. Se llama
+[BadUSB](https://srlabs.de/blog/usb-peripherals-turn), se enseñó en 2014 y se
+vende hecho. El IOMMU no pinta nada ahí: el aparato no toca la memoria, solo
+teclea.
+
+Así que el teclado que ya estaba al arrancar vale, y el que se enchufa después no
+escribe nada hasta que se teclea en él el código de 6 cifras que sale en la
+pantalla. Tú lo lees. El aparato no ve la pantalla, y solo le queda adivinar: a
+los tres fallos FalOS no le hace caso hasta que lo desenchufes, y no da otro
+código en 30 segundos. Con la pantalla bloqueada también lo pide.
+
+La prueba automática enchufa un segundo teclado con FalOS en marcha, desenchufa
+el primero, escribe sin el código y mira que no llega nada. Luego lee el código
+de la memoria de la máquina virtual, lo teclea, y ya llega. Después rompe y
+cuelga el controlador, y falla el código tres veces.
+
+**Lo que arreglé de ayer.** Al volver sobre el IOMMU salieron cosas que no estaban
+bien contadas o no estaban bien hechas.
+
+- Decía "ningún aparato toca la memoria" sin mirar qué aparatos vigila de verdad
+  la unidad que enciende. Ahora lo mira antes de fiarse.
+- `dma` decía "bloqueado" con solo ver que no se había leído nada. Ahora solo lo
+  dice si el IOMMU ha apuntado el intento.
+- Si el IOMMU no contestaba a un aviso, seguía adelante. Ahora no lo da por
+  encendido.
+- Un aparato podía fingir una interrupción escribiendo donde van. Ahora FalOS
+  enciende la otra mitad de VT-d, el remapeo de interrupciones, con la tabla
+  vacía: ningún aparato vigilado puede mandar ninguna. FalOS no las necesita, porque el
+  reloj y el PS/2 llegan por otro camino y al USB le pregunta 100 veces por
+  segundo.
+- Por UEFI no encontraba las tablas ACPI. Ahora las busca también en los trozos
+  que el mapa de memoria marca como suyos, y la prueba automática lo arranca por
+  UEFI con IOMMU y teclado USB.
+
+**Lo que se aprende.** Un controlador USB se maneja con anillos: listas de órdenes
+en memoria que él va leyendo por DMA, y otra donde él escribe lo que ha pasado.
+Para saber qué entradas son nuevas, cada una lleva un bit que cambia de valor en
+cada vuelta. No hay que borrar nada ni contar nada: si el bit es el de esta
+vuelta, es nueva.
+
+Y un teclado USB no avisa de qué tecla has pulsado. Manda las seis que tienes
+pulsadas ahora mismo. Lo de "pulsada" y "soltada" lo deduce el controlador
+comparando con la vez anterior, y repetir la letra mientras la aguantas también
+es cosa suya. El PS/2 lo hacía el propio teclado.
+
+**Lo que queda.** Solo lo he probado en QEMU, con dos controladores xHCI: el suyo y
+el de NEC. Solo teclados: ni ratones USB, ni pendrives, ni nada que vaya por un
+hub. Las luces del teclado no se encienden. Y el código protege de un aparato,
+no de alguien sentado delante, que lo lee en la pantalla igual que tú.
+
 ## Día 21: el IOMMU, como prometí
 
 ![dma con IOMMU: el aparato de prueba copia dentro de su página, y leer el núcleo o escribir en una página ajena queda bloqueado](capturas/dia-21.png)
@@ -41,8 +116,9 @@ copiara nada, las dos dirían "bloqueado".
 **Lo que se aprende.** Para encontrar el IOMMU hay que leer las tablas ACPI que
 deja la BIOS: una con la firma `RSD PTR ` lleva a la lista de tablas, y en ella
 está DMAR, que dice dónde están los registros de cada unidad. Mi primera regla
-era encender solo la unidad marcada "para todos los aparatos", y QEMU 11 ya no
-marca la suya así: FalOS decía que no había IOMMU teniendo uno delante. Ahora
+era encender solo la unidad marcada "para todos los aparatos", y el QEMU 11 con
+el que pruebo no marca la suya así: FalOS decía que no había IOMMU teniendo uno
+delante. Ahora
 enciende la primera que no sea la de la gráfica integrada, que en un portátil
 lee la pantalla de la memoria por su cuenta.
 

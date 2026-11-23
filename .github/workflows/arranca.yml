@@ -146,6 +146,135 @@ jobs:
           grep -q "dma: copia bien, lee bloqueado, escribe bloqueado, faltas 2" dma_con.txt
           grep -q "dma: copia bien, lee el núcleo, escribe en lo ajeno" dma_sin.txt
 
+      - name: Un teclado USB con su caja, y uno recién enchufado no escribe sin el código
+        run: |
+          cat > usb.py <<'FIN'
+          import os, re, subprocess, sys, time
+
+          CON = ["-device", "intel-iommu,intremap=on"]
+          USB = ["-device", "qemu-xhci,id=x", "-device", "usb-kbd,id=uno"]
+          LETRERO = "USB nuevo: teclea en él ".encode("cp437")
+
+          class Ordenador:
+              def __init__(self, nombre, *opciones):
+                  self.serie = nombre + ".txt"
+                  self.volcado = nombre + ".mem"
+                  if os.path.exists(self.serie):
+                      os.remove(self.serie)
+                  self.qemu = subprocess.Popen(
+                      ["qemu-system-x86_64", *opciones, "-kernel", "sistema.bin", "-display", "none",
+                       "-serial", "file:" + self.serie, "-monitor", "stdio", "-no-reboot"],
+                      stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+
+              def pide(self, orden, pausa):
+                  self.qemu.stdin.write((orden + "\n").encode())
+                  self.qemu.stdin.flush()
+                  time.sleep(pausa)
+
+              def teclea(self, texto, intro=True):
+                  for letra in texto:
+                      self.pide("sendkey " + {" ": "spc"}.get(letra, letra), 0.15)
+                  if intro:
+                      self.pide("sendkey ret", 0.15)
+
+              def dicho(self):
+                  if not os.path.exists(self.serie):
+                      return ""
+                  with open(self.serie, encoding="utf-8", errors="replace") as serie:
+                      return serie.read()
+
+              def espera(self, frase, veces=1):
+                  hasta = time.time() + 40
+                  while time.time() < hasta:
+                      if self.dicho().count(frase) >= veces:
+                          return
+                      time.sleep(0.3)
+                  self.falla("no dice " + frase)
+
+              def falla(self, por_que):
+                  print(self.dicho())
+                  self.qemu.kill()
+                  sys.exit(por_que)
+
+              def codigo(self, viejo):
+                  casillas = b"".join(re.escape(bytes([letra])) + b"." for letra in LETRERO)
+                  for intento in range(20):
+                      self.pide("pmemsave 0 134217728 " + self.volcado, 2)
+                      with open(self.volcado, "rb") as memoria:
+                          visto = re.search(casillas + b".".join([b"([0-9])"] * 6), memoria.read(), re.DOTALL)
+                      if visto and b"".join(visto.groups()).decode() != viejo:
+                          return b"".join(visto.groups()).decode()
+                  self.falla("no sale el código")
+
+              def apaga(self):
+                  print(self.dicho())
+                  if re.search("X  [A-Z]", self.dicho()):
+                      self.falla("el USB ha tumbado a FalOS")
+                  self.pide("quit", 0.5)
+                  self.qemu.wait(20)
+
+          falos = Ordenador("usb_con", "-machine", "q35,i8042=off", *CON, *USB)
+          falos.espera("pantalla lista")
+          falos.espera("ningún aparato puede fingir interrupciones")
+          time.sleep(4)
+          falos.teclea("dma")
+          falos.espera("dma: no hay")
+
+          falos.pide("device_add usb-kbd,id=dos", 2)
+          falos.pide("device_del uno", 2)
+          falos.espera("pide código")
+          falos.teclea("dma")
+          time.sleep(3)
+          if falos.dicho().count("dma: no hay") != 1:
+              falos.falla("un teclado recién enchufado ha escrito sin el código")
+          codigo = falos.codigo("")
+          falos.teclea(codigo, False)
+          time.sleep(1)
+          falos.teclea("dma")
+          falos.espera("dma: no hay", 2)
+
+          falos.teclea("rompe usb")
+          falos.espera("usb: DMA parado por el IOMMU en 1048576")
+          falos.espera("usb reiniciado, y van 1")
+          falos.espera("pide código", 2)
+          codigo = falos.codigo(codigo)
+          falos.teclea(codigo, False)
+          time.sleep(1)
+          falos.teclea("dma")
+          falos.espera("dma: no hay", 3)
+
+          falos.teclea("cuelga usb")
+          falos.espera("usb reiniciado, y van 2")
+          falos.espera("pide código", 3)
+          for veces in (4, 5, 5):
+              malo = "000000"
+              if falos.codigo(codigo) == malo:
+                  malo = "111111"
+              codigo = malo
+              falos.teclea(malo, False)
+              falos.espera("pide código", veces)
+              time.sleep(1)
+          falos.teclea("dma")
+          time.sleep(3)
+          if falos.dicho().count("dma: no hay") != 3:
+              falos.falla("un teclado que ha fallado el código tres veces ha escrito")
+          falos.apaga()
+
+          falos = Ordenador("usb_sin", "-machine", "q35", "-device", "qemu-xhci")
+          falos.espera("pantalla lista")
+          time.sleep(3)
+          falos.teclea("usb")
+          falos.espera("usb: apagado, motivo 1")
+          falos.apaga()
+
+          falos = Ordenador("usb_pedido", "-machine", "q35", *CON, "-device", "qemu-xhci", "-append", "sin_iommu")
+          falos.espera("pantalla lista")
+          falos.espera("iommu: no, motivo 6")
+          falos.espera("usb: 1")
+          falos.apaga()
+          FIN
+          python3 usb.py
+
       - name: Permisos que se dan y se quitan
         run: |
           teclea() {
@@ -1611,6 +1740,29 @@ jobs:
           grep -a -q "pantalla del cargador: 1024 por 768" uefi.txt
           grep -a -q "disco en memoria: 4096" uefi.txt
           grep -a -q "pantalla lista" uefi.txt
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
+          {
+            sleep 35
+            teclea "dma"
+            sleep 4
+            teclea "usb"
+            sleep 4
+            echo quit
+          } | timeout 70 qemu-system-x86_64 -m 1024 -display none \
+            -machine q35,i8042=off -device intel-iommu,intremap=on \
+            -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+            -drive if=pflash,format=raw,file=variables.fd \
+            -device qemu-xhci -drive if=none,id=pendrive,file=falos.iso,format=raw \
+            -device usb-storage,drive=pendrive -device usb-kbd \
+            -serial file:uefi_iommu.txt -monitor stdio -no-reboot > /dev/null
+          tr -d '\033' < uefi_iommu.txt | grep -a -E "FalOS|pantalla|disco|iommu|usb|dma|X  " || true
+          if grep -a -Eq "X  [A-Z]" uefi_iommu.txt; then
+            echo "FalOS revento al arrancar por UEFI con IOMMU"
+            exit 1
+          fi
+          grep -a -q "iommu: encendido" uefi_iommu.txt
+          grep -a -q "dma: no hay aparato de prueba" uefi_iommu.txt
+          grep -a -q "usb: en marcha, enchufados 2" uefi_iommu.txt
 
       - name: Apuntar con qué Fal se ha hecho
         run: git -C /tmp/fal rev-parse HEAD > fal.txt

@@ -1,0 +1,1001 @@
+usa "comun/teclas.fal"
+
+SALIR es 0
+CEDE es 2
+PIDE_TICS es 3
+ESPERA es 8
+ENTREGA es 9
+AVISA_TECLADO es 19
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+
+TECLA_INTRO es 256
+TECLA_BORRA es 257
+TECLA_IZQUIERDA es 258
+TECLA_DERECHA es 259
+TECLA_INICIO es 260
+TECLA_FIN es 261
+TECLA_SUPRIME es 262
+TECLA_ARRIBA es 263
+TECLA_ABAJO es 264
+TECLA_ESCAPE es 265
+TECLA_COPIA es 266
+TECLA_PEGA es 267
+
+PAGINA es 4096
+REGISTROS_EN es 857735168
+DMA_EN es 857800704
+PAGINAS_DMA es 64
+P_INDICE es 0
+P_ORDENES es 1
+P_SUCESOS es 2
+P_DONDE_SUCESOS es 3
+P_ENTRADA es 4
+P_BANDEJA es 5
+P_APARATOS es 6
+P_BORRADORES es 22
+APARATOS es 4
+TOPE_PUERTOS es 64
+TOPE_RANURAS es 8
+TRBS es 256
+PACIENCIA es 100
+
+EN_MARCHA es 1
+PAGINAS_RARAS es 2
+REGISTROS_FUERA es 3
+NO_PARA es 4
+NO_ARRANCA es 5
+PIDE_DEMASIADO es 6
+
+VACIO es 0
+ES_TECLADO es 1
+ES_OTRO es 2
+NO_PUDE es 3
+NO_CABE es 4
+
+BIT_9 es 512
+CAMBIO_CONEXION es 131072
+CAMBIO_REINICIO es 2097152
+
+T_NORMAL es 1024
+T_PREPARA es 2048
+T_DATOS es 3072
+T_CIERRE es 4096
+T_ENLACE es 6144
+O_ABRE_RANURA es 9216
+O_CIERRA_RANURA es 10240
+O_DA_DIRECCION es 11264
+O_CONFIGURA es 12288
+O_CORRIGE es 13312
+O_LEVANTA es 14336
+O_COLOCA es 16384
+S_TRANSFERENCIA es 32
+S_ORDEN es 33
+BIEN es 1
+MAS_CORTA es 13
+ATASCADO es 6
+
+buzon es region con 807399424 y 1024 y 4
+regs es region con REGISTROS_EN y 16384 y 4
+dma es region con DMA_EN y PAGINAS_DMA por 1024 y 4
+dma_bytes es region con DMA_EN y PAGINAS_DMA por PAGINA
+
+op es 0
+timbres es 0
+interrumpe es 0
+puertos es 0
+ranuras es 0
+contexto_mide es 8
+orden_pone es 0
+orden_ciclo es 1
+suceso_lee es 0
+suceso_ciclo es 1
+orden_hecha es falso
+orden_como es 0
+orden_ranura es 0
+control_de es 0
+control_hecho es falso
+control_como es 0
+repite_d es 0
+repite_tecla es 0
+repite_en es 0
+proxima_mirada es 0
+
+funcion ahora
+    devuelve llama_al_sistema con PIDE_TICS y 0
+fin
+
+funcion bits con valor y desde_bit y tope
+    devuelve (cociente con valor y desde_bit) resto tope
+fin
+
+funcion mira con sitio
+    devuelve elemento (cociente con sitio y 4) mas 1 de regs
+fin
+
+funcion manda con sitio y valor
+    elemento (cociente con sitio y 4) mas 1 de regs es valor
+fin
+
+funcion apunta_a con sitio y direccion
+    manda con sitio y direccion
+    manda con sitio mas 4 y 0
+fin
+
+funcion sitio_de con p
+    devuelve DMA_EN mas p por PAGINA
+fin
+
+funcion pon con p y d y valor
+    elemento p por 1024 mas d mas 1 de dma es valor
+fin
+
+funcion ve con p y d
+    devuelve elemento p por 1024 mas d mas 1 de dma
+fin
+
+funcion limpia_pagina con p
+    para cada d desde 0 hasta 1023
+        pon con p y d y 0
+    fin
+fin
+
+funcion de_aparato con d y campo
+    devuelve elemento 32 mas d por 32 mas campo de buzon
+fin
+
+funcion en_aparato con d y campo y valor
+    elemento 32 mas d por 32 mas campo de buzon es valor
+fin
+
+A_PUERTO es 1
+A_RANURA es 2
+A_PONE es 3
+A_CICLO es 4
+A_PONE_TECLAS es 5
+A_CICLO_TECLAS es 6
+A_PUNTO es 7
+A_INTERFAZ es 8
+A_VELOCIDAD es 9
+A_MIDE es 10
+A_FALLOS es 11
+A_ROTO es 12
+A_BLOQ es 13
+A_TILDE es 14
+A_ANTES es 16
+
+funcion pagina_de_aparato con d y cual
+    devuelve P_APARATOS mas (d menos 1) por 4 mas cual
+fin
+
+funcion de_puerto con p y campo
+    devuelve elemento 512 mas (p menos 1) por 4 mas campo de buzon
+fin
+
+funcion en_puerto con p y campo y valor
+    elemento 512 mas (p menos 1) por 4 mas campo de buzon es valor
+fin
+
+Q_ESTADO es 1
+Q_QUIEN es 2
+Q_APARATO es 3
+Q_VISTO es 4
+
+funcion sitio_puerto con p
+    devuelve op mas 1024 mas (p menos 1) por 16
+fin
+
+funcion espera_registro con sitio y bit y valor
+    limite es ahora mas PACIENCIA
+    mientras (bits con (mira con sitio) y bit y 2) no es igual a valor
+        si ahora es mayor que limite
+            devuelve falso
+        fin
+        llama_al_sistema con CEDE y 0
+    fin
+    devuelve verdadero
+fin
+
+funcion descansa con cuantos
+    limite es ahora mas cuantos
+    mientras ahora es menor o igual que limite
+        mira_sucesos
+        llama_al_sistema con CEDE y 0
+    fin
+fin
+
+funcion para_el_controlador
+    manda con op y 0
+    si no (espera_registro con op mas 4 y 1 y 1)
+        devuelve falso
+    fin
+    manda con op y 2
+    si no (espera_registro con op y 2 y 0)
+        devuelve falso
+    fin
+    devuelve espera_registro con op mas 4 y 2048 y 0
+fin
+
+funcion arranca
+    comparte op y timbres y interrumpe y puertos y ranuras y contexto_mide
+    tope es (elemento 1 de buzon) por PAGINA
+    op es (elemento 1 de regs) resto 256
+    hechura es mira con 4
+    puertos es cociente con hechura y 16777216
+    ranuras es hechura resto 256
+    si ranuras es mayor que TOPE_RANURAS
+        ranuras es TOPE_RANURAS
+    fin
+    mas_hechura es mira con 8
+    borradores es (bits con mas_hechura y 2097152 y 32) por 32 mas cociente con mas_hechura y 134217728
+    si (bits con (mira con 16) y 4 y 2) es 1
+        contexto_mide es 16
+    fin
+    timbres es (mira con 20) menos (mira con 20) resto 4
+    interrumpe es (mira con 24) menos (mira con 24) resto 32 mas 32
+    si puertos es mayor que TOPE_PUERTOS
+        puertos es TOPE_PUERTOS
+    fin
+    si (op resto 4) no es igual a 0 o op mas 1024 mas puertos por 16 es mayor que tope
+        devuelve REGISTROS_FUERA
+    fin
+    si timbres mas 1024 es mayor que tope o interrumpe mas 32 es mayor que tope
+        devuelve REGISTROS_FUERA
+    fin
+    si (mira con op mas 8) resto 2 no es igual a 1
+        devuelve PAGINAS_RARAS
+    fin
+    si borradores es mayor que PAGINAS_DMA menos P_BORRADORES
+        devuelve PIDE_DEMASIADO
+    fin
+    si no para_el_controlador
+        devuelve NO_PARA
+    fin
+    manda con op mas 56 y ranuras
+    si borradores es mayor que 0
+        pon con P_INDICE y 0 y (sitio_de con P_INDICE) mas 2048
+        para cada b desde 1 hasta borradores
+            pon con P_INDICE y 512 mas (b menos 1) por 2 y (sitio_de con P_BORRADORES mas b menos 1)
+        fin
+    fin
+    apunta_a con op mas 48 y (sitio_de con P_INDICE)
+    pon con P_ORDENES y (TRBS menos 1) por 4 y (sitio_de con P_ORDENES)
+    apunta_a con op mas 24 y (sitio_de con P_ORDENES) mas 1
+    pon con P_DONDE_SUCESOS y 0 y (sitio_de con P_SUCESOS)
+    pon con P_DONDE_SUCESOS y 2 y TRBS
+    manda con interrumpe y 0
+    manda con interrumpe mas 8 y 1
+    apunta_a con interrumpe mas 24 y (sitio_de con P_SUCESOS)
+    apunta_a con interrumpe mas 16 y (sitio_de con P_DONDE_SUCESOS)
+    manda con op y 1
+    si no (espera_registro con op mas 4 y 1 y 0)
+        devuelve NO_ARRANCA
+    fin
+    elemento 3 de buzon es puertos
+    devuelve EN_MARCHA
+fin
+
+funcion mira_sucesos
+    comparte suceso_lee y suceso_ciclo
+    vistos es 0
+    mientras vistos es menor que TRBS
+        base es suceso_lee por 4
+        que es ve con P_SUCESOS y base mas 3
+        si (que resto 2) no es igual a suceso_ciclo
+            devuelve nada
+        fin
+        direccion es ve con P_SUCESOS y base
+        como_fue es ve con P_SUCESOS y base mas 2
+        suceso_lee es suceso_lee mas 1
+        si suceso_lee es TRBS
+            suceso_lee es 0
+            suceso_ciclo es 1 menos suceso_ciclo
+        fin
+        apunta_a con interrumpe mas 24 y (sitio_de con P_SUCESOS) mas suceso_lee por 16 mas 8
+        trata_suceso con que y direccion y como_fue
+        vistos es vistos mas 1
+    fin
+fin
+
+funcion trata_suceso con que y direccion y como_fue
+    comparte orden_hecha y orden_como y orden_ranura y control_hecho y control_como
+    clase es bits con que y 1024 y 64
+    codigo es cociente con como_fue y 16777216
+    ranura es cociente con que y 16777216
+    punto es bits con que y 65536 y 32
+    si clase es S_ORDEN
+        orden_hecha es verdadero
+        orden_como es codigo
+        orden_ranura es ranura
+    si no si clase es S_TRANSFERENCIA
+        d es aparato_de con ranura
+        si d no es igual a 0 y punto es 1 y d es control_de
+            control_hecho es verdadero
+            control_como es codigo
+        si no si d no es igual a 0 y punto no es igual a 1 y punto es (de_aparato con d y A_PUNTO)
+            llego_informe con d y codigo y (de_aparato con d y A_MIDE) menos (como_fue resto 16777216)
+        fin
+    fin
+fin
+
+funcion aparato_de con ranura
+    para cada d desde 1 hasta APARATOS
+        si (de_aparato con d y A_PUERTO) no es igual a 0 y (de_aparato con d y A_RANURA) es ranura
+            devuelve d
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion orden con d0 y d3
+    comparte orden_pone y orden_ciclo y orden_hecha
+    base es orden_pone por 4
+    pon con P_ORDENES y base y d0
+    pon con P_ORDENES y base mas 1 y 0
+    pon con P_ORDENES y base mas 2 y 0
+    orden_hecha es falso
+    pon con P_ORDENES y base mas 3 y d3 mas orden_ciclo
+    orden_pone es orden_pone mas 1
+    si orden_pone es TRBS menos 1
+        pon con P_ORDENES y (TRBS menos 1) por 4 mas 3 y T_ENLACE mas 2 mas orden_ciclo
+        orden_pone es 0
+        orden_ciclo es 1 menos orden_ciclo
+    fin
+    manda con timbres y 0
+    limite es ahora mas PACIENCIA
+    mientras no orden_hecha
+        mira_sucesos
+        si no orden_hecha
+            si ahora es mayor que limite
+                llama_al_sistema con SALIR y 1
+            fin
+            llama_al_sistema con CEDE y 0
+        fin
+    fin
+    devuelve orden_como
+fin
+
+funcion a_la_ranura con ranura
+    devuelve ranura por 16777216
+fin
+
+funcion pon_trb con d y d0 y d1 y d2 y d3
+    p es pagina_de_aparato con d y 1
+    sitio es de_aparato con d y A_PONE
+    ciclo es de_aparato con d y A_CICLO
+    pon con p y sitio por 4 y d0
+    pon con p y sitio por 4 mas 1 y d1
+    pon con p y sitio por 4 mas 2 y d2
+    pon con p y sitio por 4 mas 3 y d3 mas ciclo
+    sitio es sitio mas 1
+    si sitio es TRBS menos 1
+        pon con p y (TRBS menos 1) por 4 y (sitio_de con p)
+        pon con p y (TRBS menos 1) por 4 mas 3 y T_ENLACE mas 2 mas ciclo
+        sitio es 0
+        ciclo es 1 menos ciclo
+    fin
+    en_aparato con d y A_PONE y sitio
+    en_aparato con d y A_CICLO y ciclo
+fin
+
+funcion control con d y que y valor y indice y cuantos
+    comparte control_de y control_hecho
+    es_lectura es (bits con que y 128 y 2) es 1
+    sentido es 0
+    si cuantos es mayor que 0
+        sentido es 131072
+        si es_lectura
+            sentido es 196608
+        fin
+    fin
+    control_de es d
+    control_hecho es falso
+    pon_trb con d y que mas valor por 65536 y indice mas cuantos por 65536 y 8 y T_PREPARA mas 64 mas sentido
+    vuelta es 65536
+    si cuantos es mayor que 0
+        pon_trb con d y (sitio_de con P_BANDEJA) y 0 y cuantos y T_DATOS mas 65536
+        vuelta es 0
+    fin
+    pon_trb con d y 0 y 0 y 0 y T_CIERRE mas 32 mas vuelta
+    ranura es de_aparato con d y A_RANURA
+    manda con timbres mas ranura por 4 y 1
+    limite es ahora mas PACIENCIA
+    mientras no control_hecho
+        mira_sucesos
+        si no control_hecho
+            si ahora es mayor que limite
+                control_de es 0
+                devuelve falso
+            fin
+            llama_al_sistema con CEDE y 0
+        fin
+    fin
+    control_de es 0
+    si control_como es BIEN o control_como es MAS_CORTA
+        devuelve verdadero
+    fin
+    hecho es orden con 0 y O_LEVANTA mas 65536 mas (a_la_ranura con ranura)
+    si hecho es BIEN
+        sitio es (sitio_de con (pagina_de_aparato con d y 1)) mas (de_aparato con d y A_PONE) por 16
+        hecho es orden con sitio mas (de_aparato con d y A_CICLO) y O_COLOCA mas 65536 mas (a_la_ranura con ranura)
+    fin
+    devuelve falso
+fin
+
+funcion lee_descriptor con d y cual y cuantos
+    para cada i desde 0 hasta 1023
+        pon con P_BANDEJA y i y 0
+    fin
+    devuelve control con d y 128 mas 6 por 256 y cual por 256 y 0 y cuantos
+fin
+
+funcion byte_leido con i
+    devuelve elemento P_BANDEJA por PAGINA mas i mas 1 de dma_bytes
+fin
+
+funcion aparato_libre
+    para cada d desde 1 hasta APARATOS
+        si (de_aparato con d y A_PUERTO) es 0
+            devuelve d
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion suelta_aparato con d
+    comparte repite_d
+    ranura es de_aparato con d y A_RANURA
+    si ranura no es igual a 0
+        hecho es orden con 0 y O_CIERRA_RANURA mas (a_la_ranura con ranura)
+        pon con P_INDICE y ranura por 2 y 0
+    fin
+    para cada campo desde 1 hasta 24
+        en_aparato con d y campo y 0
+    fin
+    si repite_d es d
+        repite_d es 0
+    fin
+fin
+
+funcion descarta con p y d y por_que
+    si d no es igual a 0
+        suelta_aparato con d
+    fin
+    en_puerto con p y Q_APARATO y 0
+    en_puerto con p y Q_ESTADO y por_que
+fin
+
+funcion en_entrada con contexto y campo y valor
+    pon con P_ENTRADA y contexto por contexto_mide mas campo y valor
+fin
+
+funcion prepara_contexto con d y p y paquete
+    limpia_pagina con P_ENTRADA
+    en_entrada con 0 y 1 y 3
+    en_entrada con 1 y 0 y 134217728 mas (de_aparato con d y A_VELOCIDAD) por 1048576
+    en_entrada con 1 y 1 y p por 65536
+    en_entrada con 2 y 1 y 6 mas 32 mas paquete por 65536
+    en_entrada con 2 y 2 y (sitio_de con (pagina_de_aparato con d y 1)) mas 1
+    en_entrada con 2 y 4 y 8
+fin
+
+funcion paquete_bueno con paquete
+    devuelve paquete es 8 o paquete es 16 o paquete es 32 o paquete es 64
+fin
+
+funcion reinicia_puerto con p
+    sitio es sitio_puerto con p
+    manda con sitio y BIT_9 mas 16
+    limite es ahora mas 50
+    mientras (bits con (mira con sitio) y CAMBIO_REINICIO y 2) es 0
+        si ahora es mayor que limite
+            devuelve falso
+        fin
+        llama_al_sistema con CEDE y 0
+    fin
+    manda con sitio y BIT_9 mas CAMBIO_REINICIO
+    descansa con 2
+    devuelve (bits con (mira con sitio) y 2 y 2) es 1
+fin
+
+funcion enumera con p
+    d es aparato_libre
+    si d es 0
+        descarta con p y 0 y NO_CABE
+        devuelve nada
+    fin
+    si (bits con (mira con (sitio_puerto con p)) y 1024 y 16) es mayor que 3
+        descarta con p y 0 y ES_OTRO
+        devuelve nada
+    fin
+    si no (reinicia_puerto con p)
+        descarta con p y 0 y NO_PUDE
+        devuelve nada
+    fin
+    velocidad es bits con (mira con (sitio_puerto con p)) y 1024 y 16
+    si velocidad es menor que 1 o velocidad es mayor que 3
+        descarta con p y 0 y ES_OTRO
+        devuelve nada
+    fin
+    si (orden con 0 y O_ABRE_RANURA) no es igual a BIEN
+        descarta con p y 0 y NO_PUDE
+        devuelve nada
+    fin
+    ranura es orden_ranura
+    si ranura es 0 o ranura es mayor que ranuras
+        llama_al_sistema con SALIR y 1
+    fin
+    para cada cual desde 0 hasta 3
+        limpia_pagina con (pagina_de_aparato con d y cual)
+    fin
+    en_aparato con d y A_PUERTO y p
+    en_aparato con d y A_RANURA y ranura
+    en_aparato con d y A_VELOCIDAD y velocidad
+    en_aparato con d y A_CICLO y 1
+    en_aparato con d y A_CICLO_TECLAS y 1
+    en_puerto con p y Q_APARATO y d
+    pon con P_INDICE y ranura por 2 y (sitio_de con (pagina_de_aparato con d y 0))
+    paquete es 8
+    si velocidad es 3
+        paquete es 64
+    fin
+    prepara_contexto con d y p y paquete
+    si (orden con (sitio_de con P_ENTRADA) y O_DA_DIRECCION mas (a_la_ranura con ranura)) no es igual a BIEN
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    descansa con 2
+    si no (lee_descriptor con d y 1 y 8)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    mejor es byte_leido con 7
+    si no (paquete_bueno con mejor)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    si mejor no es igual a paquete
+        limpia_pagina con P_ENTRADA
+        en_entrada con 0 y 1 y 2
+        en_entrada con 2 y 1 y 6 mas 32 mas mejor por 65536
+        en_entrada con 2 y 2 y (sitio_de con (pagina_de_aparato con d y 1)) mas 1
+        en_entrada con 2 y 4 y 8
+        si (orden con (sitio_de con P_ENTRADA) y O_CORRIGE mas (a_la_ranura con ranura)) no es igual a BIEN
+            descarta con p y d y NO_PUDE
+            devuelve nada
+        fin
+    fin
+    si no (lee_descriptor con d y 1 y 18)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    en_puerto con p y Q_QUIEN y ((byte_leido con 9) por 256 mas byte_leido con 8) por 65536 mas (byte_leido con 11) por 256 mas byte_leido con 10
+    si no (lee_descriptor con d y 2 y 9)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    en_total es (byte_leido con 3) por 256 mas byte_leido con 2
+    si en_total es menor que 9 o en_total es mayor que 1024
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    si no (lee_descriptor con d y 2 y en_total)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    si no (busca_teclado con d y en_total)
+        descarta con p y d y ES_OTRO
+        devuelve nada
+    fin
+    si no (enciende_teclado con d)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    en_puerto con p y Q_ESTADO y ES_TECLADO
+    llama_al_sistema con AVISA_TECLADO y p y 1
+    pide_informe con d
+fin
+
+ajuste es 0
+intervalo es 0
+
+funcion busca_teclado con d y en_total
+    comparte ajuste y intervalo
+    ajuste es byte_leido con 5
+    en_el_mio es falso
+    i es 0
+    mientras i mas 2 es menor o igual que en_total
+        largo es byte_leido con i
+        clase es byte_leido con i mas 1
+        si largo es menor que 2 o i mas largo es mayor que en_total
+            devuelve falso
+        fin
+        si clase es 4 y largo es mayor o igual que 9
+            en_el_mio es (byte_leido con i mas 3) es 0 y (byte_leido con i mas 5) es 3 y (byte_leido con i mas 6) es 1 y (byte_leido con i mas 7) es 1
+            si en_el_mio
+                en_aparato con d y A_INTERFAZ y (byte_leido con i mas 2)
+            fin
+        si no si en_el_mio y clase es 5 y largo es mayor o igual que 7
+            punto es byte_leido con i mas 2
+            mide es (byte_leido con i mas 4) mas ((byte_leido con i mas 5) resto 8) por 256
+            de_interrupcion es ((byte_leido con i mas 3) resto 4) es 3
+            si punto es mayor que 128 y punto es menor que 144 y de_interrupcion y mide es mayor o igual que 8 y mide es menor o igual que 1024
+                en_aparato con d y A_PUNTO y (punto menos 128) por 2 mas 1
+                en_aparato con d y A_MIDE y mide
+                intervalo es byte_leido con i mas 6
+                devuelve verdadero
+            fin
+        fin
+        i es i mas largo
+    fin
+    devuelve falso
+fin
+
+funcion intervalo_de con velocidad
+    si velocidad es 3
+        si intervalo es menor que 1
+            devuelve 0
+        si no si intervalo es mayor que 16
+            devuelve 15
+        fin
+        devuelve intervalo menos 1
+    fin
+    exponente es 3
+    cuanto es intervalo
+    mientras cuanto es mayor o igual que 2 y exponente es menor que 10
+        cuanto es cociente con cuanto y 2
+        exponente es exponente mas 1
+    fin
+    devuelve exponente
+fin
+
+funcion enciende_teclado con d
+    ranura es de_aparato con d y A_RANURA
+    punto es de_aparato con d y A_PUNTO
+    mide es de_aparato con d y A_MIDE
+    limpia_pagina con P_ENTRADA
+    alta es 1
+    para cada n desde 1 hasta punto
+        alta es alta por 2
+    fin
+    en_entrada con 0 y 1 y alta mas 1
+    mio es pagina_de_aparato con d y 0
+    en_entrada con 1 y 0 y ((ve con mio y 0) resto 134217728) mas punto por 134217728
+    en_entrada con 1 y 1 y (ve con mio y 1)
+    en_entrada con punto mas 1 y 0 y (intervalo_de con (de_aparato con d y A_VELOCIDAD)) por 65536
+    en_entrada con punto mas 1 y 1 y 6 mas 56 mas mide por 65536
+    en_entrada con punto mas 1 y 2 y (sitio_de con (pagina_de_aparato con d y 2)) mas 1
+    en_entrada con punto mas 1 y 4 y mide mas mide por 65536
+    si (orden con (sitio_de con P_ENTRADA) y O_CONFIGURA mas (a_la_ranura con ranura)) no es igual a BIEN
+        devuelve falso
+    fin
+    si no (control con d y 9 por 256 y ajuste y 0 y 0)
+        devuelve falso
+    fin
+    si no (control con d y 33 mas 11 por 256 y 0 y (de_aparato con d y A_INTERFAZ) y 0)
+        devuelve falso
+    fin
+    callado es control con d y 33 mas 10 por 256 y 0 y (de_aparato con d y A_INTERFAZ) y 0
+    devuelve verdadero
+fin
+
+funcion pide_informe con d
+    p es pagina_de_aparato con d y 2
+    sitio es de_aparato con d y A_PONE_TECLAS
+    ciclo es de_aparato con d y A_CICLO_TECLAS
+    pon con p y sitio por 4 y (sitio_de con (pagina_de_aparato con d y 3))
+    pon con p y sitio por 4 mas 1 y 0
+    pon con p y sitio por 4 mas 2 y (de_aparato con d y A_MIDE)
+    pon con p y sitio por 4 mas 3 y T_NORMAL mas 36 mas ciclo
+    sitio es sitio mas 1
+    si sitio es TRBS menos 1
+        pon con p y (TRBS menos 1) por 4 y (sitio_de con p)
+        pon con p y (TRBS menos 1) por 4 mas 3 y T_ENLACE mas 2 mas ciclo
+        sitio es 0
+        ciclo es 1 menos ciclo
+    fin
+    en_aparato con d y A_PONE_TECLAS y sitio
+    en_aparato con d y A_CICLO_TECLAS y ciclo
+    manda con timbres mas (de_aparato con d y A_RANURA) por 4 y (de_aparato con d y A_PUNTO)
+fin
+
+funcion llego_informe con d y codigo y cuantos
+    si codigo no es igual a BIEN y codigo no es igual a MAS_CORTA
+        en_aparato con d y A_ROTO y codigo
+        devuelve nada
+    fin
+    en_aparato con d y A_FALLOS y 0
+    si cuantos es mayor o igual que 8
+        lee_informe con d
+    fin
+    pide_informe con d
+fin
+
+funcion arregla con d
+    ranura es de_aparato con d y A_RANURA
+    punto es de_aparato con d y A_PUNTO
+    en_aparato con d y A_ROTO y 0
+    en_aparato con d y A_FALLOS y (de_aparato con d y A_FALLOS) mas 1
+    si (de_aparato con d y A_FALLOS) es mayor que 5
+        p es de_aparato con d y A_PUERTO
+        llama_al_sistema con AVISA_TECLADO y p y 0
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    hecho es orden con 0 y O_LEVANTA mas punto por 65536 mas (a_la_ranura con ranura)
+    sitio es (sitio_de con (pagina_de_aparato con d y 2)) mas (de_aparato con d y A_PONE_TECLAS) por 16
+    hecho es orden con sitio mas (de_aparato con d y A_CICLO_TECLAS) y O_COLOCA mas punto por 65536 mas (a_la_ranura con ranura)
+    si hecho es BIEN
+        desatascado es control con d y 2 mas 256 y 0 y (cociente con (punto menos 1) y 2) mas 128 y 0
+        pide_informe con d
+    si no
+        en_aparato con d y A_ROTO y ATASCADO
+    fin
+fin
+
+funcion lee_informe con d
+    comparte repite_d y repite_tecla y repite_en
+    base es (pagina_de_aparato con d y 3) por PAGINA
+    si (elemento base mas 3 de dma_bytes) es 1
+        devuelve nada
+    fin
+    modos es elemento base mas 1 de dma_bytes
+    si repite_d es d y no (esta_en con base mas 3 y repite_tecla)
+        repite_d es 0
+    fin
+    para cada k desde 0 hasta 5
+        tecla es elemento base mas 3 mas k de dma_bytes
+        si tecla es mayor que 3 y no (estaba con d y tecla)
+            pulsa con d y tecla y modos
+            repite_d es d
+            repite_tecla es tecla
+            repite_en es ahora mas 50
+        fin
+    fin
+    para cada k desde 0 hasta 5
+        en_aparato con d y A_ANTES mas k y (elemento base mas 3 mas k de dma_bytes)
+    fin
+    en_aparato con d y A_ANTES mas 6 y modos
+fin
+
+funcion esta_en con sitio y tecla
+    para cada k desde 0 hasta 5
+        si (elemento sitio mas k de dma_bytes) es tecla
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion estaba con d y tecla
+    para cada k desde 0 hasta 5
+        si (de_aparato con d y A_ANTES mas k) es tecla
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion codigo_de_letra con letra
+    para cada i desde 1 hasta largo de teclas_solas
+        si (elemento i de teclas_solas) es letra
+            devuelve i menos 1
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion codigo_de con tecla
+    si tecla es mayor o igual que 4 y tecla es menor o igual que 29
+        devuelve codigo_de_letra con tecla mas 93
+    si no si tecla es mayor o igual que 30 y tecla es menor o igual que 38
+        devuelve tecla menos 28
+    si no si tecla es 39
+        devuelve 11
+    si no si tecla es 44
+        devuelve 57
+    si no si tecla es 45 o tecla es 46
+        devuelve tecla menos 33
+    si no si tecla es 47 o tecla es 48
+        devuelve tecla menos 21
+    si no si tecla es 49 o tecla es 50
+        devuelve 43
+    si no si tecla es mayor o igual que 51 y tecla es menor o igual que 53
+        devuelve tecla menos 12
+    si no si tecla es mayor o igual que 54 y tecla es menor o igual que 56
+        devuelve tecla menos 3
+    si no si tecla es 100
+        devuelve 86
+    fin
+    devuelve 0
+fin
+
+funcion especial con tecla
+    si tecla es 40 o tecla es 88
+        devuelve TECLA_INTRO
+    si no si tecla es 41
+        devuelve TECLA_ESCAPE
+    si no si tecla es 42
+        devuelve TECLA_BORRA
+    si no si tecla es 74
+        devuelve TECLA_INICIO
+    si no si tecla es 76
+        devuelve TECLA_SUPRIME
+    si no si tecla es 77
+        devuelve TECLA_FIN
+    si no si tecla es 79
+        devuelve TECLA_DERECHA
+    si no si tecla es 80
+        devuelve TECLA_IZQUIERDA
+    si no si tecla es 81
+        devuelve TECLA_ABAJO
+    si no si tecla es 82
+        devuelve TECLA_ARRIBA
+    fin
+    devuelve 0
+fin
+
+funcion del_numerico con tecla
+    si tecla es mayor o igual que 89 y tecla es menor o igual que 97
+        devuelve tecla menos 40
+    si no si tecla es 98
+        devuelve 48
+    si no si tecla es 84
+        devuelve 47
+    si no si tecla es 85
+        devuelve 42
+    si no si tecla es 86
+        devuelve 45
+    si no si tecla es 87
+        devuelve 43
+    si no si tecla es 99
+        devuelve 46
+    fin
+    devuelve 0
+fin
+
+funcion da_tecla con d y c
+    si c no es igual a 0
+        llama_al_sistema con ENTREGA y c y (de_aparato con d y A_PUERTO)
+    fin
+fin
+
+funcion escribe_letra con d y c
+    si c no es igual a 0
+        cual es de_aparato con d y A_TILDE
+        en_aparato con d y A_TILDE y 0
+        da_tecla con d y (con_tilde con c y cual)
+    fin
+fin
+
+funcion pulsa con d y tecla y modos
+    mayus es (bits con modos y 2 y 2) es 1 o (bits con modos y 32 y 2) es 1
+    control_puesto es (modos resto 2) es 1 o (bits con modos y 16 y 2) es 1
+    altgr es (bits con modos y 64 y 2) es 1
+    bloq es (de_aparato con d y A_BLOQ) es 1
+    codigo es codigo_de con tecla
+    si tecla es 57
+        en_aparato con d y A_BLOQ y 1 menos (de_aparato con d y A_BLOQ)
+    si no si (especial con tecla) no es igual a 0
+        da_tecla con d y (especial con tecla)
+    si no si control_puesto
+        si tecla es 6
+            da_tecla con d y TECLA_COPIA
+        si no si tecla es 25
+            da_tecla con d y TECLA_PEGA
+        fin
+    si no si (del_numerico con tecla) no es igual a 0
+        escribe_letra con d y (del_numerico con tecla)
+    si no si altgr
+        escribe_letra con d y (con_altgr con codigo)
+    si no si codigo es 40
+        si mayus
+            en_aparato con d y A_TILDE y 2
+        si no
+            en_aparato con d y A_TILDE y 1
+        fin
+    si no si codigo no es igual a 0
+        escribe_letra con d y (letra_de con codigo y mayus y bloq)
+    fin
+fin
+
+funcion repite_la_tecla
+    comparte repite_en
+    si repite_d es 0
+        devuelve nada
+    fin
+    si ahora es menor que repite_en
+        devuelve nada
+    fin
+    repite_en es ahora mas 3
+    si repite_tecla no es igual a 57
+        pulsa con repite_d y repite_tecla y (de_aparato con repite_d y A_ANTES mas 6)
+    fin
+fin
+
+funcion se_fue con p
+    si (de_puerto con p y Q_ESTADO) es ES_TECLADO
+        llama_al_sistema con AVISA_TECLADO y p y 0
+    fin
+    descarta con p y (de_puerto con p y Q_APARATO) y VACIO
+    en_puerto con p y Q_QUIEN y 0
+    en_puerto con p y Q_VISTO y 0
+fin
+
+funcion mira_puerto con p
+    sitio es sitio_puerto con p
+    visto es mira con sitio
+    si (bits con visto y BIT_9 y 2) es 0
+        manda con sitio y BIT_9
+        devuelve nada
+    fin
+    si (bits con visto y CAMBIO_CONEXION y 128) no es igual a 0
+        manda con sitio y BIT_9 mas (visto resto 16777216) menos (visto resto CAMBIO_CONEXION)
+        si (bits con visto y CAMBIO_CONEXION y 2) es 1 y (de_puerto con p y Q_VISTO) no es igual a 0
+            se_fue con p
+        fin
+    fin
+    si (visto resto 2) es 0
+        si (de_puerto con p y Q_VISTO) no es igual a 0
+            se_fue con p
+        fin
+    si no si (de_puerto con p y Q_VISTO) es 0
+        en_puerto con p y Q_VISTO y ahora mas 1
+    si no si (de_puerto con p y Q_ESTADO) es VACIO y ahora es mayor o igual que (de_puerto con p y Q_VISTO) mas 10
+        enumera con p
+    fin
+fin
+
+funcion mira_puertos
+    comparte proxima_mirada
+    si ahora es menor que proxima_mirada
+        devuelve nada
+    fin
+    proxima_mirada es ahora mas 10
+    p es 1
+    mientras p es menor o igual que puertos
+        mira_puerto con p
+        p es p mas 1
+    fin
+fin
+
+funcion arregla_los_rotos
+    para cada d desde 1 hasta APARATOS
+        si (de_aparato con d y A_PUERTO) no es igual a 0 y (de_aparato con d y A_ROTO) no es igual a 0
+            visto es mira con (sitio_puerto con (de_aparato con d y A_PUERTO))
+            si (visto resto 2) es 1 y (bits con visto y CAMBIO_CONEXION y 2) es 0
+                arregla con d
+            fin
+        fin
+    fin
+fin
+
+funcion roba_memoria
+    manda con op y 0
+    parado es espera_registro con op mas 4 y 1 y 1
+    apunta_a con op mas 24 y 1048577
+    manda con op y 1
+    manda con timbres y 0
+fin
+
+funcion atiende_aviso con aviso
+    si aviso es AVISO_CUELGA
+        mientras verdadero
+        fin
+    si no si aviso es AVISO_ROMPE
+        roba_memoria
+    fin
+fin
+
+estado es arranca
+elemento 2 de buzon es estado
+mientras verdadero
+    si estado es EN_MARCHA
+        mira_sucesos
+        mira_puertos
+        arregla_los_rotos
+        repite_la_tecla
+    fin
+    atiende_aviso con (llama_al_sistema con ESPERA y SIN_RESPUESTA)
+fin
