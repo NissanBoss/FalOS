@@ -25,6 +25,10 @@ Un programa que corra en FalOS y consiga una de estas cosas:
    Que la consola deje de hacerte caso también cuenta.
 7. **Saltarse el cerrojo.** Con la pantalla bloqueada, ver una tecla, el
    portapapeles o lo que había en la pantalla, o quitar el bloqueo sin la contraseña.
+8. **Abrir el pendrive.** Sacar algo de lo que FalOS guardó en un pendrive sin su
+   contraseña, o cambiarlo sin que se entere. Este no necesita un programa: vale
+   con los bytes del pendrive, en tu ordenador. Qué hay en cada byte lo cuenta
+   [PENDRIVE.md](PENDRIVE.md).
 
 Y una más, que vale igual: **que FalOS te mienta.** Que la pregunta de permiso
 diga otro programa, otro sitio u otra cantidad de bytes de lo que de verdad pasa,
@@ -38,7 +42,9 @@ o que el registro no apunte algo que pasó.
   [programas/](programas) como uno más.
 - **Hacerlo desde fuera.** El monitor de QEMU, un depurador, leer `disco.img` desde
   tu ordenador o abrir el portátil. FalOS no puede defenderse de quien tiene la
-  máquina en la mano, y no lo promete.
+  máquina en la mano, y no lo promete. La única excepción es el punto 8. Y ahí no
+  vale probar contraseñas de una lista hasta acertar una corta, ni cambiar el
+  FalOS del pendrive y esperar a que el dueño teclee la suya.
 - **Que le dejes tú.** Si escribes `deja`, o le pegas tu contraseña a un programa
   que te la pide, se la has dado. Lo que sí vale es engañarte para que creas que
   dejas otra cosa.
@@ -110,8 +116,9 @@ núcleo se lo niega, el número es negativo.
 | 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
 | 18 | Solo la consola: pedirle una orden a FalOS. A cualquier otro se le niega. |
 | 19 | Solo el controlador USB: decir en qué puerto hay un teclado. A cualquier otro se le niega. |
+| 20 | Solo el controlador USB: decir en qué puerto hay un pendrive y cuánto cabe en él. A cualquier otro se le niega. |
 
-Del 19 en adelante no hay nada, y pedirlo cuenta como rechazado.
+Del 21 en adelante no hay nada, y pedirlo cuenta como rechazado.
 
 Lo más rápido es empezar por los que ya lo intentan y FalOS para: `espia`,
 `ladron`, `fisgon`, `curioso`, `cambiazo`, `escucha`, `chivato`, `disfraz`,

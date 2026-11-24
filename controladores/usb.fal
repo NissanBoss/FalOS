@@ -6,6 +6,7 @@ PIDE_TICS es 3
 ESPERA es 8
 ENTREGA es 9
 AVISA_TECLADO es 19
+AVISA_PENDRIVE es 20
 AVISO_CUELGA es 0 menos 2
 AVISO_ROMPE es 0 menos 3
 SIN_RESPUESTA es 0 menos 100
@@ -34,7 +35,9 @@ P_DONDE_SUCESOS es 3
 P_ENTRADA es 4
 P_BANDEJA es 5
 P_APARATOS es 6
-P_BORRADORES es 22
+P_PEN_ORDEN es 22
+P_PEN_DATOS es 23
+P_BORRADORES es 24
 APARATOS es 4
 TOPE_PUERTOS es 64
 TOPE_RANURAS es 8
@@ -53,6 +56,18 @@ ES_TECLADO es 1
 ES_OTRO es 2
 NO_PUDE es 3
 NO_CABE es 4
+ES_PENDRIVE es 5
+ES_AJENO es 6
+
+PIDE_LEE es 100
+PIDE_DISCO es 120
+PIDE_ESCRIBE es 140
+PIDE_ASIENTA es 160
+PAGINAS_PEN es 9
+MARCA_PEN es "FALPENDRIVE1"
+SE_ROMPIO es 0 menos 1
+SE_ATASCO es 0 menos 2
+PACIENCIA_PEN es 1000
 
 BIT_9 es 512
 CAMBIO_CONEXION es 131072
@@ -97,6 +112,29 @@ orden_ranura es 0
 control_de es 0
 control_hecho es falso
 control_como es 0
+pen_d es 0
+pen_puerto es 0
+pen_entra es 0
+pen_sale es 0
+pen_mide_e es 0
+pen_mide_s es 0
+pen_rafaga_e es 0
+pen_rafaga_s es 0
+pen_pone_e es 0
+pen_pone_s es 0
+pen_ciclo_e es 1
+pen_ciclo_s es 1
+pen_pide es 0
+pen_hecho es falso
+pen_como es 0
+pen_sobra es 0
+pen_marca es 0
+pen_sectores es 0
+pen_donde es 0
+pen_disco es 0
+pen_caidas es 0
+hallado_en es 0
+hallado_mide es 0
 repite_d es 0
 repite_tecla es 0
 repite_en es 0
@@ -299,7 +337,7 @@ funcion mira_sucesos
 fin
 
 funcion trata_suceso con que y direccion y como_fue
-    comparte orden_hecha y orden_como y orden_ranura y control_hecho y control_como
+    comparte orden_hecha y orden_como y orden_ranura y control_hecho y control_como y pen_hecho y pen_como y pen_sobra
     clase es bits con que y 1024 y 64
     codigo es cociente con como_fue y 16777216
     ranura es cociente con que y 16777216
@@ -313,6 +351,10 @@ funcion trata_suceso con que y direccion y como_fue
         si d no es igual a 0 y punto es 1 y d es control_de
             control_hecho es verdadero
             control_como es codigo
+        si no si d no es igual a 0 y d es pen_d y punto es pen_pide
+            pen_hecho es verdadero
+            pen_como es codigo
+            pen_sobra es como_fue resto 16777216
         si no si d no es igual a 0 y punto no es igual a 1 y punto es (de_aparato con d y A_PUNTO)
             llego_informe con d y codigo y (de_aparato con d y A_MIDE) menos (como_fue resto 16777216)
         fin
@@ -444,8 +486,13 @@ funcion aparato_libre
 fin
 
 funcion suelta_aparato con d
-    comparte repite_d
+    comparte repite_d y pen_d
     ranura es de_aparato con d y A_RANURA
+    si d es pen_d
+        pen_d es 0
+        elemento 4 de buzon es 0
+        llama_al_sistema con AVISA_PENDRIVE y pen_puerto y 0
+    fin
     si ranura no es igual a 0
         hecho es orden con 0 y O_CIERRA_RANURA mas (a_la_ranura con ranura)
         pon con P_INDICE y ranura por 2 y 0
@@ -505,7 +552,7 @@ funcion enumera con p
         descarta con p y 0 y NO_CABE
         devuelve nada
     fin
-    si (bits con (mira con (sitio_puerto con p)) y 1024 y 16) es mayor que 3
+    si (bits con (mira con (sitio_puerto con p)) y 1024 y 16) es mayor que 5
         descarta con p y 0 y ES_OTRO
         devuelve nada
     fin
@@ -514,7 +561,7 @@ funcion enumera con p
         devuelve nada
     fin
     velocidad es bits con (mira con (sitio_puerto con p)) y 1024 y 16
-    si velocidad es menor que 1 o velocidad es mayor que 3
+    si velocidad es menor que 1 o velocidad es mayor que 5
         descarta con p y 0 y ES_OTRO
         devuelve nada
     fin
@@ -539,6 +586,8 @@ funcion enumera con p
     paquete es 8
     si velocidad es 3
         paquete es 64
+    si no si velocidad es mayor que 3
+        paquete es 512
     fin
     prepara_contexto con d y p y paquete
     si (orden con (sitio_de con P_ENTRADA) y O_DA_DIRECCION mas (a_la_ranura con ranura)) no es igual a BIEN
@@ -551,7 +600,9 @@ funcion enumera con p
         devuelve nada
     fin
     mejor es byte_leido con 7
-    si no (paquete_bueno con mejor)
+    si velocidad es mayor que 3
+        mejor es 512
+    si no si no (paquete_bueno con mejor)
         descarta con p y d y NO_PUDE
         devuelve nada
     fin
@@ -585,7 +636,7 @@ funcion enumera con p
         devuelve nada
     fin
     si no (busca_teclado con d y en_total)
-        descarta con p y d y ES_OTRO
+        prueba_pendrive con p y d y en_total
         devuelve nada
     fin
     si no (enciende_teclado con d)
@@ -630,6 +681,509 @@ funcion busca_teclado con d y en_total
         i es i mas largo
     fin
     devuelve falso
+fin
+
+funcion busca_pendrive con d y en_total
+    comparte ajuste y pen_entra y pen_sale y pen_mide_e y pen_mide_s y pen_rafaga_e y pen_rafaga_s
+    ajuste es byte_leido con 5
+    pen_entra es 0
+    pen_sale es 0
+    pen_rafaga_e es 0
+    pen_rafaga_s es 0
+    en_el_mio es falso
+    ultimo es 0
+    i es 0
+    mientras i mas 2 es menor o igual que en_total
+        largo es byte_leido con i
+        clase es byte_leido con i mas 1
+        si largo es menor que 2 o i mas largo es mayor que en_total
+            devuelve falso
+        fin
+        si clase es 4 y largo es mayor o igual que 9
+            si pen_entra no es igual a 0 y pen_sale no es igual a 0
+                devuelve verdadero
+            fin
+            en_el_mio es (byte_leido con i mas 3) es 0 y (byte_leido con i mas 5) es 8 y (byte_leido con i mas 6) es 6 y (byte_leido con i mas 7) es 80
+            pen_entra es 0
+            pen_sale es 0
+            ultimo es 0
+            si en_el_mio
+                en_aparato con d y A_INTERFAZ y (byte_leido con i mas 2)
+            fin
+        si no si en_el_mio y clase es 5 y largo es mayor o igual que 7
+            punto es byte_leido con i mas 2
+            mide es (byte_leido con i mas 4) mas ((byte_leido con i mas 5) resto 8) por 256
+            en_bloque es ((byte_leido con i mas 3) resto 4) es 2
+            ultimo es 0
+            si en_bloque y mide es mayor o igual que 8 y mide es menor o igual que 1024
+                si punto es mayor que 128 y punto es menor que 144 y pen_entra es 0
+                    pen_entra es (punto menos 128) por 2 mas 1
+                    pen_mide_e es mide
+                    ultimo es 1
+                si no si punto es mayor que 0 y punto es menor que 16 y pen_sale es 0
+                    pen_sale es punto por 2
+                    pen_mide_s es mide
+                    ultimo es 2
+                fin
+            fin
+        si no si en_el_mio y clase es 48 y largo es mayor o igual que 6 y (byte_leido con i mas 2) es menor que 16
+            si ultimo es 1
+                pen_rafaga_e es byte_leido con i mas 2
+            si no si ultimo es 2
+                pen_rafaga_s es byte_leido con i mas 2
+            fin
+            ultimo es 0
+        fin
+        i es i mas largo
+    fin
+    devuelve pen_entra no es igual a 0 y pen_sale no es igual a 0
+fin
+
+funcion dos_elevado_a con cuanto
+    valor es 1
+    para cada n desde 1 hasta cuanto
+        valor es valor por 2
+    fin
+    devuelve valor
+fin
+
+funcion enciende_pendrive con d
+    comparte pen_pone_e y pen_pone_s y pen_ciclo_e y pen_ciclo_s
+    pen_pone_e es 0
+    pen_pone_s es 0
+    pen_ciclo_e es 1
+    pen_ciclo_s es 1
+    limpia_pagina con P_PEN_ORDEN
+    limpia_pagina con P_PEN_DATOS
+    limpia_pagina con P_ENTRADA
+    mayor_punto es pen_entra
+    si pen_sale es mayor que mayor_punto
+        mayor_punto es pen_sale
+    fin
+    en_entrada con 0 y 1 y (dos_elevado_a con pen_entra) mas (dos_elevado_a con pen_sale) mas 1
+    mio es pagina_de_aparato con d y 0
+    en_entrada con 1 y 0 y ((ve con mio y 0) resto 134217728) mas mayor_punto por 134217728
+    en_entrada con 1 y 1 y (ve con mio y 1)
+    en_entrada con pen_entra mas 1 y 1 y 6 mas 48 mas pen_rafaga_e por 256 mas pen_mide_e por 65536
+    en_entrada con pen_entra mas 1 y 2 y (sitio_de con (pagina_de_aparato con d y 2)) mas 1
+    en_entrada con pen_entra mas 1 y 4 y 1024
+    en_entrada con pen_sale mas 1 y 1 y 6 mas 16 mas pen_rafaga_s por 256 mas pen_mide_s por 65536
+    en_entrada con pen_sale mas 1 y 2 y (sitio_de con (pagina_de_aparato con d y 3)) mas 1
+    en_entrada con pen_sale mas 1 y 4 y 1024
+    si (orden con (sitio_de con P_ENTRADA) y O_CONFIGURA mas (a_la_ranura con (de_aparato con d y A_RANURA))) no es igual a BIEN
+        devuelve falso
+    fin
+    devuelve control con d y 9 por 256 y ajuste y 0 y 0
+fin
+
+funcion pasa_bloque con entrando y direccion y cuantos
+    comparte pen_hecho y pen_pide y pen_pone_e y pen_pone_s y pen_ciclo_e y pen_ciclo_s
+    p es pagina_de_aparato con pen_d y 3
+    sitio es pen_pone_s
+    ciclo es pen_ciclo_s
+    punto es pen_sale
+    si entrando
+        p es pagina_de_aparato con pen_d y 2
+        sitio es pen_pone_e
+        ciclo es pen_ciclo_e
+        punto es pen_entra
+    fin
+    pon con p y sitio por 4 y direccion
+    pon con p y sitio por 4 mas 1 y 0
+    pon con p y sitio por 4 mas 2 y cuantos
+    pen_hecho es falso
+    pen_pide es punto
+    pon con p y sitio por 4 mas 3 y T_NORMAL mas 36 mas ciclo
+    sitio es sitio mas 1
+    si sitio es TRBS menos 1
+        pon con p y (TRBS menos 1) por 4 y (sitio_de con p)
+        pon con p y (TRBS menos 1) por 4 mas 3 y T_ENLACE mas 2 mas ciclo
+        sitio es 0
+        ciclo es 1 menos ciclo
+    fin
+    si entrando
+        pen_pone_e es sitio
+        pen_ciclo_e es ciclo
+    si no
+        pen_pone_s es sitio
+        pen_ciclo_s es ciclo
+    fin
+    manda con timbres mas (de_aparato con pen_d y A_RANURA) por 4 y punto
+    limite es ahora mas PACIENCIA_PEN
+    mientras no pen_hecho
+        mira_sucesos
+        si no pen_hecho
+            si ahora es mayor que limite o ((mira con (sitio_puerto con pen_puerto)) resto 2) es 0
+                pen_pide es 0
+                devuelve SE_ROMPIO
+            fin
+            llama_al_sistema con CEDE y 0
+        fin
+    fin
+    pen_pide es 0
+    si pen_como es BIEN o pen_como es MAS_CORTA
+        devuelve cuantos menos pen_sobra
+    si no si pen_como es ATASCADO
+        devuelve SE_ATASCO
+    fin
+    devuelve SE_ROMPIO
+fin
+
+funcion despega con entrando
+    ranura es de_aparato con pen_d y A_RANURA
+    punto es pen_sale
+    sitio es (sitio_de con (pagina_de_aparato con pen_d y 3)) mas pen_pone_s por 16 mas pen_ciclo_s
+    quien es cociente con pen_sale y 2
+    si entrando
+        punto es pen_entra
+        sitio es (sitio_de con (pagina_de_aparato con pen_d y 2)) mas pen_pone_e por 16 mas pen_ciclo_e
+        quien es (cociente con pen_entra y 2) mas 128
+    fin
+    hecho es orden con 0 y O_LEVANTA mas punto por 65536 mas (a_la_ranura con ranura)
+    si hecho no es igual a BIEN
+        devuelve falso
+    fin
+    hecho es orden con sitio y O_COLOCA mas punto por 65536 mas (a_la_ranura con ranura)
+    si hecho no es igual a BIEN
+        devuelve falso
+    fin
+    devuelve control con pen_d y 2 mas 256 y 0 y quien y 0
+fin
+
+funcion en_orden con i y valor
+    elemento P_PEN_ORDEN por PAGINA mas i mas 1 de dma_bytes es valor
+fin
+
+funcion de_mayor con i y valor y cuantos
+    queda es valor
+    n es cuantos
+    mientras n es mayor que 0
+        n es n menos 1
+        en_orden con i mas n y queda resto 256
+        queda es cociente con queda y 256
+    fin
+fin
+
+funcion prepara_scsi con cual
+    para cada i desde 0 hasta 7
+        pon con P_PEN_ORDEN y i y 0
+    fin
+    en_orden con 15 y cual
+fin
+
+funcion scsi con mide y sentido y direccion y cuantos
+    comparte pen_marca
+    pen_marca es (pen_marca mas 1) resto 65536
+    pon con P_PEN_ORDEN y 0 y 1128420181
+    pon con P_PEN_ORDEN y 1 y pen_marca
+    pon con P_PEN_ORDEN y 2 y cuantos
+    si sentido es 1
+        en_orden con 12 y 128
+    fin
+    en_orden con 14 y mide
+    para cada i desde 256 hasta 259
+        pon con P_PEN_ORDEN y i y 0
+    fin
+    si (pasa_bloque con falso y (sitio_de con P_PEN_ORDEN) y 31) no es igual a 31
+        devuelve SE_ROMPIO
+    fin
+    si cuantos es mayor que 0
+        movidos es pasa_bloque con sentido es 1 y direccion y cuantos
+        si movidos es SE_ROMPIO
+            devuelve SE_ROMPIO
+        fin
+        si movidos es SE_ATASCO
+            si no (despega con sentido es 1)
+                devuelve SE_ROMPIO
+            fin
+        fin
+    fin
+    llegan es pasa_bloque con verdadero y (sitio_de con P_PEN_ORDEN) mas 1024 y 13
+    si llegan es SE_ATASCO
+        si no (despega con verdadero)
+            devuelve SE_ROMPIO
+        fin
+        llegan es pasa_bloque con verdadero y (sitio_de con P_PEN_ORDEN) mas 1024 y 13
+    fin
+    si llegan no es igual a 13 o (ve con P_PEN_ORDEN y 256) no es igual a 1396855637 o (ve con P_PEN_ORDEN y 257) no es igual a pen_marca
+        devuelve SE_ROMPIO
+    fin
+    salio es (ve con P_PEN_ORDEN y 259) resto 256
+    si salio es mayor que 1
+        devuelve SE_ROMPIO
+    fin
+    si salio es 0 y (ve con P_PEN_ORDEN y 258) no es igual a 0
+        devuelve 1
+    fin
+    devuelve salio
+fin
+
+funcion pide_por_que
+    prepara_scsi con 3
+    en_orden con 19 y 18
+    devuelve scsi con 6 y 1 y (sitio_de con P_PEN_ORDEN) mas 2048 y 18
+fin
+
+funcion sectores_scsi con cual y numero y cuantos
+    si numero es menor que 0 o cuantos es menor que 1 o cuantos es mayor que 8 o numero mas cuantos es mayor que pen_sectores
+        devuelve 1
+    fin
+    sentido es 1
+    si cual es 42
+        sentido es 2
+    fin
+    para cada intento desde 1 hasta 3
+        prepara_scsi con cual
+        de_mayor con 17 y numero y 4
+        de_mayor con 22 y cuantos y 2
+        salio es scsi con 10 y sentido y (sitio_de con P_PEN_DATOS) y cuantos por 512
+        si salio es 0 o salio es SE_ROMPIO
+            devuelve salio
+        fin
+        si (pide_por_que) es SE_ROMPIO
+            devuelve SE_ROMPIO
+        fin
+    fin
+    devuelve 1
+fin
+
+funcion byte_pen con i
+    devuelve elemento P_PEN_DATOS por PAGINA mas i mas 1 de dma_bytes
+fin
+
+funcion numero_pen con i
+    devuelve (byte_pen con i) mas (byte_pen con i mas 1) por 256 mas (byte_pen con i mas 2) por 65536 mas (byte_pen con i mas 3) por 16777216
+fin
+
+funcion dice_pen con i y texto
+    k es 0
+    para cada letra en texto
+        si (byte_pen con i mas k) no es igual a letra
+            devuelve falso
+        fin
+        k es k mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion lee_medida
+    comparte pen_sectores
+    prepara_scsi con 37
+    salio es scsi con 10 y 1 y (sitio_de con P_PEN_DATOS) y 8
+    si salio no es igual a 0
+        devuelve salio
+    fin
+    por_sector es ((byte_pen con 4) por 256 mas byte_pen con 5) por 65536 mas (byte_pen con 6) por 256 mas byte_pen con 7
+    si por_sector no es igual a 512
+        devuelve 1
+    fin
+    pen_sectores es ((byte_pen con 0) por 256 mas byte_pen con 1) por 65536 mas (byte_pen con 2) por 256 mas (byte_pen con 3) mas 1
+    devuelve 0
+fin
+
+funcion espera_que_este_listo
+    prepara_scsi con 18
+    en_orden con 19 y 36
+    si (scsi con 6 y 1 y (sitio_de con P_PEN_DATOS) y 36) es SE_ROMPIO
+        devuelve falso
+    fin
+    si (byte_pen con 0) no es igual a 0
+        devuelve falso
+    fin
+    para cada intento desde 1 hasta 50
+        prepara_scsi con 0
+        salio es scsi con 6 y 0 y 0 y 0
+        si salio es 0
+            devuelve verdadero
+        fin
+        si salio es SE_ROMPIO
+            devuelve falso
+        fin
+        si (pide_por_que) es SE_ROMPIO
+            devuelve falso
+        fin
+        descansa con 10
+    fin
+    devuelve falso
+fin
+
+funcion mismo_nombre con i y nombre
+    mide es byte_pen con i
+    si mide es menor que largo de nombre
+        devuelve falso
+    fin
+    si mide es mayor que largo de nombre
+        si (byte_pen con i mas 1 mas largo de nombre) no es igual a 59
+            devuelve falso
+        fin
+    fin
+    k es 1
+    para cada letra en nombre
+        suya es byte_pen con i mas k
+        si suya es mayor o igual que 97 y suya es menor o igual que 122
+            suya es suya menos 32
+        fin
+        si suya no es igual a letra
+            devuelve falso
+        fin
+        k es k mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion busca_en_carpeta con donde y mide y nombre
+    comparte hallado_en y hallado_mide
+    trozos es cociente con mide mas 2047 y 2048
+    si trozos es mayor que 16
+        trozos es 16
+    fin
+    t es 0
+    mientras t es menor que trozos
+        si (sectores_scsi con 40 y (donde mas t) por 4 y 4) no es igual a 0
+            devuelve falso
+        fin
+        i es 0
+        mientras i es menor que 2014
+            largo es byte_pen con i
+            si largo es menor que 34 o i mas largo es mayor que 2048
+                detente
+            fin
+            si (byte_pen con i mas 32) es mayor que largo menos 33
+                detente
+            fin
+            si mismo_nombre con i mas 32 y nombre
+                hallado_en es numero_pen con i mas 2
+                hallado_mide es numero_pen con i mas 10
+                devuelve verdadero
+            fin
+            i es i mas largo
+        fin
+        t es t mas 1
+    fin
+    devuelve falso
+fin
+
+funcion es_el_de_falos
+    comparte pen_donde y pen_disco
+    si (sectores_scsi con 40 y 64 y 4) no es igual a 0
+        devuelve falso
+    fin
+    si (byte_pen con 0) no es igual a 1 o no (dice_pen con 1 y "CD001")
+        devuelve falso
+    fin
+    si no (busca_en_carpeta con (numero_pen con 158) y (numero_pen con 166) y "BOOT")
+        devuelve falso
+    fin
+    carpeta es hallado_en
+    carpeta_mide es hallado_mide
+    si no (busca_en_carpeta con carpeta y carpeta_mide y "DISCO.IMG")
+        devuelve falso
+    fin
+    pen_disco es hallado_en por 4
+    si hallado_mide es menor que PAGINA
+        devuelve falso
+    fin
+    si no (busca_en_carpeta con carpeta y carpeta_mide y "GUARDADO.IMG")
+        devuelve falso
+    fin
+    pen_donde es hallado_en por 4
+    si hallado_mide es menor que PAGINAS_PEN por PAGINA o pen_donde mas PAGINAS_PEN por 8 es mayor que pen_sectores
+        devuelve falso
+    fin
+    si (sectores_scsi con 40 y pen_donde y 8) no es igual a 0
+        devuelve falso
+    fin
+    devuelve dice_pen con 0 y MARCA_PEN
+fin
+
+funcion prueba_pendrive con p y d y en_total
+    comparte pen_d y pen_puerto
+    si pen_d no es igual a 0
+        descarta con p y d y ES_OTRO
+        devuelve nada
+    fin
+    si no (busca_pendrive con d y en_total)
+        descarta con p y d y ES_OTRO
+        devuelve nada
+    fin
+    si no (enciende_pendrive con d)
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    pen_d es d
+    pen_puerto es p
+    si no espera_que_este_listo
+        descarta con p y d y NO_PUDE
+        devuelve nada
+    fin
+    salio es lee_medida
+    si salio es 1
+        si (pide_por_que) no es igual a SE_ROMPIO
+            salio es lee_medida
+        fin
+    fin
+    si salio no es igual a 0
+        descarta con p y d y ES_AJENO
+        devuelve nada
+    fin
+    si no es_el_de_falos
+        descarta con p y d y ES_AJENO
+        devuelve nada
+    fin
+    elemento 4 de buzon es pen_sectores
+    en_puerto con p y Q_ESTADO y ES_PENDRIVE
+    llama_al_sistema con AVISA_PENDRIVE y p y 1
+fin
+
+funcion pierde_pendrive
+    comparte pen_caidas
+    p es pen_puerto
+    d es pen_d
+    pen_caidas es pen_caidas mas 1
+    si pen_caidas es menor que 4
+        descarta con p y d y VACIO
+        en_puerto con p y Q_VISTO y ahora mas 1
+    si no
+        descarta con p y d y NO_PUDE
+    fin
+fin
+
+funcion asienta_pendrive
+    prepara_scsi con 53
+    salio es scsi con 10 y 0 y 0 y 0
+    si salio no es igual a 1
+        devuelve salio
+    fin
+    si (pide_por_que) es SE_ROMPIO
+        devuelve SE_ROMPIO
+    fin
+    si ((elemento P_PEN_ORDEN por PAGINA mas 2051 de dma_bytes) resto 16) es 5
+        devuelve 0
+    fin
+    devuelve 1
+fin
+
+funcion atiende_pendrive con pedido
+    comparte pen_caidas
+    si pen_d es 0
+        devuelve SE_ROMPIO
+    fin
+    salio es 1
+    si pedido es PIDE_ASIENTA
+        salio es asienta_pendrive
+    si no si pedido es PIDE_DISCO
+        salio es sectores_scsi con 40 y pen_disco y 8
+    si no si pedido es mayor o igual que PIDE_LEE y pedido es menor que PIDE_LEE mas PAGINAS_PEN
+        salio es sectores_scsi con 40 y pen_donde mas (pedido menos PIDE_LEE) por 8 y 8
+    si no si pedido es mayor que PIDE_ESCRIBE y pedido es menor que PIDE_ESCRIBE mas PAGINAS_PEN
+        salio es sectores_scsi con 42 y pen_donde mas (pedido menos PIDE_ESCRIBE) por 8 y 8
+    fin
+    si salio es SE_ROMPIO
+        pierde_pendrive
+    si no si salio es 0
+        pen_caidas es 0
+    fin
+    devuelve salio
 fin
 
 funcion intervalo_de con velocidad
@@ -915,6 +1469,10 @@ funcion repite_la_tecla
 fin
 
 funcion se_fue con p
+    comparte pen_caidas
+    si p es pen_puerto
+        pen_caidas es 0
+    fin
     si (de_puerto con p y Q_ESTADO) es ES_TECLADO
         llama_al_sistema con AVISA_TECLADO y p y 0
     fin
@@ -985,11 +1543,15 @@ funcion atiende_aviso con aviso
         fin
     si no si aviso es AVISO_ROMPE
         roba_memoria
+    si no si aviso es mayor o igual que PIDE_LEE
+        devuelve atiende_pendrive con aviso
     fin
+    devuelve SIN_RESPUESTA
 fin
 
 estado es arranca
 elemento 2 de buzon es estado
+respuesta es SIN_RESPUESTA
 mientras verdadero
     si estado es EN_MARCHA
         mira_sucesos
@@ -997,5 +1559,5 @@ mientras verdadero
         arregla_los_rotos
         repite_la_tecla
     fin
-    atiende_aviso con (llama_al_sistema con ESPERA y SIN_RESPUESTA)
+    respuesta es atiende_aviso con (llama_al_sistema con ESPERA y respuesta)
 fin

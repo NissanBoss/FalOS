@@ -48,8 +48,10 @@ solo.
 
 FalOS arranca desde un pendrive con GRUB, por BIOS y por UEFI, y no se instala:
 su disco va entero en la memoria y no toca ningún disco del ordenador. Lo que
-guardes se borra al apagar. Se ha probado en un ThinkPad L450 de 2015, por
-los dos caminos.
+guardes se borra al apagar, salvo que le pongas contraseña: entonces se queda en
+el pendrive, cifrado ([cómo](#lo-que-guardas-en-el-pendrive)). Se ha probado en un
+ThinkPad L450 de 2015, por los dos caminos, pero lo de guardar en el pendrive
+solo en QEMU.
 
 La imagen la hace GitHub cada vez que se sube algo (en Actions, el artefacto
 `falos-pendrive`), o tú con GRUB y xorriso instalados:
@@ -67,7 +69,8 @@ sh usb/haz_usb.sh
 ```
 
 Grábala con [Rufus](https://rufus.ie) en **modo Imagen DD** (en modo ISO, Rufus
-cambia el arranque de GRUB) o con `dd`. Borra el pendrive entero. Luego enciende
+cambia el arranque de GRUB) o con `dd`. Borra el pendrive entero, también lo que
+FalOS hubiera guardado en él. Luego enciende
 el ordenador con el pendrive puesto y elige el pendrive en el menú de arranque
 (F12 en un ThinkPad, F9 en muchos HP, F11 o F8 en muchas placas). Si no sale:
 
@@ -114,7 +117,7 @@ colores y tildes, lee el teclado español con AltGr y entiende unas pocas
 órdenes: `ayuda`, `limpia`, `hora`, `colores`, `encendido`, `memoria`,
 `programas`, `lanza`, `tareas`, `para`, `teclado`, `tablas`, `permisos`, `permite`, `prohibe`,
 `disco`, `lee`, `deja`, `niega`, `olvida`, `registro`, `cerrojo`, `bloquea`,
-`sin cerrojo`, `portapapeles`, `ping`, `red`, `dma`, `usb`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
+`sin cerrojo`, `portapapeles`, `ping`, `red`, `dma`, `usb`, `pendrive`, `cuelga`, `rompe`, `reto` y `reinicia`. Lo que escribes se corrige
 con las flechas, y las de arriba y abajo traen las órdenes de antes.
 
 Sabe cuánta memoria tiene y la reparte en páginas de 4 KB, que entrega
@@ -263,6 +266,44 @@ invitado
 lanza veces
 deja 1
 registro
+```
+
+#### Lo que guardas en el pendrive
+
+Si arrancas desde un pendrive, FalOS no escribe nada en él hasta que le pones
+contraseña con `cerrojo`. Desde entonces, lo que guardan tus programas y los
+permisos que das para siempre van al pendrive, cifrados. La próxima vez, al
+escribir la contraseña, está todo. Quien se lo lleve ve que hay algo guardado y
+cuántas veces se ha escrito, pero no qué, ni cuánto, ni los nombres de los
+archivos: las dos copias miden siempre lo mismo.
+
+La llave solo está en el pendrive envuelta con tu contraseña, por Argon2id con 19
+MiB y dos pasadas, lo que [pide OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+Todo va cifrado con ChaCha20 y firmado con BLAKE2b, y hay siempre dos copias: la
+nueva se escribe encima de la vieja, se le pide al pendrive que la asiente y se
+lee para comparar. Si quitas el pendrive a medias, o alguien cambia un bit, FalOS
+abre la otra y te lo dice. Si ninguna cuadra, no abre nada ni escribe encima.
+Byte a byte está en [PENDRIVE.md](PENDRIVE.md).
+
+Solo usa el pendrive del que arrancó. A cualquier otro que enchufes no le pide
+más que mirar si es el suyo. Si lo quitas, lo siguiente que guardes se queda en la
+memoria y se escribe cuando vuelva. Y si el que vuelve es una copia vieja del
+tuyo, no la toca. El invitado no escribe en él.
+
+`pendrive` dice qué hay, y `pendrive borra` llena de ceros las dos copias.
+
+```
+cerrojo
+lanza veces
+deja siempre 1
+pendrive
+reinicia
+```
+
+Para probarlo en QEMU con la imagen de la release:
+
+```bash
+qemu-system-x86_64 -m 512 -machine q35 -device intel-iommu,intremap=on -device qemu-xhci -drive if=none,id=lapiz,format=raw,file=falos.iso -device usb-storage,drive=lapiz
 ```
 
 `notas` es un bloc de notas que guarda cifrado con tu contraseña. La clave sale
@@ -460,6 +501,13 @@ disco y no puede estar, y le mete un byte raro a la lista de permisos para ver
 que FalOS la tira entera en vez de creérsela. Rompe la consola, la cuelga y la
 para, y mira que cada vez FalOS lanza otra y la orden siguiente funciona; y lanza
 `mandon`, que finge ser la consola, y mira que sus tres órdenes se rechazan.
+Arranca desde la imagen del pendrive por BIOS y mira que sin contraseña no cambia
+ni un byte. Se la pone, guarda, comprueba que solo ha cambiado el sitio reservado
+y que ahí no se lee ni un nombre de archivo, y lo abre desde fuera con la
+biblioteca de referencia de Argon2. Después arranca la misma imagen por UEFI,
+falla la contraseña, acierta, y mira que está todo. Quita el pendrive, lo vuelve a
+poner, rompe el controlador, le cambia un bit a una copia y luego a las dos,
+entra de invitado y prueba con un pendrive de solo lectura.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -518,9 +566,30 @@ vive en él.
   muchos portátiles. Al hacer clic en su ventana, QEMU se queda con el ratón, y
   lo suelta con la combinación que pone en su título. Ni ratones USB ni
   pantallas táctiles.
-- **Del USB, solo teclados, y con IOMMU.** Ni pendrives, ni ratones, ni nada que
-  vaya por un hub, y como mucho 4 aparatos a la vez. Solo controladores xHCI, los
-  de USB 3. Las luces del teclado no se encienden. Y solo se ha probado en QEMU.
+- **Del USB, solo teclados y el pendrive de FalOS, y con IOMMU.** Ni otros
+  pendrives, ni ratones, ni nada que vaya por un hub, y como mucho 4 aparatos a la
+  vez, de ellos un solo pendrive. Solo controladores xHCI, los de USB 3. Las luces
+  del teclado no se encienden. Y solo se ha probado en QEMU.
+- **Guardar en el pendrive pide muchas cosas.** Un IOMMU encendido, un puerto USB
+  sin hub, un pendrive de sectores de 512 bytes y que esté puesto al arrancar. Si
+  falta algo, FalOS lo dice y lo que guardes se borra al apagar. Caben 28 archivos
+  de 512 bytes: son los de los programas de FalOS, no los tuyos de otro sistema.
+- **No está probado en ningún pendrive de verdad.** Solo en el de QEMU, por USB 2
+  y USB 3, con dos controladores. Los de verdad tienen sus manías.
+- **El FalOS del pendrive no se comprueba.** Quien lo tenga un rato puede cambiarlo
+  por otro que se apunte tu contraseña, y devolvértelo. El cifrado protege de
+  quien se lo lleva, no de quien te lo devuelve. Y si un día tu FalOS no te pide
+  la contraseña, alguien ha borrado lo que guardaste.
+- **Una copia vieja entera no se nota.** Si alguien clona el pendrive y otro día te
+  pone el clon mientras FalOS está apagado, FalOS abre lo de aquel día. Va firmado
+  y es tuyo, solo que de antes. No tiene dónde apuntar cuál era la última.
+- **Borrar un pendrive no borra su memoria flash.** El pendrive puede guardar
+  copias de lo que se sobrescribe donde FalOS no llega. Van cifradas, pero con la
+  contraseña de entonces: si la cambias porque alguien la sabe, esas copias
+  siguen abriéndose con la vieja, y la llave de dentro es la misma.
+- **Si olvidas la contraseña, se acabó.** No hay otra forma de abrirlo. Y quien se
+  lo lleve puede probar contraseñas sin parar, en otro ordenador más rápido:
+  Argon2id lo hace caro, pero una corta cae.
 - **El código del teclado nuevo para a un aparato, no a una persona.** Quien está
   delante lo lee en la pantalla igual que tú. El que ya está enchufado al arrancar
   no pasa por ahí, así que un aparato trucado que lleve puesto desde antes
@@ -538,16 +607,18 @@ vive en él.
 - **El disco es el IDE de siempre, o la memoria.** El IDE es el que trae QEMU, no
   el de un portátil de ahora, y el formato es uno de texto propio: ni FAT, ni
   nada que escriba otro sistema. Desde el pendrive, el disco va en la memoria, y
-  lo que guardes se pierde al apagar: no escribe en el pendrive.
+  sin contraseña lo que guardes se pierde al apagar.
 - **El índice del disco cabe en dos sectores.** Son 1.024 bytes, y hoy quedan
   unos 480 libres. Si no cabe, el programa recibe un error y el disco no se toca.
 - **Un hueco del disco no se reutiliza.** Si el sitio de antes no vale, o se ha
   borrado con `olvida`, lo siguiente se escribe al final.
-- **Argon2id con 2 MB, no con 19.** [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- **En el disco y en `notas`, Argon2id va con 2 MB, no con 19.** [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
   pide al menos 19 MiB y dos pasadas. FalOS usa 2 MB y tres, porque es lo que un
   programa puede pedir hoy de una vez, y en QEMU sin aceleración ya tarda unos 3
-  segundos. Es mucho más caro de atacar que las 20.000 vueltas de ayer, pero
-  menos que lo que recomiendan. Y una contraseña corta se adivina igual.
+  segundos. Es mucho más caro de atacar que las 20.000 vueltas de antes, pero
+  menos que lo que recomiendan. En el pendrive sí son 19 MiB, porque de él depende
+  todo, y en QEMU sin aceleración cada intento tarda unos 20 segundos. Y una
+  contraseña corta se adivina igual.
 - **El cifrado no lo ha revisado nadie.** BLAKE2b, Argon2id y ChaCha20 dan lo
   mismo que las bibliotecas de referencia en todas las pruebas, pero están
   escritos a mano en Fal. Que coincidan no demuestra que no haya un fallo en un
@@ -739,7 +810,12 @@ vive en él.
   que quien teclea está viendo la pantalla.
 - [Tails](https://tails.net) arranca sin tocar el disco del ordenador y lo olvida
   todo al apagar. El modo invitado de FalOS es esa idea dentro del sistema de
-  siempre: entras sin contraseña, usas lo que hay, y no se escribe nada.
+  siempre: entras sin contraseña, usas lo que hay, y no se escribe nada. Y su
+  [almacenamiento persistente](https://tails.net/doc/persistent_storage/index.en.html)
+  guarda en el pendrive, cifrado, lo que tú elijas. Es una partición entera con
+  LUKS, caben todos tus archivos y lleva años en uso: para guardar algo
+  importante, usa ese. En FalOS cabe muy poco, pero todo va cifrado y firmado, y
+  el controlador del pendrive corre sin permisos y con el IOMMU vigilándolo.
 - [OpenSnitch](https://github.com/evilsocket/opensnitch) y
   [Little Snitch](https://www.obdev.at/products/littlesnitch) avisan cuando un
   programa quiere conectarse, pero viven encima de un sistema que se lo deja

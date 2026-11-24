@@ -1716,9 +1716,9 @@ jobs:
           fi
           grep -q "pantalla del cargador: 1024 por 768" pendrive.txt
           grep -q "disco en memoria: 4096" pendrive.txt
-          grep -q "veces leyó del disco: -3" pendrive.txt
-          grep -q "veces guardó en el disco: 2" pendrive.txt
-          grep -q "veces leyó del disco: 2" pendrive.txt
+          grep -q "veces leyó de la memoria: -3" pendrive.txt
+          grep -q "veces guardó en la memoria: 2" pendrive.txt
+          grep -q "veces leyó de la memoria: 2" pendrive.txt
           cmp falos.iso falos.iso.antes
           cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
           {
@@ -1763,6 +1763,247 @@ jobs:
           grep -a -q "iommu: encendido" uefi_iommu.txt
           grep -a -q "dma: no hay aparato de prueba" uefi_iommu.txt
           grep -a -q "usb: en marcha, enchufados 2" uefi_iommu.txt
+          grep -a -q "pendrive: nuevo" uefi_iommu.txt
+          cmp falos.iso falos.iso.antes
+
+      - name: Guardar en el pendrive, cifrado, y que sin la contraseña no se lea ni se escriba nada
+        run: |
+          cat > pendrive.py <<'FIN'
+          import hashlib, os, re, struct, subprocess, sys, time
+          from argon2.low_level import hash_secret_raw, Type
+
+          CLAVE = "larga y buena"
+          MARCA = b"FALPENDRIVE1\n"
+          IOMMU = ["-m", "1024", "-machine", "q35", "-device", "intel-iommu,intremap=on", "-device", "qemu-xhci,id=x"]
+          BIOS = []
+          UEFI = ["-drive", "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd",
+                  "-drive", "if=pflash,format=raw,file=variables.fd"]
+          DIRECTO = ["-cpu", "max", "-kernel", "sistema.bin", "-initrd", "disco.img"]
+
+          class Ordenador:
+              def __init__(self, nombre, imagen, *opciones):
+                  self.serie = nombre + ".txt"
+                  if os.path.exists(self.serie):
+                      os.remove(self.serie)
+                  self.qemu = subprocess.Popen(
+                      ["qemu-system-x86_64", *IOMMU, *opciones, "-display", "none",
+                       "-blockdev", "driver=raw,node-name=p,file.driver=file,file.filename=" + imagen,
+                       "-device", "usb-storage,bus=x.0,drive=p,id=pen",
+                       "-serial", "file:" + self.serie, "-monitor", "stdio", "-no-reboot"],
+                      stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+                  self.espera("pantalla lista", 1, 90)
+
+              def pide(self, orden, pausa):
+                  self.qemu.stdin.write((orden + "\n").encode())
+                  self.qemu.stdin.flush()
+                  time.sleep(pausa)
+
+              def teclea(self, texto, pausa=1):
+                  for letra in texto:
+                      self.pide("sendkey " + {" ": "spc"}.get(letra, letra), 0.15)
+                  self.pide("sendkey ret", pausa)
+
+              def dicho(self):
+                  if not os.path.exists(self.serie):
+                      return ""
+                  with open(self.serie, encoding="utf-8", errors="replace") as serie:
+                      return serie.read()
+
+              def espera(self, frase, veces=1, segundos=40):
+                  hasta = time.time() + segundos
+                  while time.time() < hasta:
+                      if self.dicho().count(frase) >= veces:
+                          return
+                      time.sleep(0.3)
+                  self.falla("no dice " + frase)
+
+              def falla(self, por_que):
+                  print(self.dicho())
+                  self.qemu.kill()
+                  sys.exit(por_que)
+
+              def entra(self, clave):
+                  time.sleep(1)
+                  self.teclea(clave)
+
+              def apaga(self):
+                  print(self.dicho())
+                  if re.search("X  [A-Z]", self.dicho()):
+                      self.falla("el pendrive ha tumbado a FalOS")
+                  self.pide("quit", 0.5)
+                  self.qemu.wait(20)
+
+          def lee(imagen):
+              with open(imagen, "rb") as archivo:
+                  return archivo.read()
+
+          def copia(origen, destino, cambios=()):
+              bytes_ = bytearray(lee(origen))
+              for donde in cambios:
+                  bytes_[bytes_.index(MARCA) + 4096 + donde] ^= 1
+              with open(destino, "wb") as archivo:
+                  archivo.write(bytes_)
+
+          def chacha20(clave, nonce, texto):
+              def gira(x, n):
+                  return ((x << n) | (x >> (32 - n))) & 0xFFFFFFFF
+
+              def cuarto(e, a, b, c, d):
+                  for q, r, s, n in ((a, b, d, 16), (c, d, b, 12), (a, b, d, 8), (c, d, b, 7)):
+                      e[q] = (e[q] + e[r]) & 0xFFFFFFFF
+                      e[s] = gira(e[s] ^ e[q], n)
+
+              claro = bytearray()
+              for i in range(0, len(texto), 64):
+                  estado = [0x61707865, 0x3320646E, 0x79622D32, 0x6B206574,
+                            *struct.unpack("<8I", clave), 1 + i // 64, *struct.unpack("<3I", nonce)]
+                  e = estado[:]
+                  for vuelta in range(10):
+                      for q in ((0, 4, 8, 12), (1, 5, 9, 13), (2, 6, 10, 14), (3, 7, 11, 15),
+                                (0, 5, 10, 15), (1, 6, 11, 12), (2, 7, 8, 13), (3, 4, 9, 14)):
+                          cuarto(e, *q)
+                  flujo = struct.pack("<16I", *[(x + y) & 0xFFFFFFFF for x, y in zip(e, estado)])
+                  claro += bytes(a ^ b for a, b in zip(texto[i:i + 64], flujo))
+              return bytes(claro)
+
+          def abre(ranura, clave):
+              assert ranura[:8] == b"FALPEN01" and ranura[12:16] == b"CER3"
+              huella = hash_secret_raw(clave.encode(), ranura[16:32], 2, 19456, 1, 64, Type.ID)
+              if huella[:32] != ranura[32:64]:
+                  return None
+              llave = bytes(a ^ b for a, b in zip(huella[32:], ranura[64:96]))
+              claves = hashlib.blake2b(b"pendrive:", key=llave, digest_size=64).digest()
+              firma = hashlib.blake2b(ranura[:108] + bytes(32) + ranura[140:], key=claves[32:], digest_size=32).digest()
+              assert firma == ranura[108:140], "la firma no cuadra"
+              claro = chacha20(claves[:32], ranura[96:108], ranura[512:])
+              archivos = {}
+              for i in range(0, 28 * 552, 552):
+                  if claro[i]:
+                      largo = claro[i + 32] * 256 + claro[i + 33]
+                      archivos[claro[i:i + 32].rstrip(b"\0").decode()] = claro[i + 40:i + 40 + largo]
+              return archivos
+
+          def ranuras(imagen):
+              todo = lee(imagen)
+              donde = todo.index(MARCA) + 4096
+              return [todo[donde + r * 16384:donde + (r + 1) * 16384] for r in (0, 1)]
+
+          assert lee("falos.iso").count(MARCA) == 1
+          copia("falos.iso", "lapiz.iso")
+          falos = Ordenador("pen_bios", "lapiz.iso", *BIOS)
+          falos.espera("pendrive: nuevo")
+          time.sleep(2)
+          falos.teclea("lanza veces", 3)
+          falos.teclea("deja siempre 1")
+          falos.espera("veces guardó en la memoria: 2")
+          if lee("lapiz.iso") != lee("falos.iso"):
+              falos.falla("ha escrito en el pendrive sin contraseña")
+          falos.teclea("cerrojo")
+          falos.teclea(CLAVE)
+          falos.teclea(CLAVE)
+          falos.espera("cerrojo.sis guardado", 1, 150)
+          falos.espera("pendrive: copia 2, 0")
+          time.sleep(2)
+          falos.teclea("lanza veces")
+          falos.espera("veces guardó en el pendrive: 2")
+          time.sleep(1)
+          falos.apaga()
+
+          original, escrito = lee("falos.iso"), lee("lapiz.iso")
+          donde = original.index(MARCA)
+          assert len(original) == len(escrito)
+          assert original[:donde + 4096] == escrito[:donde + 4096], "ha escrito fuera de su sitio"
+          assert original[donde + 36864:] == escrito[donde + 36864:], "ha escrito fuera de su sitio"
+          for nombre in (b"veces.dat", b"permisos.sis", b"cerrojo.sis", b"llave.sis", CLAVE.encode()):
+              assert escrito.count(nombre) == original.count(nombre), nombre
+          una, otra = [abre(r, CLAVE) for r in ranuras("lapiz.iso")]
+          assert set(una) == set(otra) == {"veces.dat", "permisos.sis"}, (una, otra)
+          assert una["veces.dat"] != otra["veces.dat"]
+          for r in ranuras("lapiz.iso"):
+              assert abre(r, "larga y buenas") is None
+
+          falos = Ordenador("pen_uefi", "lapiz.iso", *UEFI)
+          falos.espera("pendrive: cerrado, copia 3")
+          falos.entra("mala")
+          time.sleep(90)
+          if "abierto" in falos.dicho():
+              falos.falla("ha abierto el pendrive con otra contraseña")
+          falos.teclea(CLAVE)
+          falos.espera("pendrive: abierto, archivos 2, copia 3", 1, 150)
+          time.sleep(1)
+          falos.teclea("lanza veces")
+          falos.espera("veces leyó de la memoria: 2")
+          falos.espera("pendrive: copia 4, 0")
+          falos.espera("veces guardó en el pendrive: 2")
+          if "pide permiso" in falos.dicho():
+              falos.falla("no se acuerda del permiso para siempre")
+          time.sleep(1)
+          falos.pide("device_del pen", 2)
+          falos.teclea("lanza veces")
+          falos.espera("veces guardó en el pendrive: -17")
+          falos.pide("device_add usb-storage,bus=x.0,drive=p,id=otra_vez", 1)
+          falos.espera("pendrive: copia 6, 0")
+          time.sleep(1)
+          falos.teclea("rompe usb")
+          falos.espera("usb: DMA parado por el IOMMU en 1048576")
+          falos.espera("usb reiniciado, y van 1")
+          time.sleep(4)
+          falos.teclea("para 1")
+          falos.teclea("para 2")
+          falos.teclea("lanza veces")
+          falos.espera("veces guardó en el pendrive: 2", 2)
+          time.sleep(1)
+          falos.apaga()
+          assert all(abre(r, CLAVE) for r in ranuras("lapiz.iso"))
+
+          numeros = [struct.unpack("<I", r[8:12])[0] for r in ranuras("lapiz.iso")]
+          ultima = numeros.index(max(numeros))
+          copia("lapiz.iso", "una_tocada.iso", [ultima * 16384 + 9000])
+          falos = Ordenador("pen_una", "una_tocada.iso", *DIRECTO)
+          falos.entra(CLAVE)
+          falos.espera("pendrive: abierto, archivos 2, copia " + str(min(numeros)), 1, 150)
+          falos.apaga()
+
+          copia("lapiz.iso", "dos_tocadas.iso", [700, 16384 + 9000])
+          tocadas = lee("dos_tocadas.iso")
+          falos = Ordenador("pen_dos", "dos_tocadas.iso", *DIRECTO)
+          falos.entra(CLAVE)
+          falos.espera("pendrive: no cuadra", 1, 150)
+          time.sleep(1)
+          falos.teclea("lanza veces", 3)
+          falos.teclea("deja 1")
+          falos.espera("veces guardó en la memoria: 2")
+          if lee("dos_tocadas.iso") != tocadas:
+              falos.falla("ha escrito encima de un pendrive tocado")
+          falos.teclea("pendrive borra")
+          falos.espera("pendrive: borrado, 0")
+          falos.apaga()
+          borrado = lee("dos_tocadas.iso")
+          assert borrado[donde + 4096:donde + 36864] == bytes(32768)
+          assert borrado[:donde + 4096] + borrado[donde + 36864:] == tocadas[:donde + 4096] + tocadas[donde + 36864:]
+
+          copia("lapiz.iso", "invitado.iso")
+          falos = Ordenador("pen_invitado", "invitado.iso", *DIRECTO)
+          time.sleep(1)
+          falos.teclea("")
+          falos.espera("modo invitado")
+          falos.teclea("lanza veces", 3)
+          falos.teclea("deja 1")
+          falos.espera("veces guardó en la memoria: 2")
+          falos.teclea("pendrive borra", 3)
+          falos.apaga()
+          assert lee("invitado.iso") == lee("lapiz.iso"), "el invitado ha escrito en el pendrive"
+
+          falos = Ordenador("pen_solo_leer", "lapiz.iso,read-only=on", *DIRECTO)
+          falos.entra(CLAVE)
+          falos.espera("pendrive: abierto", 1, 150)
+          time.sleep(1)
+          falos.teclea("lanza veces")
+          falos.espera("veces guardó en el pendrive: -19", 1, 60)
+          falos.apaga()
+          FIN
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd variables.fd
+          /tmp/argon/bin/python pendrive.py
 
       - name: Apuntar con qué Fal se ha hecho
         run: git -C /tmp/fal rev-parse HEAD > fal.txt
@@ -1815,7 +2056,7 @@ jobs:
           cat > notas.md <<FIN
           Lo ha hecho GitHub desde el commit $GITHUB_SHA, después de pasar todas las pruebas de [arranca.yml](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID). No sale de mi ordenador.
 
-          - **falos.iso**: para un pendrive. Grábala con [Rufus](https://rufus.ie) en modo Imagen DD, o con dd. Arranca por BIOS y por UEFI, sin Secure Boot, y no toca el disco del ordenador.
+          - **falos.iso**: para un pendrive. Grábala con [Rufus](https://rufus.ie) en modo Imagen DD, o con dd. Arranca por BIOS y por UEFI, sin Secure Boot, y no toca el disco del ordenador. Si le pones contraseña con \`cerrojo\`, lo que guardes se queda en el pendrive, cifrado. Grabarla otra vez lo borra.
           - **sistema.bin** y **disco.img**: para QEMU. \`qemu-system-x86_64 -kernel sistema.bin -drive file=disco.img,format=raw,if=ide\`, y con \`-nic user,model=ne2k_pci\` tiene red.
           - **fal-linux**, **fal-windows.exe** y **fal-mac**: el compilador de Fal con el que se hizo, del commit $(cat fal.txt) de [Fal](https://github.com/NissanBoss/Fal). Con él compilas tus programas para meterlos en el disco.
 

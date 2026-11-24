@@ -34,6 +34,7 @@ disco_lo_usa es 0
 aviso_red_hasta es 0
 red_lo_usa es 0
 disco_guardaba es falso
+disco_fallaba es falso
 segundos_del_dia es 0
 control es nada
 CURSOR_EN es 1
@@ -384,8 +385,13 @@ funcion pide_pagina
 fin
 
 funcion pide_dos_megas
-    seguidas es cociente con DOS_MEGAS y PAGINA
-    primera es seguidas mas 1
+    devuelve pide_seguidas con 1
+fin
+
+funcion pide_seguidas con dobles
+    salto es cociente con DOS_MEGAS y PAGINA
+    seguidas es dobles por salto
+    primera es salto mas 1
     mientras primera mas seguidas menos 1 es menor o igual que total_paginas
         libres es verdadero
         i es 0
@@ -402,7 +408,7 @@ funcion pide_dos_megas
                 i es i mas 1
             fin
             direccion es (primera menos 1) por PAGINA
-            todo es region con direccion y (cociente con DOS_MEGAS y 8) y 8
+            todo es region con direccion y dobles por (cociente con DOS_MEGAS y 8) y 8
             i es 1
             mientras i es menor o igual que largo de todo
                 elemento i de todo es 0
@@ -410,7 +416,7 @@ funcion pide_dos_megas
             fin
             devuelve direccion
         fin
-        primera es primera mas seguidas
+        primera es primera mas salto
     fin
     devuelve 0
 fin
@@ -1473,6 +1479,8 @@ O_RED es 31
 O_TABLAS es 32
 O_DMA es 33
 O_USB es 34
+O_PENDRIVE es 35
+O_BORRA_PENDRIVE es 36
 
 CONTROLADOR es 32
 CONTROLADOR_DATOS es 33
@@ -1554,6 +1562,7 @@ PIDE_MEMORIA es 16
 CONECTA es 17
 PIDE_ORDEN es 18
 AVISA_TECLADO es 19
+AVISA_PENDRIVE es 20
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -1610,6 +1619,9 @@ TOCADO es 0 menos 13
 SIN_CIFRAR es 0 menos 14
 EN_INVITADO es 0 menos 15
 REPETIDO es 0 menos 16
+FALTA_PENDRIVE es 0 menos 17
+OTRO_PENDRIVE es 0 menos 18
+NO_QUEDA es 0 menos 19
 SIN_CONTROLADOR es 0 menos 9
 MAS_CORTO es 1
 TOPE_BUZON es 4096
@@ -1728,6 +1740,10 @@ R_USB_NUEVO es 36
 R_USB_BUENO es 37
 R_USB_MALO es 38
 R_USB_DMA es 39
+R_PEN_ABRE es 40
+R_PEN_TOCADO es 41
+R_PEN_FALLO es 42
+R_PEN_BORRADO es 43
 
 TOPE_LLAVE es 36
 MARCA_LLAVE es "LLA1"
@@ -1781,6 +1797,9 @@ VIEJO_CERROJO es 52
 MARCA_CERROJO es "CER2"
 BLOQUES_CERROJO es 2040
 PASADAS_CERROJO es 3
+BLOQUES_PENDRIVE es 19456
+PASADAS_PENDRIVE es 2
+DOBLES_PENDRIVE es 10
 PLAZO_BLOQUEO es 30000
 SIN_CLAVE es 0
 CLAVE_NUEVA es 1
@@ -1813,7 +1832,19 @@ pozo_bytes es region con pozo_en mas 1024 y CABEN_SORBOS por 8 mas 32
 taller_azar es pozo_en mas 2048
 sorbos es 0
 vueltas_azar es 0
-memoria_cerrojo es pide_dos_megas
+memoria_cerrojo es 0
+pen_zona es 0
+pen_posible es falso
+si usb_como es USB_LISTO y modulo_hasta es mayor que 0
+    memoria_cerrojo es pide_seguidas con DOBLES_PENDRIVE
+    si memoria_cerrojo no es igual a 0
+        pen_zona es pide_dos_megas
+        pen_posible es pen_zona no es igual a 0
+    fin
+fin
+si memoria_cerrojo es 0
+    memoria_cerrojo es pide_dos_megas
+fin
 hay_cerrojo es falso
 bloqueado es falso
 modo_clave es SIN_CLAVE
@@ -2440,9 +2471,13 @@ funcion pinta_aviso_disco
     pon_en_vista con 1 y 25 y marca mas 32
     nombre es nombre_de con disco_lo_usa
     pon_texto_en_vista con 1 y 26 y nombre y marca
-    si disco_guardaba y invitado
+    si disco_fallaba
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " no queda guardado " y marca
+    si no si disco_guardaba y no (guarda_de_verdad)
         pon_texto_en_vista con 1 y 26 mas largo de nombre y " guarda en memoria " y marca
-    si no si invitado
+    si no si disco_guardaba y disco_en_memoria
+        pon_texto_en_vista con 1 y 26 mas largo de nombre y " guarda en el pendrive " y marca
+    si no si invitado o disco_en_memoria
         pon_texto_en_vista con 1 y 26 mas largo de nombre y " lee de la memoria " y marca
     si no si disco_guardaba
         pon_texto_en_vista con 1 y 26 mas largo de nombre y " escribe en el disco " y marca
@@ -2845,7 +2880,7 @@ fin
 
 funcion se_puede_correr con t
     si t es CONSOLA
-        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_orden o hay_encargos o falta_codigo o disco_listo o red_lista o (despierta_consola_en no es igual a 0 y tics es mayor o igual que despierta_consola_en)
+        devuelve no esperando o entra no es igual a sale o hay_cerradas o hay_orden o hay_encargos o falta_codigo o disco_listo o red_lista o pen_listo o (despierta_consola_en no es igual a 0 y tics es mayor o igual que despierta_consola_en)
     fin
     si (elemento t de estados_tarea) es DORMIDA y tics es mayor o igual que elemento t de hora_de_despertar
         elemento t de estados_tarea es EN_MARCHA
@@ -2919,7 +2954,7 @@ funcion avisa_a con t y aviso
 fin
 
 funcion cierra_tarea con t y causa
-    comparte hay_cerradas y peticion_abierta y disco_listo y resultado_disco y foco y peticion_red y red_lista y resultado_red
+    comparte hay_cerradas y peticion_abierta y disco_listo y resultado_disco y foco y peticion_red y red_lista y resultado_red y pen_presente y peticion_pen y pen_listo y resultado_pen
     si foco es t
         foco es CONSOLA
         ensucia
@@ -2937,6 +2972,14 @@ funcion cierra_tarea con t y causa
         peticion_red es falso
         resultado_red es SIN_CONTROLADOR
         red_lista es verdadero
+    fin
+    si t es TAREA_USB
+        pen_presente es falso
+        si peticion_pen
+            peticion_pen es falso
+            resultado_pen es SIN_CONTROLADOR
+            pen_listo es verdadero
+        fin
     fin
     para cada otra desde 1 hasta MAX_TAREAS
         estado es elemento otra de estados_tarea
@@ -3032,7 +3075,7 @@ funcion rechaza_a_actual
 fin
 
 funcion aguarda_aviso con respuesta
-    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer y raton_sin_leer y peticion_red y red_lista y resultado_red
+    comparte peticion_abierta y disco_listo y resultado_disco y tecla_sin_leer y raton_sin_leer y peticion_red y red_lista y resultado_red y peticion_pen y pen_listo y resultado_pen
     yo es actual
     si no (es_controlador con yo)
         devuelve rechaza_a_actual
@@ -3046,6 +3089,11 @@ funcion aguarda_aviso con respuesta
         resultado_red es respuesta
         peticion_red es falso
         red_lista es verdadero
+    fin
+    si yo es TAREA_USB y peticion_pen y respuesta no es igual a SIN_RESPUESTA
+        resultado_pen es respuesta
+        peticion_pen es falso
+        pen_listo es verdadero
     fin
     aviso es elemento yo de avisos
     si aviso no es igual a 0
@@ -3064,6 +3112,64 @@ funcion aguarda_aviso con respuesta
 fin
 
 TOPE_DE_PUERTOS es 64
+PEN_NADA es 0
+PEN_NUEVO es 1
+PEN_CERRADO es 2
+PEN_ABIERTO es 3
+PEN_ROTO es 4
+PEN_OTRO es 5
+PIDE_LEE es 100
+PIDE_DISCO es 120
+PIDE_ESCRIBE es 140
+PIDE_ASIENTA es 160
+HOJA_PENDRIVE es 24
+MIDE_RANURA es 16384
+MIDE_SOBRE es 512
+MIDE_CARGA es 15872
+MIDE_ENTRADA es 552
+ENTRADAS_PENDRIVE es 28
+MARCA_PENDRIVE es "FALPEN01"
+PARA_EL_PENDRIVE es "pendrive:"
+PLAZO_PENDRIVE es 6000
+pen_copia es region con pen_zona y MIDE_RANURA
+pen_sobre es region con pen_zona mas MIDE_RANURA y MIDE_RANURA
+pen_lectura es region con pen_zona mas 2 por MIDE_RANURA y MIDE_RANURA
+pen_apunte es region con pen_zona mas 3 por MIDE_RANURA y 1024
+pen_primera es region con pen_zona mas 3 por MIDE_RANURA mas PAGINA y PAGINA
+pen_firma es region con pen_zona mas 3 por MIDE_RANURA mas 2 por PAGINA y 32
+pen_estado es PEN_NADA
+pen_presente es falso
+pen_veces es 0
+pen_validada es 0
+pen_puerto es 0
+pen_seq es 0
+pen_ranura es 1
+pen_mejor es 0
+pen_restaurando es falso
+pen_debe es falso
+peticion_pen es falso
+pen_listo es falso
+resultado_pen es 0
+
+funcion recibe_pendrive con puerto y enchufado
+    comparte pen_presente y pen_veces y pen_puerto y hay_encargos
+    si actual no es igual a TAREA_USB
+        devuelve rechaza_a_actual
+    fin
+    si puerto es menor que 1 o puerto es mayor que TOPE_DE_PUERTOS o enchufado es menor que 0 o enchufado es mayor que 1
+        devuelve rechaza_a_actual
+    fin
+    pen_presente es enchufado es 1
+    si pen_presente
+        pen_veces es pen_veces mas 1
+        pen_puerto es puerto
+        si pen_debe
+            hay_encargos es verdadero
+        fin
+    fin
+    devuelve 0
+fin
+
 USB_NADA es 0
 USB_ACEPTADO es 1
 USB_ESPERA es 2
@@ -3469,6 +3575,8 @@ funcion al_llamar
         elemento EN_RAX de marco es pide_red con a y (elemento EN_RSI de marco)
     si no si numero es AVISA_TECLADO
         elemento EN_RAX de marco es recibe_teclado con a y (elemento EN_RSI de marco)
+    si no si numero es AVISA_PENDRIVE
+        elemento EN_RAX de marco es recibe_pendrive con a y (elemento EN_RSI de marco)
     si no si numero es PIDE_ORDEN
         elemento EN_RAX de marco es recibe_orden con a y (elemento EN_RSI de marco)
     si no
@@ -3774,7 +3882,7 @@ funcion recibe_orden con codigo y cuantos
     si t no es igual a TAREA_CONSOLA
         devuelve rechaza_a_actual
     fin
-    si codigo es menor que 1 o codigo es mayor que O_USB o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
+    si codigo es menor que 1 o codigo es mayor que O_BORRA_PENDRIVE o cuantos es menor que 0 o cuantos es mayor que LARGO_ORDEN
         devuelve rechaza_a_actual
     fin
     mesa es region con (elemento t de mesas) y LARGO_ORDEN
@@ -3888,6 +3996,10 @@ funcion haz_la_orden
         orden_dma
     si no si codigo es O_USB
         orden_usb
+    si no si codigo es O_PENDRIVE
+        orden_pendrive
+    si no si codigo es O_BORRA_PENDRIVE
+        borra_pendrive
     fin
     vuelve_la_consola
 fin
@@ -4148,7 +4260,19 @@ funcion protegido con frase y si_esta
     pinta_linea con frase
 fin
 
+avisado_de_reiniciar es falso
+
 funcion reinicia
+    comparte avisado_de_reiniciar
+    si pen_debe y no avisado_de_reiniciar
+        avisado_de_reiniciar es verdadero
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  Lo último no ha llegado al pendrive, y si reinicio se pierde. Enchúfalo,"
+        pinta_linea con "  o repite reinicia si te da igual."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        devuelve nada
+    fin
     desactiva_interrupciones
     vacia_memoria_invitado
     olvida_llave
@@ -6147,12 +6271,17 @@ funcion linea_de_puerto con p y clase y quien
         pon_color con AMARILLO y NEGRO
         pinta_linea con "teclado, y no le hago caso hasta que teclee el código"
     si no si clase es 2
-        pinta_linea con "no es un teclado, y no lo uso"
+        pinta_linea con "no es un teclado ni mi pendrive, y no lo uso"
     si no si clase es 3
         pon_color con AMARILLO y NEGRO
         pinta_linea con "no me entiendo con él"
     si no si clase es 4
         pinta_linea con "no cabe: solo llevo 4 aparatos a la vez"
+    si no si clase es 5
+        pon_color con VERDE_CLARO y NEGRO
+        pinta_linea con "el pendrive de FalOS"
+    si no si clase es 6
+        pinta_linea con "un pendrive, y no es el de FalOS: no lo toco"
     si no
         pinta_linea con "recién enchufado"
     fin
@@ -6334,12 +6463,619 @@ funcion orden_red
     escribe tramas_enviadas
 fin
 
+funcion pide_al_pen con pedido
+    comparte peticion_pen y pen_listo y esperando
+    recoge_tareas con falso
+    desactiva_interrupciones
+    si no pen_presente
+        activa_interrupciones
+        devuelve FALTA_PENDRIVE
+    fin
+    si pedido es mayor que PIDE_DISCO y pen_veces no es igual a pen_validada
+        activa_interrupciones
+        devuelve OTRO_PENDRIVE
+    fin
+    pen_listo es falso
+    peticion_pen es verdadero
+    limite es tics mas PLAZO_PENDRIVE
+    avisa_a con TAREA_USB y pedido
+    mientras no pen_listo
+        si tics es mayor que limite y sigue_viva con TAREA_USB
+            cierra_tarea con TAREA_USB y SE_COLGO
+        si no
+            esperando es verdadero
+            espera_interrupcion
+            esperando es falso
+            desactiva_interrupciones
+        fin
+    fin
+    pen_listo es falso
+    activa_interrupciones
+    si resultado_pen es 0
+        devuelve 0
+    fin
+    devuelve NO_QUEDA
+fin
+
+funcion hoja_del_pen
+    devuelve region con (elemento HOJA_PENDRIVE de usb_hojas) y PAGINA
+fin
+
+funcion usb_ocupado
+    buzon es region con (elemento TAREA_USB de buzones) y 1024 y 4
+    si (elemento 2 de buzon) es 0
+        devuelve verdadero
+    fin
+    para cada p desde 1 hasta TOPE_DE_PUERTOS
+        base es 512 mas (p menos 1) por 4
+        si (elemento base mas 4 de buzon) no es igual a 0 y (elemento base mas 1 de buzon) es 0
+            devuelve verdadero
+        fin
+    fin
+    devuelve falso
+fin
+
+funcion espera_al_pendrive
+    comparte esperando
+    mientras no pen_presente y usb_como es USB_LISTO y tics es menor que usb_desde mas 1000
+        si tics es mayor que usb_desde mas 200
+            si no usb_ocupado
+                devuelve nada
+            fin
+        fin
+        recoge_tareas con falso
+        desactiva_interrupciones
+        esperando es verdadero
+        espera_interrupcion
+        esperando es falso
+        activa_interrupciones
+    fin
+fin
+
+funcion el_mismo_disco
+    si (pide_al_pen con PIDE_DISCO) no es igual a 0
+        devuelve falso
+    fin
+    hoja es hoja_del_pen
+    i es 1
+    mientras i es menor o igual que PAGINA
+        si (elemento i de hoja) no es igual a (elemento i de pen_primera)
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion lleva_marca con trozo
+    i es 1
+    para cada letra en MARCA_PENDRIVE
+        si (elemento i de trozo) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion lee_ranura con r
+    para cada p desde 0 hasta 3
+        hecho es pide_al_pen con PIDE_LEE mas 1 mas r por 4 mas p
+        si hecho es menor que 0
+            devuelve hecho
+        fin
+        copia_region con pen_lectura y p por PAGINA mas 1 y hoja_del_pen y 1 y PAGINA
+    fin
+    devuelve 0
+fin
+
+funcion claves_del_pendrive
+    mensaje es region con llave_en mas 192 y 64
+    i es 0
+    para cada b en PARA_EL_PENDRIVE
+        i es i mas 1
+        elemento i de mensaje es b
+    fin
+    blake2b con taller_llave y mensaje y i y llave y claves_programa y 64
+    para cada j desde 1 hasta 64
+        elemento j de mensaje es 0
+    fin
+fin
+
+funcion firma_de con trozo
+    blake2b con taller_llave y trozo y MIDE_RANURA y (region con llave_en mas 96 y 32) y firma_vista y 32
+fin
+
+funcion ranura_buena
+    si no (lleva_marca con pen_lectura)
+        devuelve falso
+    fin
+    copia_region con pen_firma y 1 y pen_lectura y 109 y 32
+    para cada i desde 109 hasta 140
+        elemento i de pen_lectura es 0
+    fin
+    claves_del_pendrive
+    firma_de con pen_lectura
+    distinto es 0
+    para cada i desde 1 hasta 32
+        distinto es distinto mas o_exclusivo con (elemento i de firma_vista) y (elemento i de pen_firma)
+    fin
+    olvida_claves_programa
+    devuelve distinto es 0
+fin
+
+funcion valida_pendrive
+    comparte pen_validada
+    si no pen_presente
+        devuelve FALTA_PENDRIVE
+    fin
+    si pen_veces es pen_validada
+        devuelve 0
+    fin
+    van es pen_veces
+    si no el_mismo_disco
+        devuelve OTRO_PENDRIVE
+    fin
+    si pen_seq es 0
+        para cada r desde 0 hasta 1
+            si (pide_al_pen con PIDE_LEE mas 1 mas r por 4) no es igual a 0 o (lleva_marca con hoja_del_pen)
+                devuelve OTRO_PENDRIVE
+            fin
+        fin
+    si no
+        si (lee_ranura con pen_ranura) es menor que 0
+            devuelve OTRO_PENDRIVE
+        fin
+        si no ranura_buena
+            devuelve OTRO_PENDRIVE
+        fin
+        si (le32_de con pen_lectura y 9) no es igual a pen_seq
+            devuelve OTRO_PENDRIVE
+        fin
+    fin
+    pen_validada es van
+    devuelve 0
+fin
+
+funcion manda_al_pen con r y p
+    copia_region con hoja_del_pen y 1 y pen_sobre y p por PAGINA mas 1 y PAGINA
+    devuelve pide_al_pen con PIDE_ESCRIBE mas 1 mas r por 4 mas p
+fin
+
+funcion escribe_ranura con r
+    comparte pen_seq y pen_ranura
+    i es 1
+    mientras i es menor o igual que MIDE_SOBRE
+        elemento i de pen_sobre es 0
+        i es i mas 1
+    fin
+    i es 1
+    para cada letra en MARCA_PENDRIVE
+        elemento i de pen_sobre es letra
+        i es i mas 1
+    fin
+    pon_le32 con pen_sobre y 9 y pen_seq mas 1
+    copia_region con pen_sobre y 13 y cerrojo y 1 y TOPE_CERROJO
+    saca_sal con pen_sobre y 97
+    para cada i desde 109 hasta 112
+        elemento i de pen_sobre es 0
+    fin
+    copia_region con pen_sobre y MIDE_SOBRE mas 1 y pen_copia y 1 y MIDE_CARGA
+    claves_del_pendrive
+    chacha20 con taller_chacha y claves_programa y (region con pen_zona mas MIDE_RANURA mas 96 y 12) y pen_sobre y MIDE_SOBRE mas 1 y MIDE_CARGA
+    firma_de con pen_sobre
+    copia_region con pen_sobre y 109 y firma_vista y 1 y 32
+    olvida_claves_programa
+    para cada p desde 1 hasta 3
+        hecho es manda_al_pen con r y p
+        si hecho es menor que 0
+            devuelve hecho
+        fin
+    fin
+    hecho es pide_al_pen con PIDE_ASIENTA
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    hecho es manda_al_pen con r y 0
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    hecho es pide_al_pen con PIDE_ASIENTA
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    hecho es lee_ranura con r
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    i es 1
+    mientras i es menor o igual que MIDE_RANURA
+        si (elemento i de pen_lectura) no es igual a (elemento i de pen_sobre)
+            devuelve NO_QUEDA
+        fin
+        i es i mas 1
+    fin
+    pen_seq es pen_seq mas 1
+    pen_ranura es r
+    devuelve 0
+fin
+
+funcion escribe_pendrive con las_dos
+    comparte pen_debe
+    si no hay_llave o no hay_cerrojo
+        devuelve SIN_LLAVE
+    fin
+    hecho es valida_pendrive
+    si hecho es mayor o igual que 0
+        hecho es escribe_ranura con 1 menos pen_ranura
+    fin
+    si hecho es mayor o igual que 0 y las_dos
+        hecho es escribe_ranura con 1 menos pen_ranura
+    fin
+    pen_debe es hecho es menor que 0
+    si pen_debe
+        desactiva_interrupciones
+        apunta con R_PEN_FALLO y "FalOS" y BLANCO y 0
+        activa_interrupciones
+    fin
+    al_serie con "pendrive: copia "
+    escribe pen_seq sin salto
+    al_serie con ", "
+    escribe hecho
+    devuelve hecho
+fin
+
+funcion se_llama con trozo y base y nombre
+    i es 1
+    para cada letra en nombre
+        si (elemento base mas i de trozo) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    si i es mayor que 32
+        devuelve verdadero
+    fin
+    devuelve (elemento base mas i de trozo) es 0
+fin
+
+funcion entrada_del_pen con nombre_mide
+    para cada e desde 0 hasta ENTRADAS_PENDRIVE menos 1
+        base es e por MIDE_ENTRADA
+        igual_todo es verdadero
+        i es 1
+        mientras igual_todo y i es menor o igual que 32
+            suya es 0
+            si i es menor o igual que nombre_mide
+                suya es elemento i de pen_apunte
+            fin
+            si (elemento base mas i de pen_copia) no es igual a suya
+                igual_todo es falso
+            fin
+            i es i mas 1
+        fin
+        si igual_todo
+            devuelve base
+        fin
+    fin
+    devuelve 0 menos 1
+fin
+
+funcion aplica_al_pendrive con peticion
+    nombre_mide es 0
+    mientras nombre_mide es menor que 32 y (elemento nombre_mide mas 1 de pen_apunte) no es igual a 0
+        nombre_mide es nombre_mide mas 1
+    fin
+    si nombre_mide es 0 o (se_llama con pen_apunte y 0 y "llave.sis") o (se_llama con pen_apunte y 0 y "cerrojo.sis")
+        devuelve 0
+    fin
+    base es entrada_del_pen con nombre_mide
+    si peticion es ORDEN_OLVIDA y base es menor que 0
+        devuelve 0
+    fin
+    si base es menor que 0
+        base es entrada_del_pen con 0
+    fin
+    si base es menor que 0
+        devuelve LLENO
+    fin
+    i es 1
+    mientras i es menor o igual que MIDE_ENTRADA
+        elemento base mas i de pen_copia es 0
+        i es i mas 1
+    fin
+    si peticion es ORDEN_GUARDA
+        copia_region con pen_copia y base mas 1 y pen_apunte y 1 y nombre_mide
+        elemento base mas 33 de pen_copia es elemento 41 de pen_apunte
+        elemento base mas 34 de pen_copia es elemento 42 de pen_apunte
+        copia_region con pen_copia y base mas 41 y pen_apunte y 513 y 512
+    fin
+    si pen_estado es PEN_ABIERTO
+        devuelve escribe_pendrive con peticion es ORDEN_OLVIDA
+    fin
+    devuelve 0
+fin
+
+funcion cuantos_en_el_pen
+    cuantos es 0
+    para cada e desde 0 hasta ENTRADAS_PENDRIVE menos 1
+        si (elemento e por MIDE_ENTRADA mas 1 de pen_copia) no es igual a 0
+            cuantos es cuantos mas 1
+        fin
+    fin
+    devuelve cuantos
+fin
+
+funcion vuelca_pendrive
+    comparte pen_restaurando
+    pen_restaurando es verdadero
+    malos es 0
+    para cada e desde 0 hasta ENTRADAS_PENDRIVE menos 1
+        base es e por MIDE_ENTRADA
+        si (elemento base mas 1 de pen_copia) no es igual a 0
+            recoge_tareas con falso
+            buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+            copia_region con buzon y 1 y pen_copia y base mas 1 y 32
+            elemento 33 de buzon es 0
+            elemento 41 de buzon es elemento base mas 33 de pen_copia
+            elemento 42 de buzon es elemento base mas 34 de pen_copia
+            copia_region con buzon y 513 y pen_copia y base mas 41 y 512
+            si (pide_al_disco con ORDEN_GUARDA) es menor que 0
+                malos es malos mas 1
+            fin
+        fin
+    fin
+    pen_restaurando es falso
+    devuelve malos
+fin
+
+funcion abre_pendrive
+    comparte pen_estado y pen_seq y pen_ranura y pen_validada
+    van es pen_veces
+    buena es 0 menos 1
+    para cada vuelta desde 0 hasta 1
+        si buena es menor que 0
+            r es pen_mejor
+            si vuelta es 1
+                r es 1 menos pen_mejor
+            fin
+            si (lee_ranura con r) es 0
+                si ranura_buena
+                    buena es r
+                fin
+            fin
+        fin
+    fin
+    si buena es menor que 0
+        pen_estado es PEN_ROTO
+        desactiva_interrupciones
+        apunta con R_PEN_TOCADO y "FalOS" y BLANCO y 0
+        activa_interrupciones
+        pinta_linea con ""
+        pon_color con ROJO_CLARO y NEGRO
+        pinta_linea con "  La contraseña es buena, pero lo del pendrive no cuadra: se ha estropeado"
+        pinta_linea con "  o alguien lo ha tocado. No lo abro, ni escribo encima."
+        pon_color con GRIS y NEGRO
+        pinta_linea con "  Para borrarlo y empezar de cero: pendrive borra"
+        pinta_linea con ""
+        al_serie con "pendrive: no cuadra"
+        escribe ""
+        devuelve nada
+    fin
+    claves_del_pendrive
+    chacha20 con taller_chacha y claves_programa y (region con pen_zona mas 2 por MIDE_RANURA mas 96 y 12) y pen_lectura y MIDE_SOBRE mas 1 y MIDE_CARGA
+    olvida_claves_programa
+    copia_region con pen_copia y 1 y pen_lectura y MIDE_SOBRE mas 1 y MIDE_CARGA
+    pen_seq es le32_de con pen_lectura y 9
+    pen_ranura es buena
+    pen_validada es van
+    pen_estado es PEN_ABIERTO
+    desactiva_interrupciones
+    apunta con R_PEN_ABRE y "FalOS" y BLANCO y cuantos_en_el_pen
+    activa_interrupciones
+    si buena no es igual a pen_mejor
+        pinta_linea con ""
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  La última copia del pendrive está a medias o la han tocado, así que he"
+        pinta_linea con "  abierto la de antes."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+    fin
+    malos es vuelca_pendrive
+    si malos es mayor que 0
+        pon_color con AMARILLO y NEGRO
+        pinta con "  No me caben en la memoria "
+        pinta_numero con malos
+        pinta_linea con " archivos de los que hay en el pendrive."
+        pon_color con GRIS y NEGRO
+    fin
+    al_serie con "pendrive: abierto, archivos "
+    escribe cuantos_en_el_pen sin salto
+    al_serie con ", copia "
+    escribe pen_seq
+    lee_siempre
+fin
+
+funcion mira_el_pendrive
+    comparte pen_estado y pen_mejor y pen_validada y hay_cerrojo
+    si no pen_posible
+        devuelve nada
+    fin
+    copia_region con pen_primera y 1 y (region con modulo_desde y PAGINA) y 1 y PAGINA
+    espera_al_pendrive
+    si no pen_presente
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  No encuentro el pendrive del que arranqué, así que lo que guardes se"
+        pinta_linea con "  borra al apagar. Escribe pendrive para saber más."
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+        al_serie con "pendrive: no está"
+        escribe ""
+        devuelve nada
+    fin
+    van es pen_veces
+    pen_estado es PEN_ROTO
+    si no el_mismo_disco
+        pen_estado es PEN_OTRO
+        al_serie con "pendrive: otro"
+        escribe ""
+        devuelve nada
+    fin
+    mejor es 0 menos 1
+    mejor_seq es 0
+    para cada r desde 0 hasta 1
+        si (pide_al_pen con PIDE_LEE mas 1 mas r por 4) es menor que 0
+            al_serie con "pendrive: no se lee"
+            escribe ""
+            devuelve nada
+        fin
+        hoja es hoja_del_pen
+        si (lleva_marca con hoja) y (elemento 16 de hoja) es 51
+            seq es le32_de con hoja y 9
+            si mejor es menor que 0 o seq es mayor que mejor_seq
+                mejor es r
+                mejor_seq es seq
+                copia_region con cerrojo y 1 y hoja y 13 y TOPE_CERROJO
+            fin
+        fin
+    fin
+    pen_validada es van
+    si mejor es menor que 0
+        pen_estado es PEN_NUEVO
+        al_serie con "pendrive: nuevo"
+        escribe ""
+        devuelve nada
+    fin
+    pen_mejor es mejor
+    pen_estado es PEN_CERRADO
+    hay_cerrojo es verdadero
+    al_serie con "pendrive: cerrado, copia "
+    escribe mejor_seq
+    desactiva_interrupciones
+    bloquea_ya con AL_ARRANCAR
+    activa_interrupciones
+fin
+
+funcion orden_pendrive
+    si no disco_en_memoria
+        pinta_linea con "  No he arrancado desde un pendrive: lo que guardas va al disco."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    si usb_como no es igual a USB_LISTO
+        pinta_linea con "  No puedo escribir en el pendrive: lo que guardes se borra al apagar."
+        pinta_por_que_no_usb
+        pinta_linea con ""
+        devuelve nada
+    fin
+    si no pen_posible
+        pinta_linea con "  No me queda memoria para guardar en el pendrive con seguridad."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    si pen_estado es PEN_NADA
+        pinta_linea con "  Al arrancar no lo encontré, así que hasta que reinicies con él puesto"
+        pinta_linea con "  lo que guardes se borra al apagar. Va en un puerto USB, sin hub."
+    si no si pen_estado es PEN_NUEVO
+        pinta_linea con "  No he escrito nada en él, y sin contraseña no lo haré. Pónsela con"
+        pinta_linea con "  cerrojo, y lo que guardes irá al pendrive, cifrado."
+    si no si pen_estado es PEN_CERRADO
+        pinta_linea con "  Lo que hay está cifrado, y sin la contraseña no lo abro."
+    si no si pen_estado es PEN_ROTO
+        pinta_linea con "  Lo que hay no cuadra o no se lee, así que no lo abro ni escribo encima."
+        pinta_linea con "  Para borrarlo y empezar de cero: pendrive borra"
+    si no si pen_estado es PEN_OTRO
+        pinta_linea con "  El que hay puesto no es el que usé para arrancar, y no lo toco."
+    si no
+        pinta con "  Lo que guardas va al pendrive, cifrado con tu contraseña. Archivos: "
+        pinta_numero con cuantos_en_el_pen
+        pinta_linea con "."
+        pinta con "  Van "
+        pinta_numero con pen_seq
+        pinta_linea con " copias. Siempre hay dos, la última y la de antes, y miden lo"
+        pinta_linea con "  mismo guardes lo que guardes: desde fuera no se sabe cuánto es."
+        pon_color con AMARILLO y NEGRO
+        si no pen_presente
+            pinta_linea con "  Ahora mismo no está enchufado."
+        fin
+        si pen_debe
+            pinta_linea con "  Lo último no ha llegado a él. Cuando lo enchufes, lo escribo."
+        fin
+        pon_color con GRIS y NEGRO
+    fin
+    pinta_linea con ""
+    al_serie con "pendrive: estado "
+    escribe pen_estado sin salto
+    al_serie con ", archivos "
+    escribe cuantos_en_el_pen sin salto
+    al_serie con ", copia "
+    escribe pen_seq
+fin
+
+funcion borra_pendrive
+    comparte pen_estado y pen_seq y pen_ranura y pen_validada
+    si invitado
+        pinta_linea con "  En modo invitado no toco el pendrive."
+        pinta_linea con ""
+        devuelve nada
+    fin
+    si pen_estado no es igual a PEN_ABIERTO y pen_estado no es igual a PEN_ROTO
+        pinta_linea con "  No tengo nada tuyo que borrar en el pendrive. Mira: pendrive"
+        pinta_linea con ""
+        devuelve nada
+    fin
+    van es pen_veces
+    hecho es FALTA_PENDRIVE
+    si pen_presente
+        hecho es OTRO_PENDRIVE
+        si el_mismo_disco
+            hecho es 0
+            pen_validada es van
+        fin
+    fin
+    i es 1
+    mientras i es menor o igual que MIDE_RANURA
+        elemento i de pen_sobre es 0
+        i es i mas 1
+    fin
+    para cada r desde 0 hasta 1
+        para cada p desde 0 hasta 3
+            si hecho es 0
+                hecho es manda_al_pen con r y p
+            fin
+        fin
+    fin
+    si hecho es 0
+        hecho es pide_al_pen con PIDE_ASIENTA
+    fin
+    al_serie con "pendrive: borrado, "
+    escribe hecho
+    si hecho es menor que 0
+        fallo_de_disco con hecho
+        devuelve nada
+    fin
+    pen_estado es PEN_NUEVO
+    pen_seq es 0
+    pen_ranura es 1
+    desactiva_interrupciones
+    apunta con R_PEN_BORRADO y "FalOS" y BLANCO y 0
+    activa_interrupciones
+    pinta_linea con "  Borrado: donde estaban las dos copias, ahora solo hay ceros. Lo que"
+    pinta_linea con "  tienes ahora vive en la memoria hasta que apagues."
+    pinta_linea con "  Para volver a guardar en él, pon una contraseña con cerrojo."
+    pinta_linea con ""
+fin
+
 funcion pide_al_disco con peticion
     comparte peticion_abierta y disco_listo y esperando
     si invitado y (peticion es ORDEN_GUARDA o peticion es ORDEN_OLVIDA)
         devuelve EN_INVITADO
     fin
     recoge_tareas con falso
+    al_pen es pen_posible y no pen_restaurando y (peticion es ORDEN_GUARDA o peticion es ORDEN_OLVIDA)
+    si al_pen
+        copia_region con pen_apunte y 1 y (region con (elemento TAREA_DISCO de buzones) y 1024) y 1 y 1024
+    fin
     desactiva_interrupciones
     disco_listo es falso
     peticion_abierta es verdadero
@@ -6352,7 +7088,14 @@ funcion pide_al_disco con peticion
     fin
     disco_listo es falso
     activa_interrupciones
-    devuelve resultado_disco
+    hecho es resultado_disco
+    si al_pen y hecho es mayor o igual que 0
+        queda es aplica_al_pendrive con peticion
+        si queda es menor que 0
+            devuelve queda
+        fin
+    fin
+    devuelve hecho
 fin
 
 funcion fallo_de_disco con motivo
@@ -6377,6 +7120,12 @@ funcion fallo_de_disco con motivo
         pinta_linea con "  En modo invitado no escribo nada en el disco."
     si no si motivo es REPETIDO
         pinta_linea con "  Hay dos archivos con ese nombre en el disco, y no sé cuál es el bueno."
+    si no si motivo es FALTA_PENDRIVE
+        pinta_linea con "  El pendrive no está puesto. En la memoria sí ha cambiado, hasta que apagues."
+    si no si motivo es OTRO_PENDRIVE
+        pinta_linea con "  Ese no es el pendrive de antes, y no lo toco. En la memoria sí ha cambiado."
+    si no si motivo es NO_QUEDA
+        pinta_linea con "  No consigo escribir en el pendrive. En la memoria sí ha cambiado."
     si no
         pinta_linea con "  El programa del disco ha caído antes de contestar."
     fin
@@ -6798,6 +7547,9 @@ fin
 funcion atiende_encargos
     comparte hay_encargos
     hay_encargos es falso
+    si pen_debe y pen_estado es PEN_ABIERTO y pen_presente y no invitado
+        hecho es escribe_pendrive con verdadero
+    fin
     para cada t desde 1 hasta MAX_TAREAS
         si (elemento t de estados_tarea) es CON_EL_DISCO
             pedido es elemento t de pedido_de
@@ -6821,10 +7573,15 @@ funcion atiende_encargos
     fin
 fin
 
+funcion guarda_de_verdad
+    devuelve no invitado y (pen_estado es PEN_ABIERTO o no disco_en_memoria)
+fin
+
 funcion termina_encargo con t y hecho
-    comparte aviso_disco_hasta y disco_lo_usa y disco_guardaba
+    comparte aviso_disco_hasta y disco_lo_usa y disco_guardaba y disco_fallaba
     al_serie con (nombre_de con t)
-    si hecho es mayor o igual que 0
+    disco_fallaba es hecho es FALTA_PENDRIVE o hecho es OTRO_PENDRIVE o hecho es NO_QUEDA
+    si hecho es mayor o igual que 0 o disco_fallaba
         disco_lo_usa es t
         disco_guardaba es (elemento t de pedido_de) es GUARDA
         aviso_disco_hasta es tics mas 3 por TICS_POR_SEGUNDO
@@ -6832,16 +7589,20 @@ funcion termina_encargo con t y hecho
     fin
     si (elemento t de pedido_de) es GUARDA y invitado
         escribe " guardó en la memoria: " sin salto
+    si no si (elemento t de pedido_de) es GUARDA y pen_estado es PEN_ABIERTO
+        escribe " guardó en el pendrive: " sin salto
+    si no si (elemento t de pedido_de) es GUARDA y disco_en_memoria
+        escribe " guardó en la memoria: " sin salto
     si no si (elemento t de pedido_de) es GUARDA
         escribe " guardó en el disco: " sin salto
-    si no si invitado
+    si no si invitado o disco_en_memoria
         escribe " leyó de la memoria: " sin salto
     si no
         escribe " leyó del disco: " sin salto
     fin
     escribe hecho
     desactiva_interrupciones
-    si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0 y invitado
+    si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0 y no (guarda_de_verdad)
         apunta_de con R_GUARDO_MEMORIA y t y hecho
     si no si (elemento t de pedido_de) es GUARDA y hecho es mayor o igual que 0
         apunta_de con R_GUARDO y t y hecho
@@ -6879,8 +7640,10 @@ funcion pide_permiso_de con t
     pon_color con BLANCO y NEGRO
     pinta con " quiere guardar "
     pinta_numero con (elemento t de cuantos_de)
-    si invitado
+    si no (guarda_de_verdad)
         pinta_linea con " bytes, solo en memoria."
+    si no si disco_en_memoria
+        pinta_linea con " bytes en el pendrive, cifrados."
     si no
         pinta con " bytes en el disco, en "
         pinta con (nombre_de con t)
@@ -6951,7 +7714,11 @@ funcion decide_guardar con primera y permiso y pide_siempre
         si anade_siempre con nombre
             pon_color con VERDE_CLARO y NEGRO
             pinta con nombre
-            pinta_linea con " puede guardar siempre, también cuando reinicies."
+            si guarda_de_verdad
+                pinta_linea con " puede guardar siempre, también cuando reinicies."
+            si no
+                pinta_linea con " puede guardar siempre, hasta que apagues."
+            fin
             pon_color con GRIS y NEGRO
             pinta con "  Para quitárselo: niega "
             pinta_linea con nombre
@@ -6964,7 +7731,7 @@ funcion decide_guardar con primera y permiso y pide_siempre
     si no si permiso es DISCO_SI
         pon_color con VERDE_CLARO y NEGRO
         pinta con nombre
-        si invitado
+        si no (guarda_de_verdad)
             pinta_linea con " puede guardar en memoria hasta que se cierre."
         si no
             pinta_linea con " puede guardar en su archivo hasta que se cierre."
@@ -7011,7 +7778,11 @@ funcion olvida
         pinta con nombre
         pinta con ".dat: "
         pinta_numero con respuesta
-        pinta_linea con " bytes. Donde estaban, ahora solo hay ceros."
+        si disco_en_memoria y guarda_de_verdad
+            pinta_linea con " bytes, también de las dos copias del pendrive."
+        si no
+            pinta_linea con " bytes. Donde estaban, ahora solo hay ceros."
+        fin
         desactiva_interrupciones
         apunta con R_OLVIDASTE y nombre y GRIS y respuesta
         activa_interrupciones
@@ -7115,7 +7886,7 @@ funcion apunta_de con clase y t y numero
 fin
 
 funcion es_tuya con clase
-    si clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
+    si clase es R_PEN_ABRE o clase es R_PEN_BORRADO o clase es R_CERROJO o clase es R_BLOQUEASTE o clase es R_ABRISTE o clase es R_SIN_CERROJO
         devuelve verdadero
     fin
     si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE o clase es R_INVITADO o clase es R_PING o clase es R_DEJASTE_RED o clase es R_NEGASTE_RED
@@ -7313,6 +8084,16 @@ funcion pinta_apunte con k
         pinta con ": 3 códigos malos"
     si no si clase es R_USB_DMA
         pinta_de con "quiso salir de su memoria; lo paró el IOMMU" y ROJO_CLARO
+    si no si clase es R_PEN_ABRE
+        pinta con "abriste lo guardado en el pendrive: "
+        pinta_cuantos con n
+        pinta con " archivos"
+    si no si clase es R_PEN_TOCADO
+        pinta_de con "lo guardado en el pendrive no cuadra" y ROJO_CLARO
+    si no si clase es R_PEN_FALLO
+        pinta_de con "no consiguió escribir en el pendrive" y ROJO_CLARO
+    si no si clase es R_PEN_BORRADO
+        pinta con "borraste lo guardado en el pendrive"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -7557,7 +8338,11 @@ funcion saca_sal con destino y desde
     fin
 fin
 
-funcion huella_de con sal y salida
+funcion huella_de con sal y salida y version
+    si version es 51 y pen_posible
+        argon2id con memoria_cerrojo y BLOQUES_PENDRIVE y PASADAS_PENDRIVE y (region con clave_en y clave_mide) y sal y salida
+        devuelve nada
+    fin
     argon2id con memoria_cerrojo y BLOQUES_CERROJO y PASADAS_CERROJO y (region con clave_en y clave_mide) y sal y salida
 fin
 
@@ -7619,6 +8404,12 @@ funcion quita_cerrojo
         pinta_linea con ""
         devuelve nada
     fin
+    si pen_estado es PEN_ABIERTO
+        pinta_linea con "  En el pendrive no: ahí la llave solo va cerrada con tu contraseña."
+        pinta_linea con "  Si quieres borrarlo: pendrive borra"
+        pinta_linea con ""
+        devuelve nada
+    fin
     si hay_llave
         hecho es guarda_llave
         si hecho es menor que 0
@@ -7660,8 +8451,11 @@ funcion guarda_cerrojo
         elemento i de fichero es letra
         i es i mas 1
     fin
+    si pen_posible
+        elemento 4 de fichero es 51
+    fin
     saca_sal con fichero y 5
-    huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 64)
+    huella_de con (region con clave_en mas 260 y 16) y (region con clave_en mas 276 y 64) y (elemento 4 de fichero)
     estrenada es no hay_llave
     si estrenada y no nueva_llave
         para cada i desde 1 hasta TOPE_CERROJO
@@ -7708,12 +8502,46 @@ funcion guarda_cerrojo
     desactiva_interrupciones
     apunta con R_CERROJO y "FalOS" y BLANCO y 0
     activa_interrupciones
+    si disco_en_memoria
+        acaba_cerrojo_del_pendrive
+        devuelve nada
+    fin
     pon_color con VERDE_CLARO y NEGRO
     pinta_linea con "  Hecho. Para entrar hará falta, también al arrancar. Y la llave"
     pinta_linea con "  que cifra lo que guardan los programas solo se abre con ella."
     pon_color con GRIS y NEGRO
     pinta_linea con "  Escribe bloquea para bloquear ya. Y me bloqueo solo si pasan"
     pinta_linea con "  5 minutos sin que toques el teclado ni el ratón."
+fin
+
+funcion acaba_cerrojo_del_pendrive
+    comparte pen_estado
+    antes es pen_estado
+    si antes no es igual a PEN_NUEVO y antes no es igual a PEN_ABIERTO
+        pon_color con AMARILLO y NEGRO
+        pinta_linea con "  Hecho, pero solo hasta que apagues: no tengo dónde guardarla."
+        pinta_linea con "  Escribe pendrive para saber por qué."
+        pon_color con GRIS y NEGRO
+        devuelve nada
+    fin
+    pinta_linea con "  Escribiendo en el pendrive. No lo quites todavía..."
+    hecho es escribe_pendrive con verdadero
+    si hecho es menor que 0
+        fallo_de_disco con hecho
+        si antes es PEN_NUEVO
+            pinta_linea con "  La contraseña vale hasta que apagues, y nada queda en el pendrive."
+        si no
+            pinta_linea con "  En el pendrive puede seguir valiendo la contraseña de antes."
+        fin
+        devuelve nada
+    fin
+    pen_estado es PEN_ABIERTO
+    pon_color con VERDE_CLARO y NEGRO
+    pinta_linea con "  Hecho. Lo guardado y lo que guardes va al pendrive, cifrado, y sin esta"
+    pinta_linea con "  contraseña no se abre. Si la olvidas no hay otra forma: ni yo puedo."
+    pon_color con GRIS y NEGRO
+    pinta_linea con "  Quien se lo lleve puede probar contraseñas sin parar: que sea larga."
+    pinta_linea con "  Escribe bloquea para bloquear ya, y a los 5 minutos me bloqueo solo."
 fin
 
 funcion abre_cerrojo
@@ -7725,11 +8553,12 @@ funcion abre_cerrojo
     fin
     mensaje_cerrojo es COMPROBANDO
     ensucia
-    nueva es (elemento 4 de cerrojo) es 50
+    version es elemento 4 de cerrojo
+    nueva es version es mayor o igual que 50
     si nueva
-        huella_de con (region con cerrojo_en mas 4 y 16) y comprobada
+        huella_de con (region con cerrojo_en mas 4 y 16) y comprobada y version
     si no
-        huella_de con (region con cerrojo_en mas 4 y 16) y (region con clave_en mas 128 y 32)
+        huella_de con (region con cerrojo_en mas 4 y 16) y (region con clave_en mas 128 y 32) y version
     fin
     buena es es_la_buena
     si buena y nueva
@@ -7755,6 +8584,9 @@ funcion abre_cerrojo
     ultima_actividad es tics
     apunta con R_ABRISTE y "FalOS" y BLANCO y 0
     activa_interrupciones
+    si pen_estado es PEN_CERRADO
+        abre_pendrive
+    fin
     si cortado
         pinta_linea con ""
         pinta_linea con "  Me bloqueé antes de que acabaras la contraseña. Nada cambia."
@@ -7904,7 +8736,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 22"
+    pinta con "día 23"
     pon_color con GRIS y NEGRO
 fin
 
@@ -7932,9 +8764,15 @@ funcion portada
     pinta_linea con ""
     si disco_en_memoria
         pon_color con VERDE_CLARO y NEGRO
-        pinta_linea con "  He arrancado desde un pendrive. Mi disco va entero en la memoria:"
-        pinta_linea con "  no toco ningún disco de este ordenador, y lo que guardes se borra"
-        pinta_linea con "  al apagar."
+        si pen_posible
+            pinta_linea con "  He arrancado desde un pendrive, y no toco ningún disco de este"
+            pinta_linea con "  ordenador. Con contraseña (cerrojo), lo que guardes va al pendrive,"
+            pinta_linea con "  cifrado. Sin ella no escribo en él, y se borra al apagar."
+        si no
+            pinta_linea con "  He arrancado desde un pendrive. Mi disco va entero en la memoria:"
+            pinta_linea con "  no toco ningún disco de este ordenador, y lo que guardes se borra"
+            pinta_linea con "  al apagar."
+        fin
         pon_color con GRIS y NEGRO
     si no
         pinta_linea con "  Cada programa sale en su ventana, y el borde lo pinto yo, del color"
@@ -8022,6 +8860,7 @@ prepara_interrupciones
 cierra_interrupciones_ajenas
 lee_siempre
 lee_cerrojo
+mira_el_pendrive
 lee_llave
 vuelve_la_consola
 escribe "pantalla lista"

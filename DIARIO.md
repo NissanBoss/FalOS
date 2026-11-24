@@ -2,6 +2,66 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 23: guardar en el pendrive, cifrado, como prometí
+
+![Después de reiniciar y escribir la contraseña: FalOS ha abierto el pendrive y se acuerda](capturas/dia-23.png)
+
+**Lo que hay.** Hasta ayer, FalOS desde el pendrive se olvidaba de todo al apagar.
+Prometí que lo que escribas seguiría ahí, y que quien se lleve el pendrive no
+leería nada sin tu contraseña. Aquí está.
+
+Sin contraseña no escribe ni un byte, como siempre. Con `cerrojo`, lo que guardan
+tus programas y los permisos que das para siempre van al pendrive. Apagas,
+vuelves otro día, escribes la contraseña y está todo.
+
+**Lo que ve quien se lo lleva.** Que hay algo guardado y cuántas veces se ha
+escrito. No ve qué, ni cuánto ocupa, ni los nombres de los archivos: se escribe
+siempre el mismo trozo entero, 16 KB de ruido, guardes una nota o veinte. La llave
+está dentro, pero envuelta con tu contraseña, y probar una contraseña cuesta
+llenar 19 MB de memoria dos veces. Es lo que recomienda OWASP, y casi diez veces
+la memoria que usaba FalOS hasta hoy.
+
+La prueba automática hace de ladrón: busca los nombres y la contraseña en la
+imagen, y no están. Y hace también de dueño desde fuera: la abre con un Python que
+no usa nada de FalOS y con la biblioteca de referencia de Argon2, para que se vea
+que el cifrado es el que digo y no uno que solo entiendo yo. Byte a byte está en
+[PENDRIVE.md](PENDRIVE.md), y abrirlo es ya el punto 8 del [reto](RETO.md).
+
+**Quitarlo a medias.** Un pendrive se quita cuando a uno le da la gana. Por eso hay
+dos copias, y la nueva se escribe siempre encima de la vieja. Si se corta, la firma
+no cuadra y queda la otra. Si alguien cambia un bit, lo mismo, y FalOS lo dice. Y
+si no cuadra ninguna, no escribe encima: a lo mejor se puede salvar.
+
+![Con un bit cambiado en la última copia, FalOS abre la anterior y lo avisa](capturas/dia-23-tocado.png)
+
+Solo usa el pendrive del que arrancó, y lo comprueba cada vez que lo enchufas. Si
+le pones otro, no lo toca. Si le pones una copia vieja del tuyo, tampoco.
+
+**Lo que se aprende.** Un pendrive habla SCSI, el idioma de los discos de 1986.
+Cada orden va en un sobre de 31 bytes que empieza por `USBC`, y la respuesta, en
+uno de 13 que empieza por `USBS`. Lo demás es leer y escribir sectores.
+
+Y un pendrive dice "hecho" antes de hacerlo. Se guarda lo que le mandas y lo
+escribe cuando puede. Hay una orden para que lo asiente de verdad, y hay que
+mandarla dos veces y en orden: primero lo cifrado, después la cabecera que dice
+que vale. Al revés, un corte de luz deja una cabecera buena con lo de dentro a
+medias.
+
+También que no hace falta una partición. El sitio donde se guarda es un archivo
+más de la imagen, lleno de ceros, y FalOS lo busca por su nombre. La imagen se
+graba igual que antes.
+
+**Lo que queda.** Solo lo he probado en QEMU, por USB 2 y por USB 3, y en ningún
+pendrive de verdad. Necesita IOMMU y un puerto sin hub, y caben 28 archivos de 512
+bytes.
+
+Y esto protege de quien se lo lleva, no de quien te lo devuelve: alguien con el
+pendrive en la mano puede cambiar el propio FalOS por uno que se apunte tu
+contraseña. Tampoco se nota si te cambia todo el contenido por el de hace un mes.
+Y si cambias la contraseña porque alguien la sabe, la memoria del pendrive puede
+guardar por dentro una copia que se abre con la vieja. Está todo contado en el
+[README](README.md#lo-que-no-cubre).
+
 ## Día 22: un teclado USB, como prometí
 
 ![Un teclado recién enchufado: arriba, en amarillo, FalOS dice qué código hay que teclear en él](capturas/dia-22.png)
