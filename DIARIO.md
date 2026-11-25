@@ -58,8 +58,9 @@ pico. Cualquiera podía colar una respuesta falsa sin ver la pregunta. Ahora sal
 azar cada vez.
 
 **Lo que queda.** Prometí un ordenador de verdad, y solo lo he probado en QEMU: la
-I218 del L450 todavía no la he visto moverse. Si tu portátil lleva otra, sigue sin red. No hay wifi. Y la red sabe lo que
-tú le pides: quien manda en ella puede mandarte al DNS que quiera.
+I218 del L450 todavía no la he visto moverse. Si tu portátil lleva otra, sigue sin
+red. No hay wifi. Y la red sabe lo que tú le pides: quien manda en ella puede
+mandarte al DNS que quiera.
 
 ## Día 23: guardar en el pendrive, cifrado, como prometí
 

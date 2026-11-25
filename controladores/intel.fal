@@ -139,8 +139,6 @@ funcion lee_phy con cual
     devuelve habla_con_phy con 134217728 mas sitio_phy por 2097152 mas cual por 65536
 fin
 
-# Linux duerme el PHY al bajar la tarjeta y así se lo encuentra quien reinicia
-# sin apagar.
 funcion despierta_phy
     si no coge_semaforo
         devuelve nada
@@ -373,7 +371,6 @@ funcion enlace
     devuelve 1000
 fin
 
-# Le pide a la tarjeta que mande por el cable el principio del núcleo.
 funcion roba_memoria
     si no en_marcha
         hecho es calla

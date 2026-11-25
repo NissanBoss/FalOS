@@ -1461,8 +1461,6 @@ red_de_pch es falso
 red_registros es 0
 red_hojas es region con pide_pagina y 512 y 8
 
-# 10D3 es la 82574L de QEMU. Las otras, las I217 e I218 que van soldadas en los
-# portátiles de 2013 a 2015.
 funcion es_intel_conocida con quien
     si (quien resto 65536) no es igual a 32902
         devuelve falso
@@ -4557,8 +4555,6 @@ fin
 SITIO_USB es 410
 SITIO_RED es 412
 
-# De las 32 páginas de registros, las que hacen falta: los mandos, recibir,
-# enviar y la dirección. La de la memoria de la tarjeta no está entre ellas.
 funcion monta_red con t y directorio
     tabla es pagina_de_tarea con t
     hojas es region con tabla y 512 y 8
@@ -5680,8 +5676,6 @@ funcion buzon_red
     devuelve region con (elemento TAREA_RED de buzones) y TOPE_BUZON
 fin
 
-# Con el bit 2 a uno y el 1 a cero: puesta a mano, no de fábrica, y de una sola
-# tarjeta.
 funcion inventa_mac
     saca_sal con azar_red y 1
     copia_region con mi_mac y 1 y azar_red y 1 y 6
@@ -5696,8 +5690,6 @@ funcion asegura_red
     si red_como es RED_ENCENDIDA y (elemento 1 de mi_mac) es 0
         inventa_mac
     fin
-    # Sin DMA hasta que el controlador la ha callado: el UEFI puede haberla dejado
-    # recibiendo en memoria que ya no es suya.
     si red_como es RED_ENCENDIDA
         hecho es pide_a_la_red con ORDEN_CALLA_RED
         si hecho es menor que 0
@@ -5939,8 +5931,6 @@ funcion opcion_de_cuatro con zona y i y cual y valor
     devuelve i mas 6
 fin
 
-# Lo justo, como dice el RFC 7844: ni nombre del ordenador, ni marca, ni más
-# dirección que la inventada.
 funcion envia_dhcp con que_digo
     zona es buzon_red
     cabecera_ethernet con zona y todos y 2048
@@ -6038,7 +6028,6 @@ funcion es_ip_de_alguien con ip
     devuelve primero es mayor que 0 y primero es menor que 224 y primero no es igual a 127
 fin
 
-# Una máscara buena deja un hueco que es potencia de dos. De 4 a 16 millones.
 funcion es_hueco_bueno con hueco
     n es 4
     mientras n es menor que hueco y n es menor que 16777216
@@ -6156,7 +6145,6 @@ funcion olvida_direccion
     inventa_mac
 fin
 
-# Si el cable se ha movido desde la última vez, puede ser otra red: cara nueva.
 funcion asegura_direccion
     comparte enlace_movido
     si no (red_como es RED_ENCENDIDA)
