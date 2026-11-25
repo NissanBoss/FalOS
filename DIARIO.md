@@ -2,7 +2,7 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
-## Día 24: la tarjeta de red de un portátil, encerrada, como prometí
+## Día 24: la tarjeta de red de los portátiles, encerrada
 
 ![FalOS se inventa una dirección, la red le da otra, y contesta el ping](capturas/dia-24.png)
 
@@ -57,8 +57,8 @@ Y hoy descubrí que mis programas hablaban siempre desde el mismo puerto, el 500
 pico. Cualquiera podía colar una respuesta falsa sin ver la pregunta. Ahora sale al
 azar cada vez.
 
-**Lo que queda.** En QEMU funciona, y la I218 del L450 todavía no la he visto
-moverse. Si tu portátil lleva otra, sigue sin red. No hay wifi. Y la red sabe lo que
+**Lo que queda.** Prometí un ordenador de verdad, y solo lo he probado en QEMU: la
+I218 del L450 todavía no la he visto moverse. Si tu portátil lleva otra, sigue sin red. No hay wifi. Y la red sabe lo que
 tú le pides: quien manda en ella puede mandarte al DNS que quiera.
 
 ## Día 23: guardar en el pendrive, cifrado, como prometí
