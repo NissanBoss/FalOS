@@ -408,7 +408,7 @@ funcion ayuda
     renglon con "  sin cerrojo    quita la contraseña" y GRIS
     renglon con "  invitado       nada se escribe en el disco hasta que reinicies" y GRIS
     renglon con "" y GRIS
-    renglon con "  ping           prueba la red con la salida, 10.0.2.2, o con otra" y GRIS
+    renglon con "  ping           prueba la red con la salida, o ping X con otra dirección" y GRIS
     renglon con "  red            la tarjeta, y cuánto ha salido por ella" y GRIS
     renglon con "  dma            si un aparato puede leer mi memoria por su cuenta" y GRIS
     renglon con "  usb            lo que hay enchufado, y a qué teclados hago caso" y GRIS

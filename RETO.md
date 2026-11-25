@@ -113,7 +113,7 @@ núcleo se lo niega, el número es negativo.
 | 14 | Guardar en su archivo `b` bytes de la mesa, desde el `a`. Hasta 464. Espera a tu `deja`. |
 | 15 | Leer su archivo en la mesa, desde el `a`. |
 | 16 | Dos megas más de memoria, una vez. |
-| 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
+| 17 | Mandar un mensaje UDP: en la mesa, desde el `a`, la IP en 4 bytes, el puerto en 2 y los datos. La IP 0.0.0.0 con el puerto 53 es el DNS de la red en la que estés. Espera a tu `deja`, y la respuesta vuelve al mismo sitio, desde el `a`. |
 | 18 | Solo la consola: pedirle una orden a FalOS. A cualquier otro se le niega. |
 | 19 | Solo el controlador USB: decir en qué puerto hay un teclado. A cualquier otro se le niega. |
 | 20 | Solo el controlador USB: decir en qué puerto hay un pendrive y cuánto cabe en él. A cualquier otro se le niega. |

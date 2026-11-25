@@ -33,10 +33,11 @@ funcion salta_nombre con donde
     devuelve donde mas 1
 fin
 
-mete con 10
+# 0.0.0.0 es el DNS de la red en la que estés. Cuál es, no te lo dicen.
 mete con 0
-mete con 2
-mete con 3
+mete con 0
+mete con 0
+mete con 0
 mete con 0
 mete con 53
 mete con 70

@@ -1,0 +1,410 @@
+CEDE es 2
+PIDE_TICS es 3
+ESPERA es 8
+AVISO_CUELGA es 0 menos 2
+AVISO_ROMPE es 0 menos 3
+SIN_RESPUESTA es 0 menos 100
+
+ORDEN_ARRANCA es 1
+ORDEN_ENVIA es 2
+ORDEN_RECIBE es 3
+ORDEN_ENLACE es 4
+ORDEN_CALLA es 5
+
+NO_HAY_TARJETA es 0 menos 1
+NO_SALE es 0 menos 2
+MAL_TAMANO es 0 menos 3
+
+PAGINA es 4096
+REGISTROS_EN es 861929472
+DMA_EN es 862060544
+PAGINAS_DMA es 21
+P_RECIBIR es 1
+P_ENVIAR es 17
+DE_RECIBIR es 32
+DE_ENVIAR es 8
+CABE_EN_UNO es 2048
+TOPE_TRAMA es 1514
+MINIMO es 60
+PACIENCIA es 100
+
+MANDO es 0
+ESTADO es 8
+PHY es 32
+CONTROL_A es 40
+CONTROL_B es 44
+CONTROL_T es 48
+CONTROL_V es 368
+SUCESOS es 192
+NO_AVISES es 216
+RECIBE es 256
+ENVIA es 1024
+SEMAFORO es 3840
+ANILLO_R es 10240
+ANILLO_E es 14336
+REPARTO_E es 14400
+FILTRO_RECIBE es 20488
+MULTIDIFUSION es 20992
+MI_TARJETA es 21504
+
+BIT_22 es 4194304
+BIT_26 es 67108864
+BIT_28 es 268435456
+BIT_30 es 1073741824
+BIT_31 es 2147483648
+
+buzon es region con 807399424 y 4096
+regs es region con REGISTROS_EN y 6144 y 4
+anillos es region con DMA_EN y 1024 y 4
+trozos es region con DMA_EN y PAGINAS_DMA por PAGINA
+
+en_marcha es falso
+callada es falso
+siguiente_r es 0
+siguiente_e es 0
+
+funcion ahora
+    devuelve llama_al_sistema con PIDE_TICS y 0
+fin
+
+funcion mira con sitio
+    devuelve elemento (cociente con sitio y 4) mas 1 de regs
+fin
+
+funcion manda con sitio y valor
+    elemento (cociente con sitio y 4) mas 1 de regs es valor
+fin
+
+funcion tiene con valor y bit
+    devuelve ((cociente con valor y bit) resto 2) es 1
+fin
+
+funcion con_bit con valor y bit
+    si tiene con valor y bit
+        devuelve valor
+    fin
+    devuelve valor mas bit
+fin
+
+funcion sin_bit con valor y bit
+    si tiene con valor y bit
+        devuelve valor menos bit
+    fin
+    devuelve valor
+fin
+
+funcion descansa con cuantos
+    limite es ahora mas cuantos
+    mientras ahora es menor o igual que limite
+        llama_al_sistema con CEDE y 0
+    fin
+fin
+
+funcion espera_bit con sitio y bit y puesto
+    limite es ahora mas PACIENCIA
+    mientras (tiene con (mira con sitio) y bit) no es igual a puesto
+        si ahora es mayor que limite
+            devuelve falso
+        fin
+        llama_al_sistema con CEDE y 0
+    fin
+    devuelve verdadero
+fin
+
+funcion coge_semaforo
+    manda con SEMAFORO y (con_bit con (mira con SEMAFORO) y 32)
+    devuelve espera_bit con SEMAFORO y 32 y verdadero
+fin
+
+funcion habla_con_phy con orden_phy
+    manda con PHY y orden_phy
+    si no (espera_bit con PHY y BIT_28 y verdadero)
+        devuelve 0 menos 1
+    fin
+    visto es mira con PHY
+    si tiene con visto y BIT_30
+        devuelve 0 menos 1
+    fin
+    devuelve visto resto 65536
+fin
+
+funcion sitio_phy
+    si (elemento 1 de buzon) es 1
+        devuelve 2
+    fin
+    devuelve 1
+fin
+
+funcion lee_phy con cual
+    devuelve habla_con_phy con 134217728 mas sitio_phy por 2097152 mas cual por 65536
+fin
+
+# Linux duerme el PHY al bajar la tarjeta y así se lo encuentra quien reinicia
+# sin apagar.
+funcion despierta_phy
+    si no coge_semaforo
+        devuelve nada
+    fin
+    mando_phy es lee_phy con 0
+    si mando_phy es mayor o igual que 0
+        si (tiene con mando_phy y 2048) o (tiene con mando_phy y 1024)
+            escrito es habla_con_phy con 67108864 mas sitio_phy por 2097152 mas 4928
+        fin
+    fin
+    manda con SEMAFORO y (sin_bit con (mira con SEMAFORO) y 32)
+fin
+
+funcion calla
+    comparte en_marcha y callada
+    en_marcha es falso
+    callada es falso
+    si (mira con ESTADO) es 4294967295
+        devuelve NO_HAY_TARJETA
+    fin
+    manda con NO_AVISES y 4294967295
+    manda con RECIBE y 0
+    manda con ENVIA y 8
+    descansa con 1
+    manda con MANDO y (con_bit con (mira con MANDO) y 4)
+    quieta es espera_bit con ESTADO y 524288 y falso
+    manda con MANDO y (con_bit con (mira con MANDO) y BIT_26)
+    descansa con 3
+    manda con NO_AVISES y 4294967295
+    basura es mira con SUCESOS
+    si (mira con ESTADO) es 4294967295
+        devuelve NO_HAY_TARJETA
+    fin
+    callada es verdadero
+    devuelve 1
+fin
+
+funcion sitio_de con p
+    devuelve DMA_EN mas p por PAGINA
+fin
+
+funcion prepara_anillos
+    para cada i desde 1 hasta 1024
+        elemento i de anillos es 0
+    fin
+    para cada i desde 0 hasta DE_RECIBIR menos 1
+        elemento i por 4 mas 1 de anillos es (sitio_de con P_RECIBIR) mas i por CABE_EN_UNO
+    fin
+    manda con ANILLO_R y DMA_EN
+    manda con ANILLO_R mas 4 y 0
+    manda con ANILLO_R mas 8 y DE_RECIBIR por 16
+    manda con ANILLO_R mas 16 y 0
+    manda con ANILLO_R mas 24 y 0
+    manda con ANILLO_R mas 32 y 0
+    manda con ANILLO_R mas 44 y 0
+    manda con ANILLO_E y DMA_EN mas 2048
+    manda con ANILLO_E mas 4 y 0
+    manda con ANILLO_E mas 8 y DE_ENVIAR por 16
+    manda con ANILLO_E mas 16 y 0
+    manda con ANILLO_E mas 24 y 0
+    manda con ANILLO_E mas 32 y 0
+    manda con ANILLO_E mas 40 y (con_bit con (mira con ANILLO_E mas 40) y BIT_22)
+fin
+
+funcion pon_mi_tarjeta
+    bajos es 0
+    para cada i desde 1 hasta 4
+        bajos es bajos por 256 mas elemento 7 menos i de buzon
+    fin
+    manda con MI_TARJETA y bajos
+    manda con MI_TARJETA mas 4 y BIT_31 mas (elemento 8 de buzon) por 256 mas elemento 7 de buzon
+    cuantas es 128
+    si (elemento 1 de buzon) es 1
+        cuantas es 32
+    fin
+    para cada i desde 0 hasta cuantas menos 1
+        manda con MULTIDIFUSION mas i por 4 y 0
+    fin
+fin
+
+funcion arranca
+    comparte en_marcha y callada y siguiente_r y siguiente_e
+    si no callada
+        devuelve NO_HAY_TARJETA
+    fin
+    callada es falso
+    si (elemento 1 de buzon) es 1
+        lista es espera_bit con ESTADO y 512 y verdadero
+        manda con ESTADO y (sin_bit con (sin_bit con (mira con ESTADO) y 512) y 1024)
+        reparto es mira con REPARTO_E
+        reparto es con_bit con reparto y 8388608
+        reparto es con_bit con reparto y 16777216
+        reparto es con_bit con reparto y BIT_26
+        manda con REPARTO_E y (con_bit con reparto y 134217728)
+    fin
+    despierta_phy
+    pon_mi_tarjeta
+    manda con CONTROL_A y 0
+    manda con CONTROL_B y 0
+    manda con CONTROL_T y 0
+    manda con CONTROL_V y 0
+    prepara_anillos
+    manda con FILTRO_RECIBE y (sin_bit con (mira con FILTRO_RECIBE) y 32768)
+    orden es mira con MANDO
+    orden es sin_bit con orden y 4
+    orden es sin_bit con orden y 8
+    orden es sin_bit con orden y 128
+    orden es sin_bit con orden y 2048
+    orden es sin_bit con orden y 4096
+    orden es sin_bit con orden y 134217728
+    orden es sin_bit con orden y BIT_28
+    orden es con_bit con orden y 32
+    manda con MANDO y (con_bit con orden y 64)
+    manda con RECIBE y 67141634
+    manda con ANILLO_R mas 24 y DE_RECIBIR menos 1
+    como_envia es mira con ENVIA
+    como_envia es como_envia menos como_envia resto 4194304 mas 258048 mas 250
+    manda con ENVIA y (con_bit con como_envia y 16777216)
+    siguiente_r es 0
+    siguiente_e es 0
+    en_marcha es verdadero
+    devuelve 6
+fin
+
+funcion envia_una
+    comparte siguiente_e
+    mide es (elemento 41 de buzon) por 256 mas elemento 42 de buzon
+    si no en_marcha
+        devuelve NO_HAY_TARJETA
+    fin
+    si mide es menor que 14 o mide es mayor que TOPE_TRAMA
+        devuelve MAL_TAMANO
+    fin
+    d es 512 mas siguiente_e por 4
+    desde es (P_ENVIAR por PAGINA) mas siguiente_e por CABE_EN_UNO
+    para cada i desde 1 hasta mide
+        elemento desde mas i de trozos es elemento 512 mas i de buzon
+    fin
+    sale es mide
+    mientras sale es menor que MINIMO
+        sale es sale mas 1
+        elemento desde mas sale de trozos es 0
+    fin
+    elemento d mas 1 de anillos es DMA_EN mas desde
+    elemento d mas 2 de anillos es 0
+    elemento d mas 4 de anillos es 0
+    elemento d mas 3 de anillos es 184549376 mas sale
+    siguiente_e es (siguiente_e mas 1) resto DE_ENVIAR
+    manda con ANILLO_E mas 24 y siguiente_e
+    limite es ahora mas PACIENCIA
+    mientras ((elemento d mas 4 de anillos) resto 2) es 0
+        si ahora es mayor que limite
+            devuelve NO_SALE
+        fin
+        llama_al_sistema con CEDE y 0
+    fin
+    devuelve mide
+fin
+
+funcion recibe_una
+    comparte siguiente_r
+    si no en_marcha
+        devuelve NO_HAY_TARJETA
+    fin
+    d es siguiente_r por 4
+    como_va es elemento d mas 4 de anillos
+    si (como_va resto 2) es 0
+        devuelve 0
+    fin
+    mide es (elemento d mas 3 de anillos) resto 65536
+    entera es tiene con como_va y 2
+    errores es (cociente con como_va y 256) resto 256
+    si no entera o errores no es igual a 0 o mide es menor que 14 o mide es mayor que TOPE_TRAMA
+        mide es 0
+    fin
+    desde es P_RECIBIR por PAGINA mas siguiente_r por CABE_EN_UNO
+    para cada i desde 1 hasta mide
+        elemento 512 mas i de buzon es elemento desde mas i de trozos
+    fin
+    elemento 41 de buzon es cociente con mide y 256
+    elemento 42 de buzon es mide resto 256
+    elemento d mas 3 de anillos es 0
+    elemento d mas 4 de anillos es 0
+    manda con ANILLO_R mas 24 y siguiente_r
+    siguiente_r es (siguiente_r mas 1) resto DE_RECIBIR
+    si mide es 0
+        devuelve MAL_TAMANO
+    fin
+    devuelve mide
+fin
+
+funcion apunta_cuatro con donde y valor
+    para cada i desde 0 hasta 3
+        elemento donde mas i de buzon es valor resto 256
+        valor es cociente con valor y 256
+    fin
+fin
+
+funcion enlace
+    si no en_marcha
+        devuelve NO_HAY_TARJETA
+    fin
+    visto es mira con ESTADO
+    apunta_cuatro con 49 y visto
+    apunta_cuatro con 53 y (mira con MANDO)
+    elemento 57 de buzon es 0
+    si tiene con (mira con SUCESOS) y 4
+        elemento 57 de buzon es 1
+    fin
+    elemento 58 de buzon es 255
+    elemento 59 de buzon es 255
+    si coge_semaforo
+        basura es lee_phy con 1
+        linea es lee_phy con 1
+        si linea es mayor o igual que 0
+            elemento 58 de buzon es cociente con linea y 256
+            elemento 59 de buzon es linea resto 256
+        fin
+        manda con SEMAFORO y (sin_bit con (mira con SEMAFORO) y 32)
+    fin
+    si no (tiene con visto y 2)
+        devuelve 0
+    fin
+    velocidad es (cociente con visto y 64) resto 4
+    si velocidad es 0
+        devuelve 10
+    si no si velocidad es 1
+        devuelve 100
+    fin
+    devuelve 1000
+fin
+
+# Le pide a la tarjeta que mande por el cable el principio del núcleo.
+funcion roba_memoria
+    si no en_marcha
+        hecho es calla
+        hecho es arranca
+    fin
+    d es 512 mas siguiente_e por 4
+    elemento d mas 1 de anillos es 1048576
+    elemento d mas 2 de anillos es 0
+    elemento d mas 4 de anillos es 0
+    elemento d mas 3 de anillos es 184549376 mas 1024
+    manda con ANILLO_E mas 24 y (siguiente_e mas 1) resto DE_ENVIAR
+fin
+
+respuesta es SIN_RESPUESTA
+mientras verdadero
+    aviso es llama_al_sistema con ESPERA y respuesta
+    respuesta es SIN_RESPUESTA
+    si aviso es AVISO_CUELGA
+        mientras verdadero
+        fin
+    si no si aviso es AVISO_ROMPE
+        roba_memoria
+    si no si aviso es ORDEN_ARRANCA
+        respuesta es arranca
+    si no si aviso es ORDEN_ENVIA
+        respuesta es envia_una
+    si no si aviso es ORDEN_RECIBE
+        respuesta es recibe_una
+    si no si aviso es ORDEN_ENLACE
+        respuesta es enlace
+    si no si aviso es ORDEN_CALLA
+        respuesta es calla
+    fin
+fin

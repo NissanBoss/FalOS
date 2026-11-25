@@ -381,12 +381,27 @@ registro
 olvida portapapeles
 ```
 
-Y a la red solo se sale cuando tú lo pides. FalOS sabe usar una tarjeta NE2000,
-y su controlador es otro programa del anillo 3: el procesador solo le deja tocar
-los 32 puertos de la tarjeta. Esta tarjeta mueve cada trama byte a byte por esos
-puertos y no escribe en la memoria por su cuenta, así que a través de ella el
-controlador tampoco puede. FalOS no envía nada al arrancar: ni DHCP, ni anuncios, ni una sola trama. Lo
-único que sale es lo que pide `ping`: una pregunta ARP para saber quién tiene esa
+Y a la red solo se sale cuando tú lo pides. FalOS sabe usar dos tarjetas, y el
+controlador de cada una es otro programa del anillo 3. A la NE2000 de QEMU la
+mueve byte a byte por sus 32 puertos, los únicos que el procesador le deja tocar.
+La Intel de los portátiles de 2013 a 2015 (I217 e I218, y la 82574 que imita QEMU)
+lee y escribe la memoria por su cuenta, así que al controlador le da 4 páginas de
+registros y 21 de memoria, y a la tarjeta solo esas 21, por el IOMMU: donde deja lo
+que llega no puede leer, y de donde coge lo que sale no puede escribir. Sin IOMMU no
+la enciende. Con `rompe red`, el controlador le pide a la tarjeta que mande el
+núcleo por el cable, y no sale.
+
+FalOS no envía nada al arrancar: ni DHCP, ni anuncios, ni una sola trama. La
+dirección de fábrica de la Intel no la usa nunca: se inventa una en cada arranque, y
+otra si mueves el cable. Cuando haces `ping`, o dejas a un programa conectarse, le
+pide una dirección a la red por DHCP diciendo lo mínimo, sin nombre ni marca
+([RFC 7844](https://www.rfc-editor.org/rfc/rfc7844)), y desconfía de lo que le
+contesten. [Tails](https://tails.net/contribute/design/MAC_address/) y
+[Qubes](https://www.qubes-os.org/doc/anonymizing-your-mac-address/) también
+cambian esa dirección, sobre Linux; aquí, además, no sale nada hasta que lo pides,
+y la tarjeta está encerrada.
+
+Después sale lo que pide `ping`: una pregunta ARP para saber quién tiene esa
 dirección y cuatro ecos ICMP, uno por segundo, que llevan dentro `FalOS: solo
 sale si tu lo pides.` La barra dice a quién haces ping mientras dura, el registro
 lo apunta, y `red` dice cuántas tramas han salido desde que arrancó. `escucha`
@@ -400,6 +415,12 @@ fal --nucleo sistema.fal
 
 ```bash
 qemu-system-x86_64 -cpu max -kernel sistema.bin -drive file=disco.img,format=raw,if=ide -nic user,model=ne2k_pci
+```
+
+Y con la Intel y el IOMMU:
+
+```bash
+qemu-system-x86_64 -m 512 -machine q35 -cpu max -device intel-iommu,intremap=on -kernel sistema.bin -initrd disco.img -nic user,model=e1000e
 ```
 
 ```
@@ -419,7 +440,8 @@ vuelve a intentar con el mismo sitio, ni te pregunta. El permiso vale para esa
 dirección y nada más: si el programa quiere hablar con otra, te vuelve a
 preguntar. Mientras habla, la barra dice quién y con quién, y el registro apunta
 lo que dejaste, lo que negaste y cuántos bytes volvieron. `busca` le pregunta al
-DNS de QEMU dónde está fal-lang.org y te enseña sus direcciones; `chivato` quiere
+DNS de la red dónde está fal-lang.org y te enseña sus direcciones, sin llegar a saber
+qué DNS es; `chivato` quiere
 contarle a un servidor de fuera qué programas usas.
 
 ```
@@ -446,7 +468,7 @@ permisos
 
 El teclado, el disco, la pantalla y la red ya no van dentro del núcleo. Son programas
 del anillo 3, y el procesador solo les deja tocar lo suyo: `teclado`, el puerto
-96, por el que llega también el ratón; `disco`, del 496 al 503; `red`, los 32 de la tarjeta; y `pantalla`, los puertos de la tarjeta gráfica y su
+96, por el que llega también el ratón; `disco`, del 496 al 503; `red`, los 32 de la tarjeta, o los registros de la Intel; y `pantalla`, los puertos de la tarjeta gráfica y su
 imagen, y lee lo que hay que pintar sin poder cambiarlo. Si uno se cuelga o se
 rompe, FalOS lo nota, lo cierra y lanza otro sin que caiga nada más. Se puede
 probar:
@@ -473,7 +495,10 @@ controlador colgado y roto, mira que de FalOS no ha salido ni una trama; con
 bien, en orden y con su texto, y que han vuelto cuatro respuestas. Deja a `busca`
 preguntar al DNS y niega dos veces a `chivato`: mira que ha salido un solo mensaje
 UDP, a 10.0.2.3, con las sumas de control bien, y que hacia los servidores de
-`chivato` no ha salido ni una pregunta ARP. Le da archivos que mienten sobre lo que son, y le conecta discos
+`chivato` no ha salido ni una pregunta ARP. Con la Intel hace lo mismo, y además
+mira que la dirección de fábrica no aparece en ninguna trama, que quitar el cable
+le cambia la cara, que sin IOMMU no se enciende y que `rompe red` no saca el núcleo.
+Y le pone delante una red falsa que le miente de 39 maneras. Le da archivos que mienten sobre lo que son, y le conecta discos
 hechos para romperlo. Abre cuatro ventanas, mira que cada una lleva su color y
 cierra dos con el ratón. Juega a la serpiente con `disfraz` abierto al lado, y
 mira que a `disfraz` no le ha llegado ni una tecla. Y escribe en el disco: arranca
@@ -526,8 +551,8 @@ vive en él.
   consola ya salieron, pero el cargador y el vigilante que los reinicia siguen
   dentro del núcleo, y un fallo ahí para todo. La consola entiende lo que
   escribes, pero lo que hace cada orden (lanzar un programa, enseñarte las
-  tareas) lo sigue haciendo el núcleo. Por eso apenas adelgaza: tiene unas 6.400
-  líneas, y además el cifrado. La pantalla de bloqueo y el portapapeles viven en
+  tareas) lo sigue haciendo el núcleo. Por eso apenas adelgaza: tiene unas 9.600
+  líneas, con el cifrado. La pantalla de bloqueo y el portapapeles viven en
   él.
 - **La consola puede dar permisos.** Es lo que tiene que poder hacer: cuando
   escribes `deja`, es ella quien se lo pide al núcleo. La separa de los demás que
@@ -681,17 +706,30 @@ vive en él.
   mismo nombre, el nuevo lo hereda. Y quien pueda tocar el disco puede escribir
   `permisos.sis` a mano. Ningún programa de dentro puede.
 - **Si el controlador de la red es otro, puede enviar lo que quiera.** El núcleo
-  le da la tarjeta, no mira cada trama. Quien cambie `controladores/red.fal` y
+  le da la tarjeta, no mira cada trama. Quien cambie `controladores/red.fal` o `controladores/intel.fal` y
   vuelva a compilar el núcleo, o lo cambie dentro de la imagen, puede sacar
   tramas sin que nadie haga ping. Lo que hoy lo impide es que el que hay no lo
   hace, y que la prueba automática graba todo lo que sale y mira que no hay nada.
 - **La red vive en el núcleo.** ARP, IP, ICMP y UDP los arma el núcleo, no un programa.
   Es poco código, pero es más núcleo.
-- **Solo la NE2000, y solo la red de usuario de QEMU.** La dirección es fija,
-  10.0.2.15, y la salida, 10.0.2.2: las de QEMU. No hay DHCP, y FalOS no usa el
-  DNS él solo: `ping` quiere números, y en otra red no sabe dónde está. Tampoco
-  hay TCP: un programa manda un mensaje UDP y espera una sola respuesta, 3
-  segundos como mucho. Mientras espera, la consola también.
+- **La Intel solo se ha probado en QEMU.** Es la 82574 que imita QEMU, con su red de
+  usuario y con una falsa. La I217 y la I218, que son otras por dentro, están
+  escritas pero sin probar en ningún ordenador. No hay wifi, ni la I219 de los
+  portátiles de 2016 en adelante, ni ninguna de otra marca. Y la NE2000 sigue con
+  la dirección fija de QEMU.
+- **El chip de la Intel puede hablar sin FalOS.** En los portátiles de empresa lo
+  comparte con el procesador de gestión de Intel (AMT), que usa la red por su cuenta
+  y con la dirección de fábrica si está encendido. Se apaga en la BIOS.
+- **La dirección inventada no te hace invisible.** Hasta que reinicias o mueves el
+  cable es siempre la misma, hay redes que solo dejan entrar a direcciones
+  apuntadas, y la forma de hablar de FalOS no se parece a la de ningún otro.
+- **La red miente si quiere.** FalOS comprueba que la dirección que le dan tiene
+  sentido, no que quien la da sea quien manda. Quien esté en tu red puede mandarte
+  a su salida y a su DNS.
+- **Poca red.** `ping` quiere números: FalOS no usa el DNS él solo. No hay TCP ni
+  IPv6. Un programa manda un mensaje UDP y espera una sola respuesta, 3 segundos
+  como mucho. Mientras espera, la consola también, y pedir dirección donde nadie
+  contesta tarda hasta medio minuto.
 - **El permiso va por dirección, no por lo que se manda.** FalOS te dice cuántos
   bytes salen, pero no qué llevan. Un programa al que dejas hablar con una
   dirección puede mandarle lo que quiera hasta que se cierre.
@@ -756,8 +794,8 @@ vive en él.
   puede, y eso aquí aún no ha pasado: para eso está el [reto](RETO.md). No lo
   uses para nada que importe.
 - **Pocos ordenadores de verdad.** Los de la tabla de arriba, y nada más. En
-  otro puede fallar el teclado, el reloj o la pantalla, y la red no va en
-  ninguno: solo sé usar la NE2000, que es la de QEMU.
+  otro puede fallar el teclado, el reloj o la pantalla, y la red solo está
+  escrita para las Intel I217 e I218, sin probar.
 - **El IOMMU solo se ha probado en QEMU.** Por BIOS y por UEFI, pero nunca en un
   ordenador de verdad.
 - **Lo que pide la BIOS se da sin mirar.** Algunos aparatos, como el USB que

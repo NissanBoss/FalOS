@@ -24,7 +24,7 @@ pinta_en con 2 y "dame el teclado y pulsa una tecla" y BLANCO
 mientras (llama_al_sistema con LEE_TECLA) es 0
     llama_al_sistema con DUERME y 5
 fin
-pinta_en con 14 y "  busca quiere conectarse a 10.0.2.3, puerto 53 (DNS)." y BLANCO
+pinta_en con 14 y "  busca quiere preguntar al DNS de esta red." y BLANCO
 pinta_en con 15 y "  Si le dejas: deja 1. Si no: niega 1." y GRIS
 elemento 1 de caja es 203
 elemento 2 de caja es 0

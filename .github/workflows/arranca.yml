@@ -1675,6 +1675,310 @@ jobs:
           assert vuelven and vuelven[0][26:30] == bytes([10, 0, 2, 3])
           FIN
 
+      - name: La tarjeta Intel con su caja, y una red que miente
+        run: |
+          cat > intel.py <<'FIN'
+          import os, re, socket, struct, subprocess, sys, threading, time
+
+          DE_VERDAD = bytes.fromhex("020102030405")
+          CON = ["-device", "intel-iommu,intremap=on"]
+          TARJETA = ["-device", "e1000e,netdev=n1,id=tj,mac=" + DE_VERDAD.hex(":")]
+          GALLETA = bytes.fromhex("63825363")
+          TODOS = b"\xff" * 6
+
+          class Ordenador:
+              def __init__(self, nombre, *opciones):
+                  self.serie = nombre + ".txt"
+                  if os.path.exists(self.serie):
+                      os.remove(self.serie)
+                  self.qemu = subprocess.Popen(
+                      ["qemu-system-x86_64", "-m", "512", "-machine", "q35", "-cpu", "max", "-kernel", "sistema.bin",
+                       "-initrd", "disco.img", "-display", "none", "-serial", "file:" + self.serie,
+                       "-monitor", "stdio", "-no-reboot", *opciones],
+                      stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+                  self.espera("pantalla lista", 1, 60)
+                  time.sleep(3)
+
+              def pide(self, orden, pausa=0.12):
+                  self.qemu.stdin.write((orden + "\n").encode())
+                  self.qemu.stdin.flush()
+                  time.sleep(pausa)
+
+              def teclea(self, texto, pausa=2):
+                  for letra in texto:
+                      self.pide("sendkey " + {" ": "spc", ".": "dot"}.get(letra, letra))
+                  self.pide("sendkey ret", pausa)
+
+              def dicho(self):
+                  if not os.path.exists(self.serie):
+                      return ""
+                  with open(self.serie, encoding="utf-8", errors="replace") as serie:
+                      return serie.read()
+
+              def espera(self, frase, veces=1, segundos=40):
+                  hasta = time.time() + segundos
+                  while time.time() < hasta:
+                      if self.dicho().count(frase) >= veces:
+                          return
+                      time.sleep(0.3)
+                  self.falla("no dice " + frase)
+
+              def falla(self, por_que):
+                  print(self.dicho())
+                  self.qemu.kill()
+                  sys.exit(por_que)
+
+              def fuera(self):
+                  self.pide("quit")
+                  self.qemu.wait(20)
+                  print(self.dicho())
+                  if re.search(r"X  [A-Z]", self.dicho()):
+                      sys.exit("La red ha tumbado a FalOS")
+
+          def suma(trozo):
+              if len(trozo) % 2:
+                  trozo += b"\0"
+              total = sum(struct.unpack("!%dH" % (len(trozo) // 2), trozo))
+              while total >> 16:
+                  total = (total & 0xFFFF) + (total >> 16)
+              return total
+
+          def ip(texto):
+              return socket.inet_aton(texto)
+
+          def tramas(nombre):
+              datos = open(nombre, "rb").read()
+              i = 24
+              while i < len(datos):
+                  cap = struct.unpack("<I", datos[i + 8:i + 12])[0]
+                  yield datos[i + 16:i + 16 + cap]
+                  i += 16 + cap
+
+          def opciones_de(bootp):
+              assert bootp[236:240] == GALLETA
+              salen, i = {}, 240
+              while bootp[i] != 255:
+                  salen[bootp[i]] = bootp[i + 2:i + 2 + bootp[i + 1]]
+                  i += 2 + bootp[i + 1]
+              return salen
+
+          def mira_lo_que_sale(salen):
+              caras = set()
+              for t in salen:
+                  assert DE_VERDAD not in t, "sale la dirección de fábrica"
+                  assert t[6] % 4 == 2, "esa dirección no es de las puestas a mano: " + t[6:12].hex()
+                  assert len(t) < 400, "una trama de %d bytes" % len(t)
+                  caras.add(t[6:12])
+                  if t[12:14] == b"\x08\x06":
+                      assert t[22:28] == t[6:12]
+                      continue
+                  assert t[12:14] == b"\x08\x00", t[12:14].hex()
+                  assert suma(t[14:34]) == 0xFFFF
+                  if t[23] == 1:
+                      continue
+                  assert t[23] == 17
+                  largo = struct.unpack("!H", t[38:40])[0]
+                  assert suma(t[26:34] + struct.pack("!BBH", 0, 17, largo) + t[34:34 + largo]) == 0xFFFF
+                  de, a = struct.unpack("!HH", t[34:38])
+                  if a == 67:
+                      bootp = t[42:]
+                      assert de == 68 and bootp[28:34] == t[6:12] and bootp[34:236] == bytes(202)
+                      quiere = opciones_de(bootp)
+                      assert set(quiere) <= {50, 53, 54, 55} and quiere[55] == bytes([1, 3, 6]), quiere
+                  else:
+                      assert a == 53 and b"\x08fal-lang\x03org\x00" in t
+              return caras
+
+          def de_falos(nombre):
+              return [t for t in tramas(nombre) if t[6:9] != b"\x52\x55\x0a"]
+
+          def usuario(nombre):
+              return ["-netdev", "user,id=n1", *TARJETA, "-object", "filter-dump,id=f1,netdev=n1,file=" + nombre]
+
+          class RedFalsa(threading.Thread):
+              AQUI, SALIDA, DNS, LADRON = ip("192.168.50.77"), ip("192.168.50.1"), ip("192.168.50.53"), ip("192.168.50.66")
+              SU_MAC = bytes.fromhex("5254aabbcc01")
+
+              def __init__(self, mentiras, buena, ruido=False):
+                  super().__init__(daemon=True)
+                  self.enchufe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                  self.enchufe.bind(("127.0.0.1", 0))
+                  libre = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                  libre.bind(("127.0.0.1", 0))
+                  self.el_otro = libre.getsockname()[1]
+                  libre.close()
+                  self.mentiras, self.buena, self.ruido, self.vistas = mentiras, buena, ruido, []
+                  self.start()
+
+              def opciones(self):
+                  puerto = self.enchufe.getsockname()[1]
+                  return ["-netdev", "socket,id=n1,udp=127.0.0.1:%d,localaddr=127.0.0.1:%d" % (puerto, self.el_otro), *TARJETA]
+
+              def lanza(self, trama):
+                  self.enchufe.sendto(trama, ("127.0.0.1", self.el_otro))
+
+              def por_ip(self, para, de, a, lleva, cuerpo):
+                  cabeza = struct.pack("!BBHHHBBH4s4s", 69, 0, 20 + len(cuerpo), 1, 0, 64, lleva, 0, de, a)
+                  cabeza = cabeza[:10] + struct.pack("!H", 65535 - suma(cabeza)) + cabeza[12:]
+                  return para + self.SU_MAC + b"\x08\x00" + cabeza + cuerpo
+
+              def por_udp(self, para, de, a, puertos, datos, largo=None):
+                  cabeza = struct.pack("!HHHH", *puertos, 8 + len(datos) if largo is None else largo, 0)
+                  return self.por_ip(para, de, a, 17, cabeza + datos)
+
+              def oferta(self, pregunta, tipo, cambia=None):
+                  c = {"op": 2, "xid": pregunta[46:50], "quien": pregunta[70:76], "da": self.AQUI, "galleta": GALLETA,
+                       "mascara": ip("255.255.255.0"), "salida": self.SALIDA, "dns": self.DNS, "servidor": self.SALIDA,
+                       "dura": struct.pack("!I", 3600), "tipo": bytes([tipo]), "cola": b"\xff", "delante": b"",
+                       "largo": None, "puerto": 67}
+                  c.update(cambia or {})
+                  datos = bytes([c["op"], 1, 6, 0]) + c["xid"] + bytes(8) + c["da"] + self.SALIDA + bytes(4)
+                  datos += c["quien"] + bytes(202) + c["galleta"] + c["delante"]
+                  for cual, campo in ((53, "tipo"), (54, "servidor"), (1, "mascara"), (3, "salida"), (6, "dns"), (51, "dura")):
+                      if c[campo] is not None:
+                          datos += bytes([cual, len(c[campo])]) + c[campo]
+                  return self.por_udp(TODOS, self.SALIDA, b"\xff" * 4, (c["puerto"], 68), datos + c["cola"], c["largo"])
+
+              def run(self):
+                  while True:
+                      try:
+                          t = self.enchufe.recv(4096)
+                      except ConnectionError:
+                          continue
+                      self.vistas.append(t)
+                      if t[12:14] == b"\x08\x06" and t[20:22] == b"\0\1" and t[38:42] in (self.SALIDA, self.DNS):
+                          self.lanza(t[6:12] + self.SU_MAC + t[12:20] + b"\0\2" + self.SU_MAC + t[38:42] + t[6:12] + t[28:32])
+                      elif t[12:14] == b"\x08\x00" and t[23] == 1:
+                          eco = b"\0\0\0\0" + t[38:14 + struct.unpack("!H", t[16:18])[0]]
+                          eco = eco[:2] + struct.pack("!H", 65535 - suma(eco)) + eco[4:]
+                          self.lanza(self.por_ip(t[6:12], t[30:34], t[26:30], 1, eco))
+                      elif t[12:14] == b"\x08\x00" and t[36:38] == b"\0\x35":
+                          datos = t[42:34 + struct.unpack("!H", t[38:40])[0]]
+                          dice = datos[:2] + b"\x81\x80\0\1\0\1\0\0\0\0" + datos[12:]
+                          dice += b"\xc0\x0c\0\1\0\1\0\0\0\x3c\0\4\x01\x02\x03\x04"
+                          self.lanza(self.por_udp(t[6:12], t[30:34], t[26:30], (53, struct.unpack("!H", t[34:36])[0]), dice))
+                      elif t[12:14] == b"\x08\x00" and t[36:38] == b"\0\x43":
+                          tipo = opciones_de(t[42:])[53][0]
+                          if self.ruido:
+                              self.ruido = False
+                              for n in range(100):
+                                  self.lanza(TODOS + self.SU_MAC + os.urandom(2) + os.urandom(n * 14))
+                                  time.sleep(0.002)
+                          for m in self.mentiras:
+                              self.lanza(m if isinstance(m, bytes) else self.oferta(t, 2 if tipo == 1 else 5, m))
+                              time.sleep(0.003)
+                          if self.buena is not None:
+                              self.lanza(self.oferta(t, 2 if tipo == 1 else 5, self.buena(tipo)))
+
+          MENTIRAS = [
+              {"xid": b"\1\2\3\4"}, {"quien": bytes(6)}, {"op": 1}, {"galleta": b"\1\2\3\4"}, {"puerto": 68},
+              {"servidor": None}, {"servidor": b"\1"}, {"tipo": None}, {"tipo": b"\x09"}, {"tipo": b"\2\2"},
+              {"mascara": None}, {"mascara": ip("255.0.255.0")}, {"mascara": bytes(4)}, {"mascara": b"\xff" * 4},
+              {"mascara": ip("255.255.255.254")}, {"mascara": ip("0.0.0.255")},
+              {"da": bytes(4)}, {"da": ip("127.0.0.1")}, {"da": ip("224.0.0.1")}, {"da": b"\xff" * 4},
+              {"da": ip("192.168.50.0")}, {"da": ip("192.168.50.255")},
+              {"cola": b"\x0c"}, {"cola": b"\x0c\xff"}, {"cola": b"\x0c\x08abc"}, {"delante": b"\x0c\xff"},
+              {"largo": 0}, {"largo": 7}, {"largo": 8}, {"largo": 65535}, {"largo": 1500},
+              b"\0", bytes(13), bytes(14), bytes(41), b"\xff" * 1514, b"\xff" * 4000,
+              TODOS + RedFalsa.SU_MAC + b"\x08\x00\x4f" + b"\xff" * 60,
+              TODOS + RedFalsa.SU_MAC + b"\x08\x06" + bytes(28),
+          ]
+
+          def con_red_falsa(nombre, mentiras, buena, ruido=False):
+              red = RedFalsa(mentiras, buena, ruido)
+              return red, Ordenador(nombre, *CON, *red.opciones())
+
+          o = Ordenador("intel_callada", *CON, *usuario("intel_callada.pcap"))
+          o.espera("red: intel 4")
+          o.teclea("lanza veces")
+          o.teclea("red", 5)
+          o.teclea("tareas", 10)
+          o.espera("red: intel, cable a 1000, enviadas 0")
+          o.fuera()
+          assert de_falos("intel_callada.pcap") == [], "ha salido algo sin que nadie lo pidiera"
+
+          o = Ordenador("intel_sin", *usuario("intel_sin.pcap"))
+          o.espera("red: intel 1")
+          o.teclea("ping", 4)
+          o.teclea("red")
+          o.espera("red: no hay tarjeta", 2)
+          o.fuera()
+          assert de_falos("intel_sin.pcap") == []
+
+          o = Ordenador("intel", *CON, *usuario("intel.pcap"))
+          o.teclea("lanza busca")
+          o.teclea("deja 1")
+          o.espera("red: dirección 10.0.2.15")
+          o.espera("busca habló con la red: ")
+          o.teclea("ping")
+          o.espera("ping: 10.0.2.2 contesta 4")
+          o.teclea("cuelga red", 8)
+          o.espera("red reiniciado, y van 1")
+          o.teclea("ping")
+          o.espera("ping: 10.0.2.2 contesta 4", 2)
+          o.pide("pmemsave 1048576 1024 nucleo.bin", 1)
+          assert open("nucleo.bin", "rb").read() != bytes(1024)
+          o.teclea("rompe red")
+          o.espera("red: DMA parado por el IOMMU en 1048576")
+          o.espera("red reiniciado, y van 2")
+          o.teclea("ping")
+          o.espera("ping: 10.0.2.2 contesta 4", 3)
+          o.pide("set_link tj off", 2)
+          o.teclea("ping")
+          o.espera("red: sin cable")
+          o.pide("set_link tj on", 2)
+          o.teclea("ping")
+          o.espera("ping: 10.0.2.2 contesta 4", 4)
+          o.teclea("registro")
+          o.fuera()
+          salen = de_falos("intel.pcap")
+          robadas = [t for t in salen if len(t) == 1024]
+          assert all(t == bytes(1024) for t in robadas), "la tarjeta ha mandado trozos del núcleo"
+          caras = mira_lo_que_sale([t for t in salen if t not in robadas])
+          assert len(caras) >= 2, "tras quitar el cable se presenta con la misma cara"
+
+          red, o = con_red_falsa("intel_miente", MENTIRAS, None)
+          o.teclea("ping")
+          o.espera("red: nadie me da dirección", 1, 60)
+          o.fuera()
+          mira_lo_que_sale(red.vistas)
+          assert len(red.vistas) == 4 and all(opciones_de(t[42:])[53] == b"\1" for t in red.vistas), len(red.vistas)
+
+          red, o = con_red_falsa("intel_otra", MENTIRAS, lambda tipo: {}, True)
+          o.teclea("ping")
+          o.espera("red: dirección 192.168.50.77", 1, 60)
+          o.espera("ping: 192.168.50.1 contesta 4")
+          o.teclea("lanza busca")
+          o.teclea("deja 1")
+          o.espera("busca habló con la red: ")
+          o.fuera()
+          mira_lo_que_sale(red.vistas)
+          al_dns = [t for t in red.vistas if t[12:14] == b"\x08\x00" and t[36:38] == b"\0\x35"]
+          assert len(al_dns) == 1 and al_dns[0][30:34] == RedFalsa.DNS
+
+          red, o = con_red_falsa("intel_cambia", [], lambda tipo: {} if tipo == 1 else {"da": RedFalsa.LADRON})
+          o.teclea("ping")
+          o.espera("red: nadie me da dirección", 1, 90)
+          o.fuera()
+
+          red, o = con_red_falsa("intel_niega", [], lambda tipo: {} if tipo == 1 else {"tipo": b"\6"})
+          o.teclea("ping")
+          o.espera("red: nadie me da dirección", 1, 90)
+          o.fuera()
+
+          red, o = con_red_falsa("intel_lejos", [], lambda tipo: {"salida": ip("10.9.8.7"), "dns": None})
+          o.teclea("ping", 8)
+          o.espera("red: dirección 192.168.50.77")
+          o.teclea("lanza busca")
+          o.teclea("deja 1")
+          o.espera("busca habló con la red: -20")
+          o.fuera()
+          assert len(red.vistas) == 2, "sin salida ni DNS no tenía a quién preguntar"
+          print("todo bien")
+          FIN
+          fal haz_disco.fal > /dev/null
+          timeout 900 python3 intel.py
+
       - name: Arrancar desde un pendrive, por BIOS y por UEFI, sin tocar ningun disco
         run: |
           sudo apt-get install -y -q grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools ovmf

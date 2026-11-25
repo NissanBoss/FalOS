@@ -2,6 +2,65 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 24: la tarjeta de red de un portátil, encerrada, como prometí
+
+![FalOS se inventa una dirección, la red le da otra, y contesta el ping](capturas/dia-24.png)
+
+**Lo que hay.** Hasta ayer FalOS solo sabía usar una tarjeta de red de 1988 que ya
+solo existe en QEMU. Ahora sabe usar la Intel de los portátiles de 2013 a 2015, la
+I217 y la I218, y la 82574. Su controlador es un programa sin permisos que ve 4
+páginas de registros y 21 de memoria, y nada más.
+
+Pero esta tarjeta no es como la otra: lee y escribe la memoria por su cuenta, sin
+pasar por el procesador. Encerrar al programa no sirve de nada si puede mandar al
+aparato. Por eso el IOMMU vigila la tarjeta: solo alcanza esas 21 páginas, y ni
+siquiera igual. Donde deja lo que llega, no puede leer. De donde coge lo que sale,
+no puede escribir. Sin IOMMU, FalOS no la enciende.
+
+`rompe red` lo enseña. El controlador le pide a la tarjeta que mande por el cable
+el principio del núcleo. El IOMMU la para, FalOS cierra el controlador, lanza otro
+y sigue. En la captura del cable hay 1.024 ceros donde debería estar el núcleo.
+
+![El controlador manda leer el núcleo a la tarjeta y el IOMMU lo para](capturas/dia-24-rompe.png)
+
+**Con qué cara se presenta.** Cada tarjeta lleva una dirección de fábrica que no
+cambia nunca, y cualquier red a la que te conectas puede reconocerte por ella.
+FalOS no la usa. Se inventa una en cada arranque, y otra si mueves el cable, porque
+puede ser otra red.
+
+Y en una red de verdad hay que pedir dirección. Lo normal es que un ordenador la
+pida en cuanto enchufas el cable, y que de paso diga cómo se llama y qué sistema
+lleva. FalOS no manda nada hasta que tú haces `ping` o dejas a un programa
+conectarse, y cuando la pide dice lo mínimo, siguiendo el
+[RFC 7844](https://www.rfc-editor.org/rfc/rfc7844): ni nombre, ni marca, ni qué
+sistema es.
+
+**Una red que miente.** Quien contesta a esa pregunta es un desconocido. La prueba
+automática hace de red mala: 22 respuestas falsas (máscaras imposibles, direcciones
+que no son de nadie, la dirección de otro), 4 con las opciones cortadas a medias, 5
+que mienten sobre cuánto miden y 8 tramas rotas. FalOS no se cree ninguna, y no se
+cae. Después le ofrece una dirección y le confirma otra, y tampoco.
+
+Los programas ya no necesitan saber en qué red estás. Antes `busca` llevaba escrita
+la dirección del DNS de QEMU. Ahora pide "el DNS de esta red", FalOS te pregunta, y
+el programa no llega a saber cuál es.
+
+**Lo que se aprende.** Una tarjeta de red moderna es un anillo. Son 32 fichas en
+círculo, y cada una dice "aquí hay un hueco". La tarjeta las va rellenando, tú las
+vas vaciando, y los dos dais vueltas sin hablaros. Todo lo demás son permisos.
+
+Otra: antes de dejarla tocar la memoria hay que callarla. El arranque del ordenador
+puede haberla usado y haberla dejado recibiendo en memoria que ya es de otro. FalOS
+la reinicia primero y solo entonces le deja pasar.
+
+Y hoy descubrí que mis programas hablaban siempre desde el mismo puerto, el 50000 y
+pico. Cualquiera podía colar una respuesta falsa sin ver la pregunta. Ahora sale al
+azar cada vez.
+
+**Lo que queda.** En QEMU funciona, y la I218 del L450 todavía no la he visto
+moverse. Si tu portátil lleva otra, sigue sin red. No hay wifi. Y la red sabe lo que
+tú le pides: quien manda en ella puede mandarte al DNS que quiera.
+
 ## Día 23: guardar en el pendrive, cifrado, como prometí
 
 ![Después de reiniciar y escribir la contraseña: FalOS ha abierto el pendrive y se acuerda](capturas/dia-23.png)
