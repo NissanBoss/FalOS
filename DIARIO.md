@@ -2,6 +2,48 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 25: programar dentro de FalOS
+
+![fal compila un programa dentro de FalOS, y corre en su propia ventana](capturas/dia-25.png)
+
+**Lo que hay.** Hasta hoy, los programas de FalOS se escribían fuera, en otro
+ordenador, y se metían en el disco. Ahora hay uno que se llama `fal`: un editor y
+un compilador de Fal juntos, escritos en Fal, que corren dentro de FalOS como un
+programa más, sin permisos. Escribes, pulsas Fin, le pones nombre, y en la
+consola `lanza hola` lo arranca en su propia ventana.
+
+No hay nada debajo. Ni ensamblador ni enlazador: `fal` pasa cada línea a los
+bytes que entiende el procesador. Sumar es `48 01 C8`. Saltar si no es verdad es
+`0F 84` y cuatro bytes que dicen cuánto. Y como una función puede llamar a otra
+que aún no ha visto, compila varias veces, hasta que todo cae en el mismo sitio
+dos veces seguidas.
+
+Entiende un trozo de Fal: enteros de 64 bits, verdadero y falso, `si`, `mientras`,
+`repite`, `para cada`, funciones con recursión, `escribe`, `numero de pregunta` y
+`azar entre`. Cuando algo falla al compilar, te dice la línea y te lleva a ella.
+Cuando falla al correr, como dividir entre cero o una cuenta que no cabe, el
+programa se para y dice en qué línea, como el Fal de siempre. La prueba
+automática teclea un programa con funciones, bucles y recursión, y comprueba que
+dentro de FalOS saca exactamente lo mismo que el `fal` de fuera.
+
+**El compilador no es la puerta.** Lo fácil sería fiarse de `fal`: si lo ha
+compilado él, será bueno. Pero cualquier programa puede pedirle a FalOS que
+estrene uno, y `falsario` lo hace: se salta a `fal` y fabrica uno a mano, byte a
+byte, que intenta guardar en el disco. FalOS lo carga igual de encerrado que
+todo lo demás. Lo hecho dentro no puede guardar ni leer archivos, no puede
+llamarse como un programa del disco y no puede pisar el de otro. `falsario`
+prueba ocho trampas, y se le niegan las ocho.
+
+**Lo que se aprende.** Un error de 4 bytes. El primer programa escribía "hola
+desde de" en vez de "hola desde dentro": al medir cada texto descontaba 10 bytes
+por las instrucciones que van detrás, y eran 6. Con un texto corto
+salía un largo negativo, que para el procesador es un número enorme, y se ponía
+a escribir su propio código como si fueran letras.
+
+**Lo que queda.** Lo que haces vive en la memoria y se borra al apagar, y el
+código que escribes también. Sin decimales, sin textos
+en variables, sin listas. Y el editor es sencillo: ni copiar, ni deshacer.
+
 ## Día 24: la tarjeta de red de los portátiles, encerrada
 
 ![FalOS se inventa una dirección, la red le da otra, y contesta el ping](capturas/dia-24.png)

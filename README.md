@@ -327,6 +327,31 @@ teclado 1
 lee notas.dat
 ```
 
+Y se puede programar dentro. `fal` es un editor y un compilador de Fal en el
+mismo programa, escrito en Fal y sin permisos. Escribes, pulsas Fin, le pones
+nombre y lo lanzas desde la consola. No hay ensamblador ni nada debajo: `fal`
+pasa cada línea a los bytes que entiende el procesador y se los da a FalOS. Y
+FalOS no se fía: mira la cabecera, comprueba que en el disco no hay un programa
+con ese nombre ni lo ha estrenado otro, y lo carga en su propia caja, como a los
+del disco.
+
+```
+lanza fal
+teclado 1
+```
+
+Entiende un trozo de Fal: números enteros de 64 bits, verdadero y falso, `si`,
+`mientras`, `repite`, `para cada`, funciones con recursión, `escribe`, `numero de
+pregunta`, `azar entre` y `cociente`. Si una cuenta no cabe en 64 bits, si se
+divide entre cero o si las llamadas se meten demasiado unas dentro de otras, el
+programa se para y dice en qué línea, como Fal. Y si no usa `cociente`, que solo
+existe en FalOS, el `fal` de fuera saca lo mismo.
+
+El compilador no es la puerta. `falsario` se salta a `fal` y fabrica byte a byte
+un programa que intenta guardar en el disco, y nace igual de encerrado: lo hecho
+aquí no puede guardar ni leer archivos, y no puede llamarse como uno del disco ni
+como uno que hizo otro.
+
 `registro` dice qué programa ha leído o guardado qué, y cuándo, y también lo que
 decidiste tú: a quién dejaste guardar, a quién le diste el teclado y con cuántas
 teclas tuyas se cerró. Ese registro solo vive en memoria: no se escribe en el
@@ -532,7 +557,12 @@ y que ahí no se lee ni un nombre de archivo, y lo abre desde fuera con la
 biblioteca de referencia de Argon2. Después arranca la misma imagen por UEFI,
 falla la contraseña, acierta, y mira que está todo. Quita el pendrive, lo vuelve a
 poner, rompe el controlador, le cambia un bit a una copia y luego a las dos,
-entra de invitado y prueba con un pendrive de solo lectura.
+entra de invitado y prueba con un pendrive de solo lectura. Teclea programas en
+`fal`, los compila y los lanza: mira que salen los mismos números que con el `fal`
+de fuera, que un fallo al correr dice su línea, que uno al compilar no estrena
+nada y que no se puede usar el nombre de uno del disco. Y lanza `falsario`: sus
+ocho trampas se rechazan, y el programa que fabrica a mano intenta guardar y
+leer y se le niega las dos veces.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -810,6 +840,16 @@ vive en él.
 - **Las interrupciones, solo si el IOMMU sabe.** Si no trae remapeo de
   interrupciones, o al encenderlo FalOS deja de oír su propio reloj, lo apaga, y
   entonces un aparato puede fingir una. `dma` lo dice.
+- **Lo que haces con `fal` se borra al apagar.** Vive en la memoria, hasta 8
+  programas de 64 KB. Tampoco se guarda lo que escribes: si cierras `fal`, se
+  pierde.
+- **Un trozo de Fal, no Fal entero.** Sin decimales, sin textos en variables, sin
+  listas ni objetos. `entre` tiene que dar exacto, o el programa se para y te
+  dice que uses `cociente` o `resto`.
+- **Un editor sencillo.** Sin copiar y pegar, sin deshacer y sin buscar. Y con
+  cada tecla repinta la ventana entera.
+- **El compilador no optimiza.** Cada cuenta pasa por la pila, así que lo
+  compilado dentro va más lento que lo compilado fuera.
 - **Solo x86-64**, arrancado por multiboot: con QEMU o con GRUB. Ni ARM ni
   Secure Boot.
 
@@ -830,8 +870,13 @@ vive en él.
   escritorio completo; FalOS va a paso de día y pone el aislamiento por
   delante.
 - [TempleOS](https://templeos.org) se escribió en un lenguaje propio, HolyC,
-  pero sin ninguna protección: todo corre con todos los permisos. FalOS es lo
-  contrario.
+  y también se programa desde dentro, pero sin ninguna protección: todo corre
+  con todos los permisos, también lo que acabas de escribir. En FalOS, lo que
+  compilas nace en una caja.
+- [Project Oberon](https://www.projectoberon.net) es un sistema entero que se
+  escribe y se compila a sí mismo, desde dentro. Todos sus módulos comparten la
+  misma memoria; en FalOS, el compilador y lo que compila van cada uno en la
+  suya.
 - [Redox](https://www.redox-os.org) es un micronúcleo en Rust, con la misma
   idea de seguridad de memoria. Está mucho más avanzado; FalOS se construye
   desde cero y a la vista, para que se entienda cada paso.

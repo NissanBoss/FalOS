@@ -1979,6 +1979,245 @@ jobs:
           fal haz_disco.fal > /dev/null
           timeout 900 python3 intel.py
 
+      - name: Programar dentro de FalOS, y que lo hecho aqui nazca en su caja
+        run: |
+          cat > dentro.py <<'FIN'
+          import os, re, subprocess, sys, time
+
+          TECLA = {" ": "spc", '"': "shift-2", "(": "shift-8", ")": "shift-9", "-": "slash", "_": "shift-slash",
+                   ".": "dot", ",": "comma", ":": "shift-dot", "ñ": "semicolon",
+                   "á": "apostrophe a", "é": "apostrophe e", "í": "apostrophe i", "ó": "apostrophe o", "ú": "apostrophe u"}
+          TECLA.update({letra: "shift-" + letra.lower() for letra in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"})
+          ABREN = ("si", "mientras", "repite", "para", "funcion")
+
+          CUENTAS = '''
+          funcion fib con n
+              si n es menor que 2
+                  devuelve n
+              fin
+              devuelve (fib con n menos 1) mas (fib con n menos 2)
+          fin
+          total es 0
+          para cada i desde 1 hasta 10
+              total es total mas fib con i
+          fin
+          escribe total
+          n es 0
+          mientras verdadero
+              n es n mas 1
+              si n resto 2 es 0
+                  continua
+              fin
+              si n es mayor que 7
+                  detente
+              fin
+              escribe n sin salto
+              escribe "," sin salto
+          fin
+          escribe ""
+          para cada j desde 5 hasta 1 de 2
+              escribe j sin salto
+          fin
+          escribe ""
+          escribe 7 es mayor que 3 y no (2 es 3)
+          escribe menos 12 entre 4
+          escribe 17 resto 5
+          x es 9223372036854775807
+          escribe x
+          escribe "año y canción"
+          '''
+
+          CERO = '''
+          escribe "antes"
+          a es 10
+          b es a menos 10
+          escribe a entre b
+          escribe "nunca"
+          '''
+
+          HONDO = '''
+          funcion hondo con n
+              devuelve hondo con n mas 1
+          fin
+          escribe hondo con 1
+          '''
+
+          MALO = '''
+          x es 3
+          si x es 3
+              escribe z
+          fin
+          '''
+
+          DOBLE = '''
+          n es numero de pregunta "Dime un número: "
+          escribe n por 2
+          '''
+
+          class Ordenador:
+              def __init__(self, nombre):
+                  self.nombre = nombre
+                  self.serie = nombre + ".txt"
+                  if os.path.exists(self.serie):
+                      os.remove(self.serie)
+                  self.qemu = subprocess.Popen(
+                      ["qemu-system-x86_64", "-m", "256", "-cpu", "max", "-kernel", "sistema.bin", "-initrd", "disco.img",
+                       "-display", "none", "-serial", "file:" + self.serie, "-monitor", "stdio", "-no-reboot"],
+                      stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+                  self.espera("pantalla lista", 1, 60)
+                  time.sleep(2)
+
+              def pide(self, orden, pausa=0.12):
+                  self.qemu.stdin.write((orden + "\n").encode())
+                  self.qemu.stdin.flush()
+                  time.sleep(pausa)
+
+              def pulsa(self, *teclas):
+                  for tecla in teclas:
+                      self.pide("sendkey " + tecla)
+
+              def escribe(self, texto):
+                  for letra in texto:
+                      self.pulsa(*TECLA.get(letra, letra).split())
+
+              def orden(self, texto, pausa=1.5):
+                  self.escribe(texto)
+                  self.pide("sendkey ret", pausa)
+
+              def programa(self, codigo):
+                  lineas = codigo.strip("\n").split("\n")
+                  previa = None
+                  for linea in lineas:
+                      quiere = len(linea) - len(linea.lstrip(" "))
+                      sangria = 0
+                      if previa is not None:
+                          sangria = len(previa) - len(previa.lstrip(" "))
+                          if previa.strip().split(" ")[0] in ABREN:
+                              sangria += 4
+                          self.pulsa("ret")
+                      while sangria > quiere:
+                          self.pulsa("backspace")
+                          sangria -= 4
+                      self.escribe(" " * (quiere - sangria) + linea.strip())
+                      previa = linea
+
+              def compila(self, codigo, nombre):
+                  self.programa(codigo)
+                  self.pide("sendkey end", 0.5)
+                  self.escribe(nombre)
+                  self.pide("sendkey ret", 4)
+
+              def nuevo_fal(self, primero=False):
+                  if not primero:
+                      self.pide("sendkey esc", 0.5)
+                      self.orden("para 1")
+                  self.orden("lanza fal")
+                  self.orden("teclado 1", 0.5)
+
+              def dicho(self):
+                  if not os.path.exists(self.serie):
+                      return ""
+                  with open(self.serie, encoding="utf-8", errors="replace") as serie:
+                      return serie.read()
+
+              def espera(self, frase, veces=1, segundos=40):
+                  hasta = time.time() + segundos
+                  while time.time() < hasta:
+                      if self.dicho().count(frase) >= veces:
+                          return
+                      time.sleep(0.3)
+                  self.falla("no dice " + frase)
+
+              def en_pantalla(self, *frases):
+                  time.sleep(1.5)
+                  self.pide("pmemsave 0 134217728 %s.mem" % self.nombre, 3)
+                  memoria = open(self.nombre + ".mem", "rb").read()
+                  for frase in frases:
+                      patron = b"".join(re.escape(bytes([letra])) + b"." for letra in frase.encode("cp437"))
+                      if not re.search(patron, memoria, re.S):
+                          self.falla("no está en la pantalla: " + frase)
+
+              def falla(self, por_que):
+                  print(self.dicho())
+                  self.qemu.kill()
+                  sys.exit(por_que)
+
+              def fuera(self):
+                  self.pide("quit")
+                  self.qemu.wait(20)
+                  print(self.dicho())
+                  if re.search(r"X  [A-Z]", self.dicho()):
+                      sys.exit("Programar dentro ha tumbado a FalOS")
+
+          with open("cuentas.fal", "w", encoding="utf-8") as fuente:
+              fuente.write(CUENTAS.strip("\n") + "\n")
+          de_fuera = subprocess.run(["fal", "cuentas.fal"], capture_output=True, text=True, encoding="utf-8").stdout
+          esperado = [l.rstrip() for l in de_fuera.split("\n") if l.strip()]
+          assert esperado[0] == "143" and esperado[-1] == "año y canción", esperado
+
+          o = Ordenador("dentro")
+          o.nuevo_fal(primero=True)
+          o.compila(CUENTAS, "cuentas")
+          o.espera("estreno: cuentas")
+          o.pide("sendkey esc", 0.5)
+          o.orden("lanza cuentas")
+          o.espera("hecho aqui: cuentas")
+          o.en_pantalla(*esperado)
+
+          o.nuevo_fal()
+          o.compila(CERO, "cero")
+          o.espera("estreno: cero")
+          o.pide("sendkey esc", 0.5)
+          o.orden("lanza cero")
+          o.en_pantalla("antes", "En la línea 4: dividir entre cero.")
+
+          o.nuevo_fal()
+          o.compila(HONDO, "hondo")
+          o.espera("estreno: hondo")
+          o.pide("sendkey esc", 0.5)
+          o.orden("lanza hondo")
+          o.en_pantalla("En la línea 1: demasiadas llamadas")
+
+          o.nuevo_fal()
+          o.compila(MALO, "malo")
+          o.en_pantalla("Línea 3: No sé qué es z.")
+          o.nuevo_fal()
+          o.compila("escribe 1", "notas")
+          o.en_pantalla("Ya hay un programa con ese nombre en el disco.")
+          if "estreno: malo" in o.dicho() or "estreno: notas" in o.dicho() or "nunca" in o.dicho():
+              o.falla("ha salido algo que no debía")
+
+          o.nuevo_fal()
+          o.compila(DOBLE, "doble")
+          o.espera("estreno: doble")
+          o.pide("sendkey esc", 0.5)
+          o.orden("lanza doble")
+          o.espera("hecho aqui: doble")
+          o.orden("teclado 2", 0.5)
+          o.escribe("-219")
+          o.pulsa("backspace", "ret")
+          o.en_pantalla("Dime un número: -21", "-42")
+
+          o.pide("sendkey esc", 0.5)
+          o.orden("para 1")
+          o.orden("lanza falsario", 4)
+          o.en_pantalla("trozo que se sale de la mesa: -1", "estreno sin nada preparado: -36",
+                        "nombre con mayusculas: -31", "nombre con barras: -31", "notas, que esta en el disco: -32",
+                        "cuentas, que hizo fal: -33", "sin cabecera: -36", "mas de 64 KB: -1", "guarda, hecho a mano: 0")
+          o.orden("lanza guarda", 3)
+          o.espera("hecho aqui: guarda")
+          o.orden("para 2")
+          o.espera("guarda cerrado con 0 preguntas y 2 rechazadas")
+          o.orden("programas", 2)
+          o.en_pantalla("Hechos aquí, solo en memoria:", "bytes, de fal", "74 bytes, de falsario")
+          o.orden("registro", 2)
+          o.en_pantalla("se compiló aquí: 74 bytes, solo en memoria")
+          o.fuera()
+          print("todo bien")
+          FIN
+          fal haz_disco.fal > /dev/null
+          timeout 1200 python3 dentro.py
+
       - name: Arrancar desde un pendrive, por BIOS y por UEFI, sin tocar ningun disco
         run: |
           sudo apt-get install -y -q grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools ovmf

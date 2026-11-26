@@ -117,12 +117,14 @@ núcleo se lo niega, el número es negativo.
 | 18 | Solo la consola: pedirle una orden a FalOS. A cualquier otro se le niega. |
 | 19 | Solo el controlador USB: decir en qué puerto hay un teclado. A cualquier otro se le niega. |
 | 20 | Solo el controlador USB: decir en qué puerto hay un pendrive y cuánto cabe en él. A cualquier otro se le niega. |
+| 21 | Añadir `b` bytes de la mesa, desde el `a`, al programa que está preparando. Hasta 64 KB en total. |
+| 22 | Estrenar lo preparado con el nombre que hay en la mesa, desde el `a`, de `b` letras: minúsculas sin tilde, cifras, `-` y `_`, hasta 16. No vale el nombre de uno del disco ni el de uno que estrenó otro. Vive en memoria, nace sin permisos, y 14 y 15 se le niegan. |
 
-Del 21 en adelante no hay nada, y pedirlo cuenta como rechazado.
+Del 23 en adelante no hay nada, y pedirlo cuenta como rechazado.
 
 Lo más rápido es empezar por los que ya lo intentan y FalOS para: `espia`,
 `ladron`, `fisgon`, `curioso`, `cambiazo`, `escucha`, `chivato`, `disfraz`,
-`impostor`, `tumba`, `trampa` y `mandon`, todos en [programas/](programas).
+`impostor`, `tumba`, `trampa`, `mandon` y `falsario`, todos en [programas/](programas).
 
 ## Cómo avisar
 

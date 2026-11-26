@@ -6,6 +6,7 @@
   caja        guarda un secreto y contesta si le preguntan
   curioso     quiere saber el secreto de la caja
   busca       pregunta al DNS dónde está fal-lang.org, si le dejas
+  fal         escribe un programa en Fal y lo compila aquí mismo
 
   apaga       intenta apagar el ordenador
   espia       intenta leer la memoria de FalOS
@@ -21,6 +22,7 @@
   tumba       lo que el día 18 tumbaba FalOS con una llamada
   trampa      pinta una pregunta de permiso falsa encima de la de verdad
   mandon      finge ser la consola y le da órdenes a FalOS
+  falsario    cuela programas hechos a mano, con nombres que no son suyos
 
   gigante     dice que necesita un terabyte de memoria
   desborda    dice que ocupa un número que no cabe en ninguna cuenta

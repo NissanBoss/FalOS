@@ -1,0 +1,137 @@
+DUERME es 4
+PIDE_VENTANA es 12
+PON_CASILLA es 13
+TROZO_DE_PROGRAMA es 21
+ESTRENA es 22
+MESA es 807395328
+BASE es 805306368
+MAGIA es 20071938299543878
+GRIS es 7
+BLANCO es 15
+
+hoja es region con MESA y 4096
+palabras es region con MESA y 4 y 8
+renglon es 2
+sitio es 0
+
+funcion pon_en con columna y letra y tinta
+    llama_al_sistema con PON_CASILLA y renglon por 256 mas columna y tinta por 256 mas letra
+fin
+
+funcion cuenta con texto y respuesta
+    comparte renglon
+    columna es 2
+    para cada letra en texto
+        pon_en con columna y letra y GRIS
+        columna es columna mas 1
+    fin
+    pon_en con columna y 58 y GRIS
+    columna es columna mas 2
+    n es respuesta
+    si n es menor que 0
+        pon_en con columna y 45 y BLANCO
+        columna es columna mas 1
+        n es 0 menos n
+    fin
+    cifras es 1
+    mientras (cociente con n y cifras) es mayor o igual que 10
+        cifras es cifras por 10
+    fin
+    mientras cifras es mayor que 0
+        pon_en con columna y 48 mas (cociente con n y cifras) resto 10 y BLANCO
+        columna es columna mas 1
+        cifras es cociente con cifras y 10
+    fin
+    renglon es renglon mas 1
+fin
+
+funcion estrena_como con nombre
+    i es 1
+    para cada letra en nombre
+        elemento 3000 mas i de hoja es letra
+        i es i mas 1
+    fin
+    devuelve llama_al_sistema con ESTRENA y 3000 y largo de nombre
+fin
+
+funcion pon_byte con n
+    comparte sitio
+    sitio es sitio mas 1
+    elemento sitio de hoja es n
+fin
+
+funcion llama_con con numero y segundo
+    pon_byte con 184
+    pon_byte con numero
+    repite 3 veces
+        pon_byte con 0
+    fin
+    pon_byte con 49
+    pon_byte con 255
+    pon_byte con 190
+    pon_byte con segundo
+    repite 3 veces
+        pon_byte con 0
+    fin
+    pon_byte con 205
+    pon_byte con 128
+fin
+
+funcion arma_guarda
+    comparte sitio
+    para cada i desde 1 hasta 4096
+        elemento i de hoja es 0
+    fin
+    elemento 1 de palabras es MAGIA
+    elemento 2 de palabras es BASE mas 32
+    elemento 3 de palabras es 74
+    elemento 4 de palabras es 4096
+    sitio es 32
+    llama_con con 14 y 10
+    llama_con con 15 y 10
+    pon_byte con 184
+    pon_byte con DUERME
+    repite 3 veces
+        pon_byte con 0
+    fin
+    pon_byte con 191
+    pon_byte con 100
+    repite 3 veces
+        pon_byte con 0
+    fin
+    pon_byte con 205
+    pon_byte con 128
+    pon_byte con 235
+    pon_byte con 242
+fin
+
+funcion prepara
+    arma_guarda
+    devuelve llama_al_sistema con TROZO_DE_PROGRAMA y 0 y 74
+fin
+
+llama_al_sistema con PIDE_VENTANA y 50 y 14
+cuenta con "trozo que se sale de la mesa" y (llama_al_sistema con TROZO_DE_PROGRAMA y 4000 y 200)
+cuenta con "estreno sin nada preparado" y (estrena_como con "nada")
+prepara
+cuenta con "nombre con mayusculas" y (estrena_como con "Guarda")
+prepara
+cuenta con "nombre con barras" y (estrena_como con "../guarda")
+prepara
+cuenta con "notas, que esta en el disco" y (estrena_como con "notas")
+prepara
+cuenta con "cuentas, que hizo fal" y (estrena_como con "cuentas")
+para cada i desde 1 hasta 4096
+    elemento i de hoja es 0
+fin
+llama_al_sistema con TROZO_DE_PROGRAMA y 0 y 74
+cuenta con "sin cabecera" y (estrena_como con "ceros")
+repite 16 veces
+    llama_al_sistema con TROZO_DE_PROGRAMA y 0 y 4096
+fin
+cuenta con "mas de 64 KB" y (llama_al_sistema con TROZO_DE_PROGRAMA y 0 y 1)
+prepara
+cuenta con "guarda, hecho a mano" y (estrena_como con "guarda")
+mientras verdadero
+    llama_al_sistema con DUERME y 100
+fin

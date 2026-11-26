@@ -1706,6 +1706,8 @@ CONECTA es 17
 PIDE_ORDEN es 18
 AVISA_TECLADO es 19
 AVISA_PENDRIVE es 20
+TROZO_DE_PROGRAMA es 21
+ESTRENA es 22
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -1836,6 +1838,23 @@ destino_de es region con pide_pagina y 512 y 8
 destino_permiso es region con pide_pagina y 512 y 8
 directorios es region con pide_pagina y 512 y 8
 memoria_grande_de es region con pide_pagina y 512 y 8
+CUPO_HECHOS es 8
+TOPE_HECHO es 65536
+HOJAS_HECHO es 16
+NOMBRE_HECHO es 16
+NOMBRE_MALO es 0 menos 31
+EN_EL_DISCO es 0 menos 32
+DE_OTRO es 0 menos 33
+NO_CABEN es 0 menos 35
+NO_ES_PROGRAMA es 0 menos 36
+hecho_de es region con pide_pagina y 512 y 8
+prep_mide es region con pide_pagina y 512 y 8
+prep_hojas es region con pide_pagina y 512 y 8
+hechos_mide es region con pide_pagina y 512 y 8
+hechos_hojas es region con pide_pagina y 512 y 8
+hechos_largo es region con pide_pagina y 512 y 8
+hechos_letras_en es pide_pagina
+hechos_nombres es region con hechos_letras_en y PAGINA
 SITIO_GRANDE es (cociente con DONDE_VAN y DOS_MEGAS) mas 2
 MEMORIA_GRANDE es DONDE_VAN mas DOS_MEGAS
 
@@ -1889,6 +1908,7 @@ R_PEN_FALLO es 42
 R_PEN_BORRADO es 43
 R_DIRECCION es 44
 R_SIN_DIRECCION es 45
+R_ESTRENO es 46
 
 TOPE_LLAVE es 36
 MARCA_LLAVE es "LLA1"
@@ -2309,6 +2329,15 @@ funcion letra_de_programa con b
     medias es elemento t de medias_de
     si b es 10
         salto_en_ventana con t
+        elemento t de medias_de es 0
+    si no si b es 8
+        c es elemento t de columna_de
+        si c es mayor que 1
+            texto es texto_de con t
+            elemento (casilla_de_texto con t y (elemento t de fila_de_ventana) y c menos 1) de texto es BLANCO por 256 mas 32
+            elemento t de columna_de es c menos 1
+            ensucia
+        fin
         elemento t de medias_de es 0
     si no si b es mayor o igual que 192
         elemento t de medias_de es b
@@ -3733,6 +3762,8 @@ funcion al_llamar
         elemento EN_RAX de marco es pon_en_casilla con a y (elemento EN_RSI de marco)
     si no si numero es PIDE_MEMORIA
         elemento EN_RAX de marco es da_memoria
+    si no si (numero es GUARDA o numero es LEE_GUARDADO) y (elemento actual de hecho_de) es mayor que 0
+        elemento EN_RAX de marco es rechaza_a_actual
     si no si numero es GUARDA o numero es LEE_GUARDADO
         elemento EN_RAX de marco es encarga con numero y a y (elemento EN_RSI de marco)
     si no si numero es CONECTA
@@ -3743,6 +3774,10 @@ funcion al_llamar
         elemento EN_RAX de marco es recibe_pendrive con a y (elemento EN_RSI de marco)
     si no si numero es PIDE_ORDEN
         elemento EN_RAX de marco es recibe_orden con a y (elemento EN_RSI de marco)
+    si no si numero es TROZO_DE_PROGRAMA
+        elemento EN_RAX de marco es prepara_trozo con a y (elemento EN_RSI de marco)
+    si no si numero es ESTRENA
+        elemento EN_RAX de marco es pide_estreno con a y (elemento EN_RSI de marco)
     si no
         elemento EN_RAX de marco es rechaza_a_actual
     fin
@@ -4452,6 +4487,7 @@ funcion programas
         pinta_buzon con respuesta
         pinta_linea con ""
     fin
+    lista_hechos
 fin
 
 funcion hueco_libre
@@ -4657,6 +4693,7 @@ funcion reserva_tarea con t y archivo y total y entrada
     elemento t de teclas_recibidas es 0
     elemento t de permiso_disco es DISCO_SIN_PEDIR
     elemento t de permiso_red es DISCO_SIN_PEDIR
+    elemento t de hecho_de es 0
     elemento t de destino_permiso es 0
     elemento t de raices es monta_programa con t y archivo y total
     pila es pagina_de_tarea con t
@@ -4785,6 +4822,11 @@ funcion lanza
         pinta_linea con ""
         devuelve nada
     fin
+    h es busca_hecho con nombre
+    si h es mayor que 0
+        carga_hecho con t y nombre y h
+        devuelve nada
+    fin
     primero es pide_archivo con nombre y ".prg" y 0
     si primero es NO_ESTA
         pon_color con ROJO_CLARO y NEGRO
@@ -4831,6 +4873,249 @@ funcion carga_programa con t y nombre y archivo y total y entrada y primero
     si no
         suelta_tarea con t
         fallo_de_disco con traido
+    fin
+fin
+
+funcion carga_hecho con t y nombre y h
+    cabecera es region con (elemento (h menos 1) por HOJAS_HECHO mas 1 de hechos_hojas) y 4 y 8
+    archivo es elemento h de hechos_mide
+    apunta_nombre con t y nombre
+    reserva_tarea con t y archivo y (elemento 4 de cabecera) y (elemento 2 de cabecera)
+    para cada p desde 1 hasta paginas_de con archivo
+        esperados es archivo menos (p menos 1) por PAGINA
+        si esperados es mayor que PAGINA
+            esperados es PAGINA
+        fin
+        hoja es region con (pagina_de_codigo con t y p) y PAGINA
+        guardada es region con (elemento (h menos 1) por HOJAS_HECHO mas p de hechos_hojas) y PAGINA
+        copia_region con hoja y 1 y guardada y 1 y esperados
+    fin
+    elemento t de hecho_de es h
+    estrena_tarea con t
+    pinta con "  "
+    pinta con nombre
+    pinta con ": "
+    pon_color con BLANCO y NEGRO
+    pinta_numero con archivo
+    pon_color con GRIS y NEGRO
+    pinta_linea con " bytes, hecho aquí. Nace sin permisos, en su propia caja."
+    pinta_linea con ""
+    al_serie con "hecho aqui: "
+    al_serie con nombre
+    escribe ""
+fin
+
+funcion suelta_preparado con t
+    para cada p desde 1 hasta HOJAS_HECHO
+        casilla es (t menos 1) por HOJAS_HECHO mas p
+        si (elemento casilla de prep_hojas) no es igual a 0
+            suelta_pagina con (elemento casilla de prep_hojas)
+            elemento casilla de prep_hojas es 0
+        fin
+    fin
+    elemento t de prep_mide es 0
+fin
+
+funcion prepara_trozo con desde y cuantos
+    t es actual
+    si es_controlador con t
+        devuelve rechaza_a_actual
+    fin
+    ya es elemento t de prep_mide
+    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que PAGINA o desde es mayor que PAGINA menos cuantos o ya mas cuantos es mayor que TOPE_HECHO
+        suelta_preparado con t
+        devuelve rechaza_a_actual
+    fin
+    suya es region con (elemento t de mesas) mas desde y cuantos
+    copiados es 0
+    mientras copiados es menor que cuantos
+        sitio es ya mas copiados
+        casilla es (t menos 1) por HOJAS_HECHO mas (cociente con sitio y PAGINA) mas 1
+        dentro es sitio resto PAGINA
+        si (elemento casilla de prep_hojas) es 0
+            elemento casilla de prep_hojas es pide_pagina
+        fin
+        cabe es PAGINA menos dentro
+        si cabe es mayor que cuantos menos copiados
+            cabe es cuantos menos copiados
+        fin
+        hoja es region con (elemento casilla de prep_hojas) y PAGINA
+        copia_region con hoja y dentro mas 1 y suya y copiados mas 1 y cabe
+        copiados es copiados mas cabe
+    fin
+    elemento t de prep_mide es ya mas cuantos
+    devuelve cuantos
+fin
+
+funcion nombre_hecho_vale con nombre
+    si largo de nombre es menor que 1 o largo de nombre es mayor que NOMBRE_HECHO
+        devuelve falso
+    fin
+    para cada b en nombre
+        si no ((b es mayor o igual que 97 y b es menor o igual que 122) o (b es mayor o igual que 48 y b es menor o igual que 57) o b es 45 o b es 95)
+            devuelve falso
+        fin
+    fin
+    devuelve verdadero
+fin
+
+funcion pide_estreno con desde y cuantos
+    comparte hay_encargos
+    t es actual
+    si es_controlador con t
+        devuelve rechaza_a_actual
+    fin
+    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que NOMBRE_HECHO o desde es mayor que PAGINA menos cuantos
+        suelta_preparado con t
+        devuelve rechaza_a_actual
+    fin
+    si no (nombre_hecho_vale con (region con (elemento t de mesas) mas desde y cuantos))
+        suelta_preparado con t
+        devuelve NOMBRE_MALO
+    fin
+    elemento t de pedido_de es ESTRENA
+    elemento t de desde_de es desde
+    elemento t de cuantos_de es cuantos
+    elemento t de estados_tarea es CON_EL_DISCO
+    hay_encargos es verdadero
+    cambia_de_tarea
+    devuelve 0
+fin
+
+funcion mismo_nombre_hecho con h y nombre
+    si (elemento h de hechos_largo) no es igual a (largo de nombre)
+        devuelve falso
+    fin
+    i es 1
+    para cada b en nombre
+        si (minuscula con b) no es igual a (elemento (h menos 1) por 32 mas i de hechos_nombres)
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion busca_hecho con nombre
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es mayor que 0 y mismo_nombre_hecho con h y nombre
+            devuelve h
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion es_su_autor con h y t
+    autor es nombre_de con t
+    si (elemento CUPO_HECHOS mas h de hechos_largo) no es igual a (largo de autor)
+        devuelve falso
+    fin
+    i es 1
+    para cada b en autor
+        si b no es igual a (elemento 2048 mas (h menos 1) por 32 mas i de hechos_nombres)
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion hueco_de_hecho
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es 0
+            devuelve h
+        fin
+    fin
+    devuelve 0
+fin
+
+funcion estrena_hecho con t
+    nombre es region con (elemento t de mesas) mas (elemento t de desde_de) y (elemento t de cuantos_de)
+    archivo es elemento t de prep_mide
+    si archivo es menor que LARGO_CABECERA
+        suelta_preparado con t
+        devuelve NO_ES_PROGRAMA
+    fin
+    cabecera es region con (elemento (t menos 1) por HOJAS_HECHO mas 1 de prep_hojas) y 4 y 8
+    motivo es mentira_de con (elemento 1 de cabecera) y (elemento 2 de cabecera) y (elemento 3 de cabecera) y (elemento 4 de cabecera)
+    si motivo no es igual a nada o (elemento 3 de cabecera) no es igual a archivo
+        suelta_preparado con t
+        devuelve NO_ES_PROGRAMA
+    fin
+    en_disco es pide_archivo con nombre y ".prg" y 0
+    si en_disco no es igual a NO_ESTA
+        suelta_preparado con t
+        si en_disco es menor que 0
+            devuelve en_disco
+        fin
+        devuelve EN_EL_DISCO
+    fin
+    h es busca_hecho con nombre
+    si h es mayor que 0 y no (es_su_autor con h y t)
+        suelta_preparado con t
+        devuelve DE_OTRO
+    fin
+    si h es 0
+        h es hueco_de_hecho
+    fin
+    si h es 0
+        suelta_preparado con t
+        devuelve NO_CABEN
+    fin
+    para cada p desde 1 hasta HOJAS_HECHO
+        suyo es (h menos 1) por HOJAS_HECHO mas p
+        casilla es (t menos 1) por HOJAS_HECHO mas p
+        si (elemento suyo de hechos_hojas) no es igual a 0
+            suelta_pagina con (elemento suyo de hechos_hojas)
+        fin
+        elemento suyo de hechos_hojas es elemento casilla de prep_hojas
+        elemento casilla de prep_hojas es 0
+    fin
+    i es 1
+    para cada b en nombre
+        elemento (h menos 1) por 32 mas i de hechos_nombres es b
+        i es i mas 1
+    fin
+    elemento h de hechos_largo es largo de nombre
+    autor es nombre_de con t
+    i es 1
+    para cada b en autor
+        elemento 2048 mas (h menos 1) por 32 mas i de hechos_nombres es b
+        i es i mas 1
+    fin
+    elemento CUPO_HECHOS mas h de hechos_largo es largo de autor
+    elemento h de hechos_mide es archivo
+    elemento t de prep_mide es 0
+    desactiva_interrupciones
+    apunta con R_ESTRENO y nombre y (color_de con t) y archivo
+    activa_interrupciones
+    al_serie con "estreno: "
+    al_serie con nombre
+    escribe " " sin salto
+    escribe archivo
+    devuelve 0
+fin
+
+funcion lista_hechos
+    hay es falso
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es mayor que 0
+            si no hay
+                pinta_linea con "  Hechos aquí, solo en memoria:"
+                hay es verdadero
+            fin
+            pinta con "  "
+            pon_color con BLANCO y NEGRO
+            pinta con (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo))
+            pon_color con GRIS y NEGRO
+            hasta_columna con 22
+            pinta_numero con (elemento h de hechos_mide)
+            pinta con " bytes, de "
+            pinta_linea con (region con hechos_letras_en mas 2048 mas (h menos 1) por 32 y (elemento CUPO_HECHOS mas h de hechos_largo))
+        fin
+    fin
+    si hay
+        pinta_linea con ""
     fin
 fin
 
@@ -5447,6 +5732,7 @@ funcion cuenta_el_final con t
 fin
 
 funcion suelta_tarea con t
+    suelta_preparado con t
     suelta_dos_megas con (elemento t de memoria_grande_de)
     elemento t de memoria_grande_de es 0
     lista es region con (elemento t de listas_de_paginas) y 512 y 8
@@ -8305,6 +8591,12 @@ funcion atiende_encargos
         hecho es escribe_pendrive con verdadero
     fin
     para cada t desde 1 hasta MAX_TAREAS
+        si (elemento t de estados_tarea) es CON_EL_DISCO y (elemento t de pedido_de) es ESTRENA
+            estrenado es estrena_hecho con t
+            desactiva_interrupciones
+            despierta_con con t y estrenado
+            activa_interrupciones
+        fin
         si (elemento t de estados_tarea) es CON_EL_DISCO
             pedido es elemento t de pedido_de
             permiso es elemento t de permiso_disco
@@ -8858,6 +9150,10 @@ funcion pinta_apunte con k
         pinta con nombre
     si no si clase es R_SIN_DIRECCION
         pinta con "pidió dirección a la red, y nadie se la dio"
+    si no si clase es R_ESTRENO
+        pinta con "se compiló aquí: "
+        pinta_numero con n
+        pinta con " bytes, solo en memoria"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -9500,7 +9796,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 24"
+    pinta con "día 25"
     pon_color con GRIS y NEGRO
 fin
 
@@ -9552,6 +9848,7 @@ funcion portada
     pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
     pinta_linea con "  un programa solo se conecta a donde tú le dejes. Y mi memoria ni"
     pinta_linea con "  siquiera está en sus tablas: Meltdown no encuentra nada que leer."
+    pinta_linea con "  Y con lanza fal escribes tus programas en Fal y los compilas aquí."
     si no hay_azar
         pinta_linea con "  Este procesador no trae generador de azar, así que las llaves las"
         pinta_linea con "  saco del instante exacto en que pulsas cada tecla."

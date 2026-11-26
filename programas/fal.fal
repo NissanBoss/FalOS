@@ -1,0 +1,2632 @@
+PIDE_TICS es 3
+DUERME es 4
+LEE_TECLA es 11
+PIDE_VENTANA es 12
+PON_CASILLA es 13
+PIDE_MEMORIA es 16
+TROZO_DE_PROGRAMA es 21
+ESTRENA es 22
+SIN_MEMORIA es 0 menos 11
+
+TECLA_INTRO es 256
+TECLA_BORRA es 257
+TECLA_IZQUIERDA es 258
+TECLA_DERECHA es 259
+TECLA_INICIO es 260
+TECLA_FIN es 261
+TECLA_SUPRIME es 262
+TECLA_ARRIBA es 263
+TECLA_ABAJO es 264
+
+COLUMNAS es 60
+RENGLONES es 18
+VISIBLES es 15
+PRIMER_AVISO es 17
+CABE_AVISO es 160
+CABE_NOMBRE es 16
+DESDE_COLUMNA es 5
+CABEN_EN_LINEA es 56
+ANCHO_HIJO es 50
+ALTO_HIJO es 14
+
+GRIS es 7
+GRIS_OSCURO es 8
+VERDE_CLARO es 10
+CIAN_CLARO es 11
+ROJO_CLARO es 12
+ROSA es 13
+AMARILLO es 14
+BLANCO es 15
+
+MESA es 807395328
+BASE es 805306368
+MAGIA es 20071938299543878
+PAGINA es 4096
+PILA es 65536
+HOLGURA es 8192
+TROZO es 4000
+
+CABE_FUENTE es 32000
+TOPE_CODIGO es 65536
+TOPE_TOKENS es 8192
+TOPE_GLOBALES es 500
+TOPE_FUNCIONES es 120
+TOPE_LOCALES es 120
+TOPE_PENDIENTES es 500
+TOPE_PARAMETROS es 8
+
+T_PAL es 1
+T_NUM es 2
+T_TEXTO es 3
+T_ABRE es 4
+T_CIERRA es 5
+T_LINEA es 6
+T_FIN es 7
+
+NUMERICO es 1
+LOGICO es 2
+VACIO es 3
+
+J_O es 128
+J_NO es 129
+J_E es 132
+J_NE es 133
+J_S es 136
+J_L es 140
+J_GE es 141
+J_LE es 142
+J_G es 143
+J_AE es 131
+
+M_CABE es 1
+M_CERO es 2
+M_EXACTO es 3
+M_HONDO es 4
+M_AZAR es 5
+M_PASO es 6
+M_EN_LA es 7
+M_DOS_PUNTOS es 8
+
+ULTIMA_PASADA es 6
+
+mesa_bytes es region con MESA y PAGINA
+grande es llama_al_sistema con PIDE_MEMORIA
+hay_memoria es grande no es igual a SIN_MEMORIA
+si no hay_memoria
+    grande es MESA
+fin
+
+fuente es region con grande y CABE_FUENTE
+codigo es region con grande mas 32768 y TOPE_CODIGO
+
+funcion tabla con n y cuantos
+    devuelve region con grande mas 98304 mas (n menos 1) por 65536 y cuantos y 8
+fin
+
+tok_clase es tabla con 1 y TOPE_TOKENS
+tok_ini es tabla con 2 y TOPE_TOKENS
+tok_lar es tabla con 3 y TOPE_TOKENS
+tok_linea es tabla con 4 y TOPE_TOKENS
+tok_valor es tabla con 5 y TOPE_TOKENS
+
+funcion hoja_de con n
+    devuelve region con grande mas 458752 mas (n menos 1) por 4096 y 512 y 8
+fin
+
+glob_ini es hoja_de con 1
+glob_lar es hoja_de con 2
+glob_clase es hoja_de con 3
+glob_visto es hoja_de con 4
+viejo_ini es hoja_de con 5
+viejo_lar es hoja_de con 6
+viejo_clase es hoja_de con 7
+fun_ini es hoja_de con 8
+fun_lar es hoja_de con 9
+fun_n es hoja_de con 10
+fun_dir es hoja_de con 11
+fun_vuelve es hoja_de con 12
+fun_vuelve_en es hoja_de con 13
+fun_hecha_en es hoja_de con 14
+fun_dir_antes es hoja_de con 15
+fun_param_en es hoja_de con 16
+loc_ini es hoja_de con 17
+loc_lar es hoja_de con 18
+loc_desp es hoja_de con 19
+loc_clase es hoja_de con 20
+pend_sitio es hoja_de con 21
+pend_id es hoja_de con 22
+pend_clase es hoja_de con 23
+comp_ini es hoja_de con 24
+comp_lar es hoja_de con 25
+bucles es hoja_de con 26
+msg_sitio es hoja_de con 27
+msg_mide es hoja_de con 28
+par_clase es region con grande mas 458752 mas 29 por 4096 y 1024 y 8
+
+mide es 0
+cursor es 0
+arriba_vista es 1
+izquierda es 0
+nombre_hecho es region con grande mas 32000 y CABE_NOMBRE
+aviso_letras es region con grande mas 32100 y CABE_AVISO
+aviso_mide es 0
+aviso_tinta es GRIS
+nombre_mide es 0
+leyendo_nombre es falso
+
+ntok es 0
+k es 1
+donde es 0
+pasada es 1
+estricta es falso
+hay_fallo es falso
+fallo_linea es 0
+fallo_antes es ""
+fallo_ini es 0
+fallo_lar es 0
+fallo_despues es ""
+linea_actual es 1
+en_funcion es falso
+fun_actual es 0
+nglob es 0
+nviejo es 0
+nfun es 0
+nloc es 0
+nslots es 0
+ncomp es 0
+npend es 0
+nbucles es 0
+ids es 0
+nivel es 0
+archivo_antes es 0
+archivo_mide es 0
+globales_en es 0
+pila_suelo es 0
+pila_tope es 0
+r_salto es 0
+r_texto es 0
+r_numero es 0
+r_error es 0
+r_pregunta es 0
+r_azar es 0
+entrada es 0
+var_local es falso
+var_desp es 0
+var_clase es 0
+
+funcion pon con renglon y columna y tinta y letra
+    llama_al_sistema con PON_CASILLA y renglon por 256 mas columna y tinta por 256 mas letra
+fin
+
+funcion en_437 con primero y segundo
+    si primero es 194
+        si segundo es 183
+            devuelve 250
+        si no si segundo es 191
+            devuelve 168
+        si no si segundo es 161
+            devuelve 173
+        fin
+        devuelve 63
+    fin
+    si segundo es 161
+        devuelve 160
+    si no si segundo es 169
+        devuelve 130
+    si no si segundo es 173
+        devuelve 161
+    si no si segundo es 179
+        devuelve 162
+    si no si segundo es 186
+        devuelve 163
+    si no si segundo es 177
+        devuelve 164
+    si no si segundo es 145
+        devuelve 165
+    si no si segundo es 188
+        devuelve 129
+    si no si segundo es 137
+        devuelve 144
+    si no si segundo es 167
+        devuelve 135
+    fin
+    devuelve 63
+fin
+
+funcion texto_en con renglon y columna y texto y tinta
+    c es columna
+    primero es 0
+    para cada letra en texto
+        si letra es 194 o letra es 195
+            primero es letra
+        si no si primero es mayor que 0
+            si c es menor o igual que COLUMNAS
+                pon con renglon y c y tinta y (en_437 con primero y letra)
+            fin
+            primero es 0
+            c es c mas 1
+        si no
+            si c es menor o igual que COLUMNAS
+                pon con renglon y c y tinta y letra
+            fin
+            c es c mas 1
+        fin
+    fin
+    devuelve c
+fin
+
+funcion limpia_renglon con renglon
+    para cada c desde 1 hasta COLUMNAS
+        pon con renglon y c y GRIS y 32
+    fin
+fin
+
+funcion minuscula con c
+    si c es mayor o igual que 65 y c es menor o igual que 90
+        devuelve c mas 32
+    fin
+    devuelve c
+fin
+
+funcion es_letra con c
+    si c es mayor o igual que 97 y c es menor o igual que 122
+        devuelve verdadero
+    fin
+    si c es mayor o igual que 65 y c es menor o igual que 90
+        devuelve verdadero
+    fin
+    devuelve c es 95 o (c es mayor o igual que 128 y c es menor que 256)
+fin
+
+funcion es_cifra con c
+    devuelve c es mayor o igual que 48 y c es menor o igual que 57
+fin
+
+funcion byte_de con i
+    devuelve elemento i de fuente
+fin
+
+funcion trozo_es con ini y lar y texto
+    si lar no es igual a largo de texto
+        devuelve falso
+    fin
+    i es 1
+    para cada letra en texto
+        si (minuscula con (elemento ini mas i menos 1 de fuente)) no es igual a letra
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion mismos con ini_a y lar_a y ini_b y lar_b
+    si lar_a no es igual a lar_b o lar_a es 0
+        devuelve falso
+    fin
+    i es 0
+    mientras i es menor que lar_a
+        si (minuscula con (elemento ini_a mas i de fuente)) no es igual a (minuscula con (elemento ini_b mas i de fuente))
+            devuelve falso
+        fin
+        i es i mas 1
+    fin
+    devuelve verdadero
+fin
+
+funcion anota_fallo con antes y ini y lar y despues
+    comparte hay_fallo y fallo_linea y fallo_antes y fallo_ini y fallo_lar y fallo_despues
+    si hay_fallo
+        devuelve nada
+    fin
+    hay_fallo es verdadero
+    fallo_linea es linea_actual
+    fallo_antes es antes
+    fallo_ini es ini
+    fallo_lar es lar
+    fallo_despues es despues
+fin
+
+funcion falla_texto con texto
+    anota_fallo con texto y 0 y 0 y ""
+fin
+
+funcion blando con antes y ini y lar y despues
+    si estricta
+        anota_fallo con antes y ini y lar y despues
+    fin
+fin
+
+funcion trocea
+    comparte ntok y linea_actual
+    ntok es 0
+    i es 1
+    linea es 1
+    mientras i es menor o igual que mide y no hay_fallo
+        c es elemento i de fuente
+        linea_actual es linea
+        si ntok mas 2 es mayor que TOPE_TOKENS
+            falla_texto con "El programa es demasiado largo para mí."
+        si no si c es 32
+            i es i mas 1
+        si no si c es 35
+            mientras i es menor o igual que mide y (elemento i de fuente) no es igual a 10
+                i es i mas 1
+            fin
+        si no si c es 10
+            mete_token con T_LINEA y i y 1 y linea y 0
+            linea es linea mas 1
+            i es i mas 1
+        si no si c es 40
+            mete_token con T_ABRE y i y 1 y linea y 0
+            i es i mas 1
+        si no si c es 41
+            mete_token con T_CIERRA y i y 1 y linea y 0
+            i es i mas 1
+        si no si c es 34
+            empieza es i mas 1
+            i es i mas 1
+            mientras i es menor o igual que mide y (elemento i de fuente) no es igual a 34 y (elemento i de fuente) no es igual a 10
+                i es i mas 1
+            fin
+            si i es mayor que mide o (elemento i de fuente) es 10
+                falla_texto con "Faltan las comillas del final."
+            si no
+                mete_token con T_TEXTO y empieza y i menos empieza y linea y 0
+                i es i mas 1
+            fin
+        si no si es_cifra con c
+            empieza es i
+            cuanto es 0
+            mientras i es menor o igual que mide y (es_cifra con (elemento i de fuente))
+                cifra es (elemento i de fuente) menos 48
+                si cuanto es mayor que cociente con (9223372036854775807 menos cifra) y 10
+                    falla_texto con "Ese número no cabe en 64 bits."
+                    cuanto es 0
+                si no
+                    cuanto es cuanto por 10 mas cifra
+                fin
+                i es i mas 1
+            fin
+            si i es menor o igual que mide y (elemento i de fuente) es 46
+                falla_texto con "Aquí solo hay números enteros."
+            fin
+            si i es menor o igual que mide y (es_letra con (elemento i de fuente))
+                falla_texto con "Un número no puede llevar letras pegadas."
+            fin
+            mete_token con T_NUM y empieza y i menos empieza y linea y cuanto
+        si no si es_letra con c
+            empieza es i
+            mientras i es menor o igual que mide y ((es_letra con (elemento i de fuente)) o (es_cifra con (elemento i de fuente)))
+                i es i mas 1
+            fin
+            mete_token con T_PAL y empieza y i menos empieza y linea y 0
+        si no
+            anota_fallo con "No sé qué es este signo: " y i y 1 y ". Fal no usa signos, solo palabras."
+            i es i mas 1
+        fin
+    fin
+    mete_token con T_LINEA y mide mas 1 y 0 y linea y 0
+    mete_token con T_FIN y mide mas 1 y 0 y linea y 0
+fin
+
+funcion mete_token con clase y ini y lar y linea y valor
+    comparte ntok
+    ntok es ntok mas 1
+    elemento ntok de tok_clase es clase
+    elemento ntok de tok_ini es ini
+    elemento ntok de tok_lar es lar
+    elemento ntok de tok_linea es linea
+    elemento ntok de tok_valor es valor
+fin
+
+funcion clase_de con j
+    si j es mayor que ntok
+        devuelve T_FIN
+    fin
+    devuelve elemento j de tok_clase
+fin
+
+funcion actual
+    devuelve clase_de con k
+fin
+
+funcion avanza
+    comparte k y linea_actual
+    si k es menor que ntok
+        k es k mas 1
+    fin
+    linea_actual es elemento k de tok_linea
+fin
+
+funcion pal_en con j y texto
+    si (clase_de con j) no es igual a T_PAL
+        devuelve falso
+    fin
+    devuelve trozo_es con (elemento j de tok_ini) y (elemento j de tok_lar) y texto
+fin
+
+funcion pal con texto
+    devuelve pal_en con k y texto
+fin
+
+funcion come con texto
+    si pal con texto
+        avanza
+        devuelve verdadero
+    fin
+    devuelve falso
+fin
+
+funcion exige con texto y mensaje
+    si come con texto
+        devuelve verdadero
+    fin
+    falla_texto con mensaje
+    devuelve falso
+fin
+
+funcion fin_de_linea
+    si actual es T_LINEA
+        avanza
+    si no si actual no es igual a T_FIN
+        anota_fallo con "Sobra algo al final de la línea: " y (elemento k de tok_ini) y (elemento k de tok_lar) y "."
+    fin
+fin
+
+funcion salta_vacias
+    mientras actual es T_LINEA
+        avanza
+    fin
+fin
+
+funcion es_reservada con ini y lar
+    si trozo_es con ini y lar y "si" o trozo_es con ini y lar y "no" o trozo_es con ini y lar y "mientras" o trozo_es con ini y lar y "repite"
+        devuelve verdadero
+    fin
+    si trozo_es con ini y lar y "para" o trozo_es con ini y lar y "funcion" o trozo_es con ini y lar y "fin" o trozo_es con ini y lar y "devuelve"
+        devuelve verdadero
+    fin
+    si trozo_es con ini y lar y "escribe" o trozo_es con ini y lar y "es" o trozo_es con ini y lar y "mas" o trozo_es con ini y lar y "menos"
+        devuelve verdadero
+    fin
+    si trozo_es con ini y lar y "por" o trozo_es con ini y lar y "entre" o trozo_es con ini y lar y "resto" o trozo_es con ini y lar y "y"
+        devuelve verdadero
+    fin
+    si trozo_es con ini y lar y "o" o trozo_es con ini y lar y "con" o trozo_es con ini y lar y "de" o trozo_es con ini y lar y "verdadero"
+        devuelve verdadero
+    fin
+    si trozo_es con ini y lar y "falso" o trozo_es con ini y lar y "comparte" o trozo_es con ini y lar y "detente" o trozo_es con ini y lar y "continua"
+        devuelve verdadero
+    fin
+    devuelve trozo_es con ini y lar y "nada" o trozo_es con ini y lar y "pregunta"
+fin
+
+funcion emite con b
+    comparte donde
+    si donde es menor que TOPE_CODIGO
+        elemento donde mas 1 de codigo es b
+    fin
+    donde es donde mas 1
+fin
+
+funcion emite_dos con a y b
+    emite con a
+    emite con b
+fin
+
+funcion emite_tres con a y b y c
+    emite con a
+    emite con b
+    emite con c
+fin
+
+funcion emite_cuatro con a y b y c y d
+    emite_dos con a y b
+    emite_dos con c y d
+fin
+
+funcion emite32 con n
+    v es n
+    si v es menor que 0
+        v es v mas 4294967296
+    fin
+    repite 4 veces
+        emite con v resto 256
+        v es cociente con v y 256
+    fin
+fin
+
+funcion emite64 con n
+    v es n
+    repite 8 veces
+        b es v resto 256
+        si b es menor que 0
+            b es b mas 256
+        fin
+        emite con b
+        v es cociente con (v menos b) y 256
+    fin
+fin
+
+funcion parche32 con sitio y n
+    v es n
+    si v es menor que 0
+        v es v mas 4294967296
+    fin
+    i es 1
+    repite 4 veces
+        si sitio mas i es menor o igual que TOPE_CODIGO
+            elemento sitio mas i de codigo es v resto 256
+        fin
+        v es cociente con v y 256
+        i es i mas 1
+    fin
+fin
+
+funcion salta_a con destino
+    emite con 233
+    emite32 con destino menos (donde mas 4)
+fin
+
+funcion salta_adelante
+    emite con 233
+    p es donde
+    emite32 con 0
+    devuelve p
+fin
+
+funcion salta_si con cc
+    emite_dos con 15 y cc
+    p es donde
+    emite32 con 0
+    devuelve p
+fin
+
+funcion salta_si_a con cc y destino
+    emite_dos con 15 y cc
+    emite32 con destino menos (donde mas 4)
+fin
+
+funcion aterriza con p
+    parche32 con p y donde menos (p mas 4)
+fin
+
+funcion llama_a con destino
+    emite con 232
+    emite32 con destino menos (donde mas 4)
+fin
+
+funcion sitio_de con p
+    devuelve BASE mas p
+fin
+
+funcion sys con n
+    emite con 184
+    emite32 con n
+    emite_dos con 205 y 128
+fin
+
+funcion trampa con mensaje
+    emite con 191
+    emite32 con linea_actual
+    emite con 190
+    emite32 con sitio_de con (elemento mensaje de msg_sitio)
+    emite con 186
+    emite32 con elemento mensaje de msg_mide
+    salta_a con r_error
+fin
+
+funcion falla_si_no con cc y mensaje
+    p es salta_si con cc
+    trampa con mensaje
+    aterriza con p
+fin
+
+funcion prueba_rax
+    emite_tres con 72 y 133 y 192
+fin
+
+funcion empuja
+    emite con 80
+fin
+
+funcion saca_rcx
+    emite con 89
+fin
+
+funcion saca_rax
+    emite con 88
+fin
+
+funcion a_rcx_de_rax
+    emite_tres con 72 y 137 y 193
+fin
+
+funcion pon_rax con n
+    emite_dos con 72 y 184
+    emite64 con n
+fin
+
+funcion toca con opcode y registro y local y desp
+    emite_dos con 72 y opcode
+    si local
+        emite con 132 mas registro por 8
+    si no
+        emite con 4 mas registro por 8
+    fin
+    emite con 37
+    emite32 con desp
+fin
+
+funcion lee_variable con local y desp
+    toca con 139 y 0 y local y desp
+fin
+
+funcion guarda_variable con local y desp
+    toca con 137 y 0 y local y desp
+fin
+
+funcion sitio_global con g
+    devuelve globales_en mas (g menos 1) por 8
+fin
+
+funcion pon_mensaje con n y texto
+    elemento n de msg_sitio es donde
+    elemento n de msg_mide es largo de texto
+    para cada b en texto
+        emite con b
+    fin
+fin
+
+funcion ayudas
+    comparte r_salto y r_texto y r_numero y r_error y r_pregunta y r_azar
+    pon_mensaje con M_CABE y "la cuenta no cabe en un número."
+    pon_mensaje con M_CERO y "dividir entre cero."
+    pon_mensaje con M_EXACTO y "entre no da exacto. Usa cociente o resto."
+    pon_mensaje con M_HONDO y "demasiadas llamadas, una dentro de otra."
+    pon_mensaje con M_AZAR y "en azar entre, el primero es mayor que el segundo."
+    pon_mensaje con M_PASO y "el paso de para cada tiene que ser mayor que cero."
+    pon_mensaje con M_EN_LA y "En la línea "
+    pon_mensaje con M_DOS_PUNTOS y ": "
+    estado es sitio_global con 1
+
+    r_salto es donde
+    emite con 191
+    emite32 con 10
+    sys con 1
+    emite con 195
+
+    r_texto es donde
+    emite_tres con 72 y 133 y 210
+    p es salta_si con J_E
+    vuelta es donde
+    emite_tres con 15 y 182 y 62
+    sys con 1
+    emite_tres con 72 y 255 y 198
+    emite_tres con 72 y 255 y 202
+    salta_si_a con J_NE y vuelta
+    aterriza con p
+    emite con 195
+
+    r_numero es donde
+    prueba_rax
+    p es salta_si con J_S
+    emite_tres con 72 y 247 y 216
+    q es salta_adelante
+    aterriza con p
+    empuja
+    emite con 191
+    emite32 con 45
+    sys con 1
+    saca_rax
+    aterriza con q
+    emite_dos con 49 y 201
+    emite_tres con 73 y 199 y 192
+    emite32 con 10
+    vuelta es donde
+    emite_dos con 72 y 153
+    emite_tres con 73 y 247 y 248
+    emite_tres con 72 y 247 y 218
+    emite_cuatro con 72 y 131 y 194 y 48
+    emite con 82
+    emite_tres con 72 y 255 y 193
+    prueba_rax
+    salta_si_a con J_NE y vuelta
+    otra es donde
+    emite con 95
+    sys con 1
+    emite_tres con 72 y 255 y 201
+    salta_si_a con J_NE y otra
+    emite con 195
+
+    r_error es donde
+    emite_tres con 86 y 82 y 87
+    emite con 190
+    emite32 con sitio_de con (elemento M_EN_LA de msg_sitio)
+    emite con 186
+    emite32 con elemento M_EN_LA de msg_mide
+    llama_a con r_texto
+    saca_rax
+    llama_a con r_numero
+    emite con 190
+    emite32 con sitio_de con (elemento M_DOS_PUNTOS de msg_sitio)
+    emite con 186
+    emite32 con 2
+    llama_a con r_texto
+    emite_dos con 90 y 94
+    llama_a con r_texto
+    llama_a con r_salto
+    emite con 191
+    emite32 con 1
+    sys con 0
+    emite_dos con 235 y 254
+
+    r_pregunta es donde
+    emite_tres con 77 y 49 y 201
+    emite_tres con 77 y 49 y 210
+    emite_tres con 77 y 49 y 219
+    lee es donde
+    sys con 11
+    prueba_rax
+    p es salta_si con J_NE
+    emite con 191
+    emite32 con 2
+    sys con 4
+    salta_a con lee
+    aterriza con p
+    toca con 49 y 0 y falso y estado
+    emite_cuatro con 72 y 131 y 12 y 37
+    emite32 con estado
+    emite con 1
+    emite_dos con 72 y 61
+    emite32 con 256
+    q_intro es salta_si con J_E
+    emite_dos con 72 y 61
+    emite32 con 257
+    q_borra es salta_si con J_E
+    emite_cuatro con 72 y 131 y 248 y 45
+    q_menos es salta_si con J_E
+    emite_cuatro con 72 y 131 y 248 y 48
+    salta_si_a con J_L y lee
+    emite_cuatro con 72 y 131 y 248 y 57
+    salta_si_a con J_G y lee
+    emite_cuatro con 73 y 131 y 250 y 18
+    salta_si_a con J_GE y lee
+    empuja
+    emite_tres con 72 y 137 y 199
+    sys con 1
+    saca_rax
+    emite_cuatro con 72 y 131 y 232 y 48
+    emite_cuatro con 77 y 107 y 201 y 10
+    emite_tres con 73 y 1 y 193
+    emite_tres con 73 y 255 y 194
+    salta_a con lee
+    aterriza con q_menos
+    emite_tres con 77 y 133 y 210
+    salta_si_a con J_NE y lee
+    emite_tres con 77 y 133 y 219
+    salta_si_a con J_NE y lee
+    emite_dos con 65 y 187
+    emite32 con 1
+    emite con 191
+    emite32 con 45
+    sys con 1
+    salta_a con lee
+    aterriza con q_borra
+    emite_tres con 77 y 133 y 210
+    sin_cifras es salta_si con J_E
+    emite_tres con 76 y 137 y 200
+    emite_dos con 72 y 153
+    emite_tres con 73 y 199 y 192
+    emite32 con 10
+    emite_tres con 73 y 247 y 248
+    emite_tres con 73 y 137 y 193
+    emite_tres con 73 y 255 y 202
+    borra_letra es salta_adelante
+    aterriza con sin_cifras
+    emite_tres con 77 y 133 y 219
+    salta_si_a con J_E y lee
+    emite_tres con 77 y 49 y 219
+    aterriza con borra_letra
+    emite con 191
+    emite32 con 8
+    sys con 1
+    salta_a con lee
+    aterriza con q_intro
+    emite_tres con 77 y 133 y 210
+    salta_si_a con J_E y lee
+    emite con 191
+    emite32 con 10
+    sys con 1
+    emite_tres con 76 y 137 y 200
+    emite_tres con 77 y 133 y 219
+    f es salta_si con J_E
+    emite_tres con 72 y 247 y 216
+    aterriza con f
+    emite con 195
+
+    r_azar es donde
+    empuja
+    toca con 139 y 0 y falso y estado
+    emite_tres con 72 y 137 y 194
+    emite_cuatro con 72 y 193 y 226 y 13
+    emite_tres con 72 y 49 y 208
+    emite_tres con 72 y 137 y 194
+    emite_cuatro con 72 y 193 y 234 y 7
+    emite_tres con 72 y 49 y 208
+    emite_tres con 72 y 137 y 194
+    emite_cuatro con 72 y 193 y 226 y 17
+    emite_tres con 72 y 49 y 208
+    toca con 137 y 0 y falso y estado
+    emite_dos con 49 y 210
+    emite_tres con 72 y 247 y 241
+    saca_rax
+    emite_tres con 72 y 1 y 208
+    emite con 195
+fin
+
+funcion nuevo_id
+    comparte ids
+    ids es ids mas 1
+    devuelve ids
+fin
+
+funcion pendiente con id y clase y sitio
+    comparte npend
+    si npend es mayor o igual que TOPE_PENDIENTES
+        falla_texto con "Hay demasiados saltos dentro de otros."
+        devuelve nada
+    fin
+    npend es npend mas 1
+    elemento npend de pend_sitio es sitio
+    elemento npend de pend_id es id
+    elemento npend de pend_clase es clase
+fin
+
+funcion cierra_pendientes con id y clase
+    comparte npend
+    i es 1
+    mientras i es menor o igual que npend
+        si (elemento i de pend_id) es id y (elemento i de pend_clase) es clase
+            aterriza con (elemento i de pend_sitio)
+            elemento i de pend_id es 0
+        fin
+        i es i mas 1
+    fin
+    mientras npend es mayor que 0 y (elemento npend de pend_id) es 0
+        npend es npend menos 1
+    fin
+fin
+
+funcion busca_funcion con ini y lar
+    f es 1
+    mientras f es menor o igual que nfun
+        si mismos con ini y lar y (elemento f de fun_ini) y (elemento f de fun_lar)
+            devuelve f
+        fin
+        f es f mas 1
+    fin
+    devuelve 0
+fin
+
+funcion busca_global con ini y lar
+    g es 1
+    mientras g es menor o igual que nglob
+        si mismos con ini y lar y (elemento g de glob_ini) y (elemento g de glob_lar)
+            devuelve g
+        fin
+        g es g mas 1
+    fin
+    devuelve 0
+fin
+
+funcion busca_vieja con ini y lar
+    g es 1
+    mientras g es menor o igual que nviejo
+        si mismos con ini y lar y (elemento g de viejo_ini) y (elemento g de viejo_lar)
+            devuelve g
+        fin
+        g es g mas 1
+    fin
+    devuelve 0
+fin
+
+funcion nueva_global con ini y lar y clase
+    comparte nglob
+    si nglob es mayor o igual que TOPE_GLOBALES
+        falla_texto con "Hay demasiadas variables."
+        devuelve 1
+    fin
+    nglob es nglob mas 1
+    elemento nglob de glob_ini es ini
+    elemento nglob de glob_lar es lar
+    elemento nglob de glob_clase es clase
+    elemento nglob de glob_visto es 0
+    devuelve nglob
+fin
+
+funcion busca_local con ini y lar
+    l es 1
+    mientras l es menor o igual que nloc
+        si mismos con ini y lar y (elemento l de loc_ini) y (elemento l de loc_lar)
+            devuelve l
+        fin
+        l es l mas 1
+    fin
+    devuelve 0
+fin
+
+funcion nueva_local con ini y lar y desp y clase
+    comparte nloc
+    si nloc es mayor o igual que TOPE_LOCALES
+        falla_texto con "Hay demasiadas variables en esta función."
+        devuelve 1
+    fin
+    nloc es nloc mas 1
+    elemento nloc de loc_ini es ini
+    elemento nloc de loc_lar es lar
+    elemento nloc de loc_desp es desp
+    elemento nloc de loc_clase es clase
+    devuelve nloc
+fin
+
+funcion hueco_escondido
+    comparte nslots y var_local y var_desp
+    si en_funcion
+        nslots es nslots mas 1
+        l es nueva_local con 0 y 0 y 0 menos nslots por 8 y NUMERICO
+        var_local es verdadero
+        var_desp es 0 menos nslots por 8
+    si no
+        g es nueva_global con 0 y 0 y NUMERICO
+        var_local es falso
+        var_desp es sitio_global con g
+    fin
+fin
+
+funcion es_compartida con ini y lar
+    i es 1
+    mientras i es menor o igual que ncomp
+        si mismos con ini y lar y (elemento i de comp_ini) y (elemento i de comp_lar)
+            devuelve verdadero
+        fin
+        i es i mas 1
+    fin
+    devuelve falso
+fin
+
+funcion global_que_lee con ini y lar
+    g es busca_global con ini y lar
+    si g es 0
+        v es busca_vieja con ini y lar
+        si v es 0
+            devuelve 0
+        fin
+        g es nueva_global con ini y lar y (elemento v de viejo_clase)
+    fin
+    devuelve g
+fin
+
+funcion busca_para_leer con ini y lar
+    comparte var_local y var_desp y var_clase
+    si en_funcion y no (es_compartida con ini y lar)
+        l es busca_local con ini y lar
+        si l es mayor que 0
+            var_local es verdadero
+            var_desp es elemento l de loc_desp
+            var_clase es elemento l de loc_clase
+            devuelve verdadero
+        fin
+    fin
+    g es global_que_lee con ini y lar
+    si g es 0
+        devuelve falso
+    fin
+    si no en_funcion y (elemento g de glob_visto) no es igual a pasada
+        blando con "La variable " y ini y lar y " todavía no tiene valor aquí."
+    fin
+    var_local es falso
+    var_desp es sitio_global con g
+    var_clase es elemento g de glob_clase
+    devuelve verdadero
+fin
+
+funcion clase_texto con clase
+    si clase es LOGICO
+        devuelve "verdadero o falso"
+    fin
+    devuelve "un número"
+fin
+
+funcion busca_para_guardar con ini y lar y clase
+    comparte var_local y var_desp y var_clase y nslots
+    si es_reservada con ini y lar
+        anota_fallo con "No puedes llamar " y ini y lar y " a una variable: es una palabra de Fal."
+        devuelve nada
+    fin
+    si (busca_funcion con ini y lar) es mayor que 0
+        anota_fallo con "Ya hay una función que se llama " y ini y lar y "."
+        devuelve nada
+    fin
+    si en_funcion y no (es_compartida con ini y lar)
+        l es busca_local con ini y lar
+        si l es 0
+            nslots es nslots mas 1
+            l es nueva_local con ini y lar y 0 menos nslots por 8 y clase
+        fin
+        si (elemento l de loc_clase) no es igual a clase
+            blando con "La variable " y ini y lar y " cambia de número a verdadero o falso, o al revés."
+            elemento l de loc_clase es clase
+        fin
+        var_local es verdadero
+        var_desp es elemento l de loc_desp
+        var_clase es clase
+        devuelve nada
+    fin
+    g es global_que_lee con ini y lar
+    si g es 0
+        g es nueva_global con ini y lar y clase
+    fin
+    si (elemento g de glob_clase) no es igual a clase
+        blando con "La variable " y ini y lar y " cambia de número a verdadero o falso, o al revés."
+        elemento g de glob_clase es clase
+    fin
+    si (elemento g de glob_visto) no es igual a pasada
+        elemento g de glob_visto es pasada
+    fin
+    var_local es falso
+    var_desp es sitio_global con g
+    var_clase es clase
+fin
+
+funcion pide_clase con clase y quiere y donde_va
+    si clase no es igual a quiere
+        si quiere es LOGICO
+            blando con donde_va y 0 y 0 y " quiere verdadero o falso, y esto es un número."
+        si no
+            blando con donde_va y 0 y 0 y " quiere un número, y esto es verdadero o falso."
+        fin
+    fin
+fin
+
+funcion expresion
+    izq es expresion_y
+    mientras pal con "o"
+        avanza
+        pide_clase con izq y LOGICO y "La o"
+        prueba_rax
+        p es salta_si con J_NE
+        der es expresion_y
+        pide_clase con der y LOGICO y "La o"
+        aterriza con p
+        izq es LOGICO
+    fin
+    devuelve izq
+fin
+
+funcion expresion_y
+    izq es negacion
+    mientras pal con "y"
+        avanza
+        pide_clase con izq y LOGICO y "La y"
+        prueba_rax
+        p es salta_si con J_E
+        der es negacion
+        pide_clase con der y LOGICO y "La y"
+        aterriza con p
+        izq es LOGICO
+    fin
+    devuelve izq
+fin
+
+funcion negacion
+    si (pal con "no") y no (pal_en con k mas 1 y "es")
+        avanza
+        dentro es negacion
+        pide_clase con dentro y LOGICO y "El no"
+        prueba_rax
+        emite_tres con 15 y 148 y 192
+        emite_tres con 15 y 182 y 192
+        devuelve LOGICO
+    fin
+    devuelve comparacion
+fin
+
+funcion comparacion
+    izq es suma
+    negado es falso
+    si (pal con "no") y pal_en con k mas 1 y "es"
+        avanza
+        negado es verdadero
+    fin
+    si no (pal con "es")
+        devuelve izq
+    fin
+    avanza
+    cual es 148
+    orden es falso
+    si come con "mayor"
+        orden es verdadero
+        cual es 159
+        si come con "o"
+            exige con "igual" y "Falta igual: es mayor o igual que."
+            exige con "que" y "Falta que: es mayor o igual que."
+            cual es 157
+        si no
+            come con "que"
+        fin
+    si no si come con "menor"
+        orden es verdadero
+        cual es 156
+        si come con "o"
+            exige con "igual" y "Falta igual: es menor o igual que."
+            exige con "que" y "Falta que: es menor o igual que."
+            cual es 158
+        si no
+            come con "que"
+        fin
+    si no si come con "igual"
+        come con "a"
+    fin
+    empuja
+    der es suma
+    a_rcx_de_rax
+    saca_rax
+    si orden
+        pide_clase con izq y NUMERICO y "Comparar mayor o menor"
+        pide_clase con der y NUMERICO y "Comparar mayor o menor"
+    si no si izq no es igual a der
+        blando con "Comparas un número con verdadero o falso." y 0 y 0 y ""
+    fin
+    si izq es VACIO o der es VACIO
+        blando con "Comparas algo que no da ningún valor." y 0 y 0 y ""
+    fin
+    emite_tres con 72 y 57 y 200
+    si negado
+        si cual es 148
+            cual es 149
+        si no si cual es 159
+            cual es 158
+        si no si cual es 157
+            cual es 156
+        si no si cual es 156
+            cual es 157
+        si no
+            cual es 159
+        fin
+    fin
+    emite_tres con 15 y cual y 192
+    emite_tres con 15 y 182 y 192
+    devuelve LOGICO
+fin
+
+funcion suma
+    izq es producto
+    mientras pal con "mas" o pal con "menos"
+        resta es pal con "menos"
+        avanza
+        empuja
+        der es producto
+        pide_clase con izq y NUMERICO y "La cuenta"
+        pide_clase con der y NUMERICO y "La cuenta"
+        a_rcx_de_rax
+        saca_rax
+        si resta
+            emite_tres con 72 y 41 y 200
+        si no
+            emite_tres con 72 y 1 y 200
+        fin
+        falla_si_no con J_NO y M_CABE
+        izq es NUMERICO
+    fin
+    devuelve izq
+fin
+
+funcion divide con exacta y quiere_resto
+    emite_tres con 72 y 133 y 201
+    falla_si_no con J_NE y M_CERO
+    emite_cuatro con 72 y 131 y 249 y 255
+    p es salta_si con J_NE
+    si quiere_resto
+        emite_dos con 49 y 192
+    si no
+        emite_tres con 72 y 247 y 216
+        falla_si_no con J_NO y M_CABE
+    fin
+    q es salta_adelante
+    aterriza con p
+    emite_dos con 72 y 153
+    emite_tres con 72 y 247 y 249
+    si quiere_resto
+        emite_tres con 72 y 137 y 208
+    si no si exacta
+        emite_tres con 72 y 133 y 210
+        falla_si_no con J_E y M_EXACTO
+    fin
+    aterriza con q
+fin
+
+funcion producto
+    izq es unario
+    mientras pal con "por" o pal con "entre" o pal con "resto"
+        cual es 1
+        si pal con "entre"
+            cual es 2
+        si no si pal con "resto"
+            cual es 3
+        fin
+        avanza
+        come con "de"
+        empuja
+        der es unario
+        pide_clase con izq y NUMERICO y "La cuenta"
+        pide_clase con der y NUMERICO y "La cuenta"
+        a_rcx_de_rax
+        saca_rax
+        si cual es 1
+            emite_cuatro con 72 y 15 y 175 y 193
+            falla_si_no con J_NO y M_CABE
+        si no si cual es 2
+            divide con verdadero y falso
+        si no
+            divide con falso y verdadero
+        fin
+        izq es NUMERICO
+    fin
+    devuelve izq
+fin
+
+funcion unario
+    si pal con "menos"
+        avanza
+        dentro es unario
+        pide_clase con dentro y NUMERICO y "El menos"
+        a_rcx_de_rax
+        emite_dos con 49 y 192
+        emite_tres con 72 y 41 y 200
+        falla_si_no con J_NO y M_CABE
+        devuelve NUMERICO
+    fin
+    devuelve valor
+fin
+
+funcion escribe_texto_literal con ini y lar
+    salto es salta_adelante
+    empieza es donde
+    i es 0
+    mientras i es menor que lar
+        c es elemento ini mas i de fuente
+        si c es menor que 128
+            emite con c
+        si no
+            emite_utf8 con c
+        fin
+        i es i mas 1
+    fin
+    cuantos es donde menos empieza
+    aterriza con salto
+    emite con 190
+    emite32 con sitio_de con empieza
+    emite con 186
+    emite32 con cuantos
+    llama_a con r_texto
+fin
+
+funcion emite_utf8 con c
+    segundo es 0
+    si c es 160
+        segundo es 161
+    si no si c es 130
+        segundo es 169
+    si no si c es 161
+        segundo es 173
+    si no si c es 162
+        segundo es 179
+    si no si c es 163
+        segundo es 186
+    si no si c es 164
+        segundo es 177
+    si no si c es 165
+        segundo es 145
+    si no si c es 129
+        segundo es 188
+    si no si c es 154
+        segundo es 156
+    si no si c es 144
+        segundo es 137
+    si no si c es 135
+        segundo es 167
+    si no si c es 128
+        segundo es 135
+    fin
+    si segundo es 0
+        si c es 168
+            emite_dos con 194 y 191
+        si no si c es 173
+            emite_dos con 194 y 161
+        si no
+            emite con 63
+        fin
+    si no
+        emite_dos con 195 y segundo
+    fin
+fin
+
+funcion argumentos_de con f
+    cuantos es 0
+    si come con "con"
+        sigue es verdadero
+        mientras sigue y no hay_fallo
+            clase es comparacion
+            empuja
+            cuantos es cuantos mas 1
+            si f es mayor que 0 y cuantos es menor o igual que TOPE_PARAMETROS
+                sitio es (f menos 1) por TOPE_PARAMETROS mas cuantos
+                si (elemento f de fun_param_en) no es igual a pasada o (elemento sitio de par_clase) es 0
+                    elemento sitio de par_clase es clase
+                si no si (elemento sitio de par_clase) no es igual a clase
+                    blando con "A " y (elemento f de fun_ini) y (elemento f de fun_lar) y " le das a veces un número y a veces verdadero o falso."
+                fin
+            fin
+            sigue es come con "y"
+        fin
+        si f es mayor que 0
+            elemento f de fun_param_en es pasada
+        fin
+    fin
+    devuelve cuantos
+fin
+
+funcion llamada con ini y lar y relleno
+    f es busca_funcion con ini y lar
+    cuantos es argumentos_de con f
+    si f es 0
+        blando con "No sé qué es " y ini y lar y "."
+        llama_a con donde
+    si no
+        si cuantos no es igual a (elemento f de fun_n)
+            blando con "La función " y ini y lar y " no recibe ese número de datos."
+        fin
+        llama_a con (elemento f de fun_dir)
+    fin
+    si cuantos es mayor que 0
+        emite_tres con 72 y 129 y 196
+        emite32 con cuantos por 8
+    si no si relleno
+        emite_tres con 15 y 31 y 0
+    fin
+    si f es 0
+        devuelve NUMERICO
+    fin
+    vuelve es elemento f de fun_vuelve
+    si vuelve es 0
+        devuelve NUMERICO
+    fin
+    devuelve vuelve
+fin
+
+funcion valor
+    c es actual
+    si c es T_NUM
+        pon_rax con (elemento k de tok_valor)
+        avanza
+        devuelve NUMERICO
+    fin
+    si c es T_ABRE
+        avanza
+        dentro es expresion
+        si actual no es igual a T_CIERRA
+            falla_texto con "Falta cerrar el paréntesis."
+        si no
+            avanza
+        fin
+        devuelve dentro
+    fin
+    si c es T_TEXTO
+        falla_texto con "Aquí un texto solo puede ir detrás de escribe o de pregunta."
+        devuelve NUMERICO
+    fin
+    si c no es igual a T_PAL
+        falla_texto con "Aquí falta un valor."
+        devuelve NUMERICO
+    fin
+    si come con "verdadero"
+        pon_rax con 1
+        devuelve LOGICO
+    fin
+    si come con "falso"
+        pon_rax con 0
+        devuelve LOGICO
+    fin
+    si (pal con "numero") y (pal_en con k mas 1 y "de") y pal_en con k mas 2 y "pregunta"
+        avanza
+        avanza
+        avanza
+        si actual es T_TEXTO
+            escribe_texto_literal con (elemento k de tok_ini) y (elemento k de tok_lar)
+            avanza
+        fin
+        llama_a con r_pregunta
+        devuelve NUMERICO
+    fin
+    si (pal con "azar") y pal_en con k mas 1 y "entre"
+        avanza
+        avanza
+        primero es comparacion
+        empuja
+        exige con "y" y "Falta la y: azar entre 1 y 10."
+        segundo es comparacion
+        pide_clase con primero y NUMERICO y "El azar"
+        pide_clase con segundo y NUMERICO y "El azar"
+        a_rcx_de_rax
+        saca_rax
+        emite_tres con 72 y 57 y 200
+        falla_si_no con J_LE y M_AZAR
+        emite_tres con 72 y 41 y 193
+        falla_si_no con J_NO y M_CABE
+        emite_tres con 72 y 255 y 193
+        falla_si_no con J_NO y M_CABE
+        llama_a con r_azar
+        devuelve NUMERICO
+    fin
+    si (pal con "cociente") y (pal_en con k mas 1 y "con") y (busca_funcion con (elemento k de tok_ini) y (elemento k de tok_lar)) es 0
+        avanza
+        avanza
+        primero es comparacion
+        empuja
+        exige con "y" y "Falta la y: cociente con 7 y 2."
+        segundo es comparacion
+        pide_clase con primero y NUMERICO y "El cociente"
+        pide_clase con segundo y NUMERICO y "El cociente"
+        a_rcx_de_rax
+        saca_rax
+        divide con falso y falso
+        devuelve NUMERICO
+    fin
+    si pal con "pregunta"
+        falla_texto con "Aquí pregunta solo sabe pedir números: numero de pregunta."
+        devuelve NUMERICO
+    fin
+    ini es elemento k de tok_ini
+    lar es elemento k de tok_lar
+    si es_reservada con ini y lar
+        anota_fallo con "Aquí falta un valor, y está la palabra " y ini y lar y "."
+        devuelve NUMERICO
+    fin
+    avanza
+    si pal con "con"
+        clase es llamada con ini y lar y falso
+        si clase es VACIO
+            blando con "La función " y ini y lar y " no devuelve nada."
+        fin
+        devuelve clase
+    fin
+    si busca_para_leer con ini y lar
+        lee_variable con var_local y var_desp
+        devuelve var_clase
+    fin
+    clase es llamada con ini y lar y verdadero
+    si clase es VACIO
+        blando con "La función " y ini y lar y " no devuelve nada."
+    fin
+    devuelve clase
+fin
+
+funcion condicion con quien
+    clase es expresion
+    pide_clase con clase y LOGICO y quien
+    prueba_rax
+fin
+
+funcion entra_bucle con id
+    comparte nbucles
+    nbucles es nbucles mas 1
+    elemento nbucles de bucles es id
+fin
+
+funcion sale_bucle
+    comparte nbucles
+    nbucles es nbucles menos 1
+fin
+
+funcion es_fin_de_bloque
+    si actual es T_FIN
+        devuelve verdadero
+    fin
+    devuelve (pal con "fin") o ((pal con "si") y pal_en con k mas 1 y "no")
+fin
+
+funcion bloque con linea_de
+    comparte nivel y linea_actual
+    nivel es nivel mas 1
+    salta_vacias
+    mientras no hay_fallo y no es_fin_de_bloque
+        instruccion
+        salta_vacias
+    fin
+    nivel es nivel menos 1
+    si actual es T_FIN y no hay_fallo
+        linea_actual es linea_de
+        falla_texto con "A lo que empieza aquí le falta su fin."
+    fin
+fin
+
+funcion orden_escribe
+    avanza
+    si actual es T_LINEA o actual es T_FIN
+        llama_a con r_salto
+        devuelve nada
+    fin
+    si actual es T_TEXTO
+        escribe_texto_literal con (elemento k de tok_ini) y (elemento k de tok_lar)
+        avanza
+        si pal con "mas"
+            falla_texto con "Aquí no se pueden juntar textos: usa dos escribe, uno con sin salto."
+        fin
+    si no
+        clase es expresion
+        si clase es LOGICO
+            prueba_rax
+            p es salta_si con J_E
+            escribe_texto_fijo con "verdadero"
+            q es salta_adelante
+            aterriza con p
+            escribe_texto_fijo con "falso"
+            aterriza con q
+        si no si clase es VACIO
+            blando con "Esto no da ningún valor que escribir." y 0 y 0 y ""
+        si no
+            llama_a con r_numero
+        fin
+    fin
+    si come con "sin"
+        exige con "salto" y "Falta salto: escribe x sin salto."
+    si no
+        llama_a con r_salto
+    fin
+fin
+
+funcion escribe_texto_fijo con texto
+    salto es salta_adelante
+    empieza es donde
+    para cada b en texto
+        emite con b
+    fin
+    aterriza con salto
+    emite con 190
+    emite32 con sitio_de con empieza
+    emite con 186
+    emite32 con largo de texto
+    llama_a con r_texto
+fin
+
+funcion orden_si
+    linea_de es linea_actual
+    avanza
+    id es nuevo_id
+    condicion con "El si"
+    p es salta_si con J_E
+    fin_de_linea
+    bloque con linea_de
+    acabado es falso
+    mientras no hay_fallo y no acabado y (pal con "si") y pal_en con k mas 1 y "no"
+        avanza
+        avanza
+        q es salta_adelante
+        pendiente con id y 3 y q
+        aterriza con p
+        p es 0 menos 1
+        si come con "si"
+            condicion con "El si no si"
+            p es salta_si con J_E
+            fin_de_linea
+            bloque con linea_de
+        si no
+            fin_de_linea
+            bloque con linea_de
+            acabado es verdadero
+        fin
+    fin
+    si p es mayor o igual que 0
+        aterriza con p
+    fin
+    exige con "fin" y "Falta el fin del si."
+    cierra_pendientes con id y 3
+fin
+
+funcion orden_mientras
+    linea_de es linea_actual
+    avanza
+    id es nuevo_id
+    arriba es donde
+    condicion con "El mientras"
+    p es salta_si con J_E
+    fin_de_linea
+    entra_bucle con id
+    bloque con linea_de
+    exige con "fin" y "Falta el fin del mientras."
+    cierra_pendientes con id y 2
+    salta_a con arriba
+    aterriza con p
+    cierra_pendientes con id y 1
+    sale_bucle
+fin
+
+funcion orden_repite
+    linea_de es linea_actual
+    avanza
+    id es nuevo_id
+    clase es expresion
+    pide_clase con clase y NUMERICO y "El repite"
+    come con "veces"
+    hueco_escondido
+    local es var_local
+    desp es var_desp
+    guarda_variable con local y desp
+    arriba es donde
+    lee_variable con local y desp
+    prueba_rax
+    p es salta_si con J_LE
+    toca con 255 y 1 y local y desp
+    fin_de_linea
+    entra_bucle con id
+    bloque con linea_de
+    exige con "fin" y "Falta el fin del repite."
+    cierra_pendientes con id y 2
+    salta_a con arriba
+    aterriza con p
+    cierra_pendientes con id y 1
+    sale_bucle
+fin
+
+funcion orden_para
+    linea_de es linea_actual
+    avanza
+    exige con "cada" y "Falta cada: para cada i desde 1 hasta 10."
+    si actual no es igual a T_PAL
+        falla_texto con "Falta el nombre: para cada i desde 1 hasta 10."
+        devuelve nada
+    fin
+    ini es elemento k de tok_ini
+    lar es elemento k de tok_lar
+    avanza
+    si pal con "en"
+        falla_texto con "Aquí para cada solo va de un número a otro: para cada i desde 1 hasta 10."
+        devuelve nada
+    fin
+    exige con "desde" y "Falta desde: para cada i desde 1 hasta 10."
+    id es nuevo_id
+    clase es expresion
+    pide_clase con clase y NUMERICO y "El desde"
+    busca_para_guardar con ini y lar y NUMERICO
+    v_local es var_local
+    v_desp es var_desp
+    guarda_variable con v_local y v_desp
+    exige con "hasta" y "Falta hasta: para cada i desde 1 hasta 10."
+    clase es expresion
+    pide_clase con clase y NUMERICO y "El hasta"
+    hueco_escondido
+    f_local es var_local
+    f_desp es var_desp
+    guarda_variable con f_local y f_desp
+    si come con "de"
+        clase es expresion
+        pide_clase con clase y NUMERICO y "El paso"
+    si no
+        pon_rax con 1
+    fin
+    prueba_rax
+    falla_si_no con J_G y M_PASO
+    hueco_escondido
+    p_local es var_local
+    p_desp es var_desp
+    guarda_variable con p_local y p_desp
+    lee_variable con v_local y v_desp
+    toca con 139 y 1 y f_local y f_desp
+    emite_tres con 72 y 57 y 200
+    sube es salta_si con J_LE
+    lee_variable con p_local y p_desp
+    emite_tres con 72 y 247 y 216
+    guarda_variable con p_local y p_desp
+    aterriza con sube
+    arriba es donde
+    lee_variable con v_local y v_desp
+    toca con 139 y 1 y f_local y f_desp
+    toca con 139 y 2 y p_local y p_desp
+    emite_tres con 72 y 133 y 210
+    baja es salta_si con J_S
+    emite_tres con 72 y 57 y 200
+    pasa_arriba es salta_si con J_G
+    sigue es salta_adelante
+    aterriza con baja
+    emite_tres con 72 y 57 y 200
+    pasa_abajo es salta_si con J_L
+    aterriza con sigue
+    fin_de_linea
+    entra_bucle con id
+    bloque con linea_de
+    exige con "fin" y "Falta el fin del para."
+    cierra_pendientes con id y 2
+    lee_variable con v_local y v_desp
+    toca con 139 y 1 y p_local y p_desp
+    emite_tres con 72 y 1 y 200
+    desborda es salta_si con J_O
+    guarda_variable con v_local y v_desp
+    salta_a con arriba
+    aterriza con pasa_arriba
+    aterriza con pasa_abajo
+    aterriza con desborda
+    cierra_pendientes con id y 1
+    sale_bucle
+fin
+
+funcion orden_funcion
+    comparte en_funcion y fun_actual y nloc y nslots y ncomp y nfun
+    linea_de es linea_actual
+    si en_funcion o nivel es mayor que 0
+        falla_texto con "Una función va sola, fuera de si, mientras y de otras funciones."
+        devuelve nada
+    fin
+    avanza
+    si actual no es igual a T_PAL
+        falla_texto con "Falta el nombre de la función."
+        devuelve nada
+    fin
+    ini es elemento k de tok_ini
+    lar es elemento k de tok_lar
+    si es_reservada con ini y lar
+        anota_fallo con "No puedes llamar " y ini y lar y " a una función: es una palabra de Fal."
+        devuelve nada
+    fin
+    avanza
+    si (busca_global con ini y lar) es mayor que 0 o (busca_vieja con ini y lar) es mayor que 0
+        anota_fallo con "Ya hay una variable que se llama " y ini y lar y "."
+        devuelve nada
+    fin
+    f es busca_funcion con ini y lar
+    si f es 0
+        si nfun es mayor o igual que TOPE_FUNCIONES
+            falla_texto con "Hay demasiadas funciones."
+            devuelve nada
+        fin
+        nfun es nfun mas 1
+        f es nfun
+        elemento f de fun_ini es ini
+        elemento f de fun_lar es lar
+        elemento f de fun_vuelve es 0
+        elemento f de fun_vuelve_en es 0
+        elemento f de fun_dir es 0
+        elemento f de fun_param_en es 0
+        para cada i desde 1 hasta TOPE_PARAMETROS
+            elemento (f menos 1) por TOPE_PARAMETROS mas i de par_clase es 0
+        fin
+    si no si (elemento f de fun_hecha_en) es pasada
+        anota_fallo con "Ya hay otra función que se llama " y ini y lar y "."
+        devuelve nada
+    fin
+    elemento f de fun_hecha_en es pasada
+    nloc es 0
+    ncomp es 0
+    nslots es 0
+    n es 0
+    si come con "con"
+        sigue es verdadero
+        mientras sigue y no hay_fallo
+            si actual no es igual a T_PAL
+                falla_texto con "Falta el nombre de un dato de la función."
+                devuelve nada
+            fin
+            n es n mas 1
+            l es nueva_local con (elemento k de tok_ini) y (elemento k de tok_lar) y 0 y NUMERICO
+            avanza
+            sigue es come con "y"
+        fin
+    fin
+    si n es mayor que TOPE_PARAMETROS
+        falla_texto con "Una función recibe como mucho 8 datos."
+        devuelve nada
+    fin
+    i es 1
+    mientras i es menor o igual que n
+        elemento i de loc_desp es 16 mas (n menos i) por 8
+        clase es elemento (f menos 1) por TOPE_PARAMETROS mas i de par_clase
+        si clase es 0
+            clase es NUMERICO
+        fin
+        elemento i de loc_clase es clase
+        i es i mas 1
+    fin
+    elemento f de fun_n es n
+    elemento f de fun_vuelve_en es 0
+    salto es salta_adelante
+    elemento f de fun_dir es donde
+    en_funcion es verdadero
+    fun_actual es f
+    emite con 85
+    emite_tres con 72 y 137 y 229
+    emite_tres con 72 y 129 y 252
+    emite32 con pila_suelo
+    falla_si_no con J_AE y M_HONDO
+    emite con 185
+    sitio_huecos es donde
+    emite32 con 0
+    emite_tres con 72 y 133 y 201
+    emite_dos con 116 y 7
+    emite_dos con 106 y 0
+    emite_tres con 72 y 255 y 201
+    emite_dos con 117 y 249
+    fin_de_linea
+    bloque con linea_de
+    exige con "fin" y "Falta el fin de la función."
+    emite_dos con 49 y 192
+    emite_tres con 72 y 137 y 236
+    emite_dos con 93 y 195
+    parche32 con sitio_huecos y nslots
+    si (elemento f de fun_vuelve_en) no es igual a pasada
+        elemento f de fun_vuelve es VACIO
+    fin
+    aterriza con salto
+    en_funcion es falso
+    nloc es 0
+    ncomp es 0
+fin
+
+funcion orden_devuelve
+    si no en_funcion
+        falla_texto con "devuelve solo puede ir dentro de una función."
+        devuelve nada
+    fin
+    avanza
+    clase es VACIO
+    si actual es T_LINEA o actual es T_FIN
+        emite_dos con 49 y 192
+    si no si pal con "nada"
+        avanza
+        emite_dos con 49 y 192
+    si no
+        clase es expresion
+    fin
+    f es fun_actual
+    si (elemento f de fun_vuelve_en) no es igual a pasada
+        elemento f de fun_vuelve_en es pasada
+        elemento f de fun_vuelve es clase
+    si no si (elemento f de fun_vuelve) no es igual a clase
+        blando con "La función " y (elemento f de fun_ini) y (elemento f de fun_lar) y " devuelve cosas de distinta clase."
+    fin
+    emite_tres con 72 y 137 y 236
+    emite_dos con 93 y 195
+fin
+
+funcion orden_comparte
+    comparte ncomp
+    si no en_funcion
+        falla_texto con "comparte solo va dentro de una función."
+        devuelve nada
+    fin
+    avanza
+    sigue es verdadero
+    mientras sigue y no hay_fallo
+        si actual no es igual a T_PAL
+            falla_texto con "Falta el nombre: comparte total."
+            devuelve nada
+        fin
+        si ncomp es menor que TOPE_LOCALES
+            ncomp es ncomp mas 1
+            elemento ncomp de comp_ini es elemento k de tok_ini
+            elemento ncomp de comp_lar es elemento k de tok_lar
+        fin
+        avanza
+        sigue es come con "y"
+    fin
+fin
+
+funcion orden_corta con clase
+    si nbucles es 0
+        falla_texto con "detente y continua solo van dentro de un bucle."
+        avanza
+        devuelve nada
+    fin
+    avanza
+    p es salta_adelante
+    pendiente con (elemento nbucles de bucles) y clase y p
+fin
+
+funcion asignacion
+    ini es elemento k de tok_ini
+    lar es elemento k de tok_lar
+    avanza
+    avanza
+    clase es expresion
+    si clase es VACIO
+        blando con "Lo que das a " y ini y lar y " no da ningún valor."
+        clase es NUMERICO
+    fin
+    busca_para_guardar con ini y lar y clase
+    guarda_variable con var_local y var_desp
+fin
+
+funcion instruccion
+    si pal con "escribe"
+        orden_escribe
+    si no si pal con "si"
+        orden_si
+    si no si pal con "mientras"
+        orden_mientras
+    si no si pal con "repite"
+        orden_repite
+    si no si pal con "para"
+        orden_para
+    si no si pal con "funcion"
+        orden_funcion
+    si no si pal con "devuelve"
+        orden_devuelve
+    si no si pal con "comparte"
+        orden_comparte
+    si no si pal con "detente"
+        orden_corta con 1
+    si no si pal con "continua"
+        orden_corta con 2
+    si no si pal con "fin"
+        falla_texto con "Sobra este fin: no cierra nada."
+    si no si actual es T_PAL y pal_en con k mas 1 y "es"
+        asignacion
+    si no si actual es T_PAL
+        ini es elemento k de tok_ini
+        lar es elemento k de tok_lar
+        si es_reservada con ini y lar
+            anota_fallo con "No sé qué hacer con " y ini y lar y " al principio de una línea."
+        si no
+            avanza
+            clase es llamada con ini y lar y falso
+        fin
+    si no
+        falla_texto con "No entiendo esta línea."
+    fin
+    si no hay_fallo
+        fin_de_linea
+    fin
+fin
+
+funcion arriba_de con n
+    devuelve (n mas PAGINA menos 1) menos (n mas PAGINA menos 1) resto PAGINA
+fin
+
+funcion una_pasada
+    comparte donde y k y linea_actual y en_funcion y nglob y nviejo y nloc y npend y nbucles y ids y nivel y globales_en y pila_suelo y pila_tope y entrada y archivo_mide
+    i es 1
+    mientras i es menor o igual que nglob
+        elemento i de viejo_ini es elemento i de glob_ini
+        elemento i de viejo_lar es elemento i de glob_lar
+        elemento i de viejo_clase es elemento i de glob_clase
+        i es i mas 1
+    fin
+    nviejo es nglob
+    nglob es 0
+    g es nueva_global con 0 y 0 y NUMERICO
+    pila_suelo es BASE mas (arriba_de con archivo_antes) mas HOLGURA
+    pila_tope es BASE mas (arriba_de con archivo_antes) mas PILA
+    globales_en es pila_tope
+    donde es 0
+    k es 1
+    linea_actual es 1
+    en_funcion es falso
+    nloc es 0
+    npend es 0
+    nbucles es 0
+    ids es 0
+    nivel es 0
+    repite 32 veces
+        emite con 0
+    fin
+    ayudas
+    entrada es donde
+    emite_tres con 72 y 199 y 196
+    emite32 con pila_tope
+    emite con 191
+    emite32 con ANCHO_HIJO
+    emite con 190
+    emite32 con ALTO_HIJO
+    sys con PIDE_VENTANA
+    sys con PIDE_TICS
+    emite_dos con 72 y 185
+    emite64 con 0 menos 7046029254386353131
+    emite_cuatro con 72 y 15 y 175 y 193
+    emite_cuatro con 72 y 131 y 200 y 1
+    guarda_variable con falso y (sitio_global con 1)
+    salta_vacias
+    mientras no hay_fallo y actual no es igual a T_FIN
+        si pal con "fin"
+            falla_texto con "Sobra este fin: no cierra nada."
+        si no si (pal con "si") y pal_en con k mas 1 y "no"
+            falla_texto con "Este si no no tiene un si delante."
+        si no
+            instruccion
+        fin
+        salta_vacias
+    fin
+    emite con 191
+    emite32 con 0
+    sys con 0
+    emite_dos con 235 y 254
+    archivo_mide es donde
+    si donde es mayor que TOPE_CODIGO
+        falla_texto con "El programa no cabe: como mucho 64 KB."
+    fin
+fin
+
+funcion compila
+    comparte pasada y estricta y archivo_antes y hay_fallo y nfun
+    hay_fallo es falso
+    estricta es falso
+    nfun es 0
+    archivo_antes es 0
+    trocea
+    si hay_fallo
+        devuelve falso
+    fin
+    pasada es 1
+    estable es falso
+    mientras no estable y pasada es menor o igual que ULTIMA_PASADA
+        para cada f desde 1 hasta TOPE_FUNCIONES
+            elemento f de fun_dir_antes es elemento f de fun_dir
+        fin
+        anterior es archivo_antes
+        una_pasada
+        si hay_fallo
+            devuelve falso
+        fin
+        estable es pasada es mayor que 1 y archivo_mide es anterior
+        f es 1
+        mientras estable y f es menor o igual que nfun
+            si (elemento f de fun_dir) no es igual a (elemento f de fun_dir_antes)
+                estable es falso
+            fin
+            f es f mas 1
+        fin
+        archivo_antes es archivo_mide
+        pasada es pasada mas 1
+    fin
+    estricta es verdadero
+    anterior es archivo_antes
+    una_pasada
+    si hay_fallo
+        devuelve falso
+    fin
+    si archivo_mide no es igual a anterior
+        falla_texto con "Me he liado compilando esto. Es culpa mía, no tuya."
+        devuelve falso
+    fin
+    total es (arriba_de con archivo_mide) mas PILA mas (arriba_de con nglob por 8)
+    pon_palabra_en con 1 y MAGIA
+    pon_palabra_en con 9 y BASE mas entrada
+    pon_palabra_en con 17 y archivo_mide
+    pon_palabra_en con 25 y total
+    devuelve verdadero
+fin
+
+funcion pon_palabra_en con sitio y n
+    v es n
+    i es 0
+    repite 8 veces
+        b es v resto 256
+        si b es menor que 0
+            b es b mas 256
+        fin
+        elemento sitio mas i de codigo es b
+        v es cociente con (v menos b) y 256
+        i es i mas 1
+    fin
+fin
+
+funcion entrega
+    hecho es 0
+    mientras hecho es menor que archivo_mide
+        cuantos es archivo_mide menos hecho
+        si cuantos es mayor que TROZO
+            cuantos es TROZO
+        fin
+        copia_region con mesa_bytes y 1 y codigo y hecho mas 1 y cuantos
+        visto es llama_al_sistema con TROZO_DE_PROGRAMA y 0 y cuantos
+        si visto es menor que 0
+            devuelve visto
+        fin
+        hecho es hecho mas cuantos
+    fin
+    copia_region con mesa_bytes y 1 y nombre_hecho y 1 y nombre_mide
+    devuelve llama_al_sistema con ESTRENA y 0 y nombre_mide
+fin
+
+funcion empieza_de_linea con n
+    linea es 1
+    i es 1
+    mientras linea es menor que n y i es menor o igual que mide
+        si (elemento i de fuente) es 10
+            linea es linea mas 1
+        fin
+        i es i mas 1
+    fin
+    devuelve i menos 1
+fin
+
+funcion linea_de_cursor
+    linea es 1
+    i es 1
+    mientras i es menor o igual que cursor
+        si (elemento i de fuente) es 10
+            linea es linea mas 1
+        fin
+        i es i mas 1
+    fin
+    devuelve linea
+fin
+
+funcion columna_de_cursor
+    i es cursor
+    mientras i es mayor que 0 y (elemento i de fuente) no es igual a 10
+        i es i menos 1
+    fin
+    devuelve cursor menos i
+fin
+
+funcion fin_de_linea_en con desde
+    i es desde
+    mientras i es menor que mide y (elemento i mas 1 de fuente) no es igual a 10
+        i es i mas 1
+    fin
+    devuelve i
+fin
+
+funcion tinta_de_palabra con ini y lar
+    si trozo_es con ini y lar y "si" o trozo_es con ini y lar y "no" o trozo_es con ini y lar y "mientras" o trozo_es con ini y lar y "repite"
+        devuelve CIAN_CLARO
+    fin
+    si trozo_es con ini y lar y "veces" o trozo_es con ini y lar y "para" o trozo_es con ini y lar y "cada" o trozo_es con ini y lar y "desde"
+        devuelve CIAN_CLARO
+    fin
+    si trozo_es con ini y lar y "hasta" o trozo_es con ini y lar y "funcion" o trozo_es con ini y lar y "con" o trozo_es con ini y lar y "fin"
+        devuelve CIAN_CLARO
+    fin
+    si trozo_es con ini y lar y "devuelve" o trozo_es con ini y lar y "escribe" o trozo_es con ini y lar y "comparte" o trozo_es con ini y lar y "detente"
+        devuelve CIAN_CLARO
+    fin
+    si trozo_es con ini y lar y "continua"
+        devuelve CIAN_CLARO
+    fin
+    si trozo_es con ini y lar y "verdadero" o trozo_es con ini y lar y "falso"
+        devuelve AMARILLO
+    fin
+    devuelve BLANCO
+fin
+
+funcion pinta_linea_de_codigo con renglon y n y desde y corrido
+    hasta es fin_de_linea_en con desde
+    limpia_renglon con renglon
+    si desde es mayor que mide
+        devuelve nada
+    fin
+    cifras es n
+    c es 3
+    mientras cifras es mayor que 0 y c es mayor que 0
+        pon con renglon y c y GRIS_OSCURO y 48 mas cifras resto 10
+        cifras es cociente con cifras y 10
+        c es c menos 1
+    fin
+    i es desde mas 1
+    tinta es BLANCO
+    palabra_hasta es 0
+    en_texto es falso
+    en_nota es falso
+    mientras i es menor o igual que hasta
+        letra es elemento i de fuente
+        si en_nota
+            tinta es GRIS_OSCURO
+        si no si letra es 34
+            tinta es VERDE_CLARO
+            en_texto es no en_texto
+        si no si en_texto
+            tinta es VERDE_CLARO
+        si no si letra es 35
+            en_nota es verdadero
+            tinta es GRIS_OSCURO
+        si no si i es mayor o igual que palabra_hasta y es_letra con letra
+            palabra_hasta es i
+            mientras palabra_hasta es menor o igual que hasta y ((es_letra con (elemento palabra_hasta de fuente)) o (es_cifra con (elemento palabra_hasta de fuente)))
+                palabra_hasta es palabra_hasta mas 1
+            fin
+            tinta es tinta_de_palabra con i y palabra_hasta menos i
+        si no si i es mayor o igual que palabra_hasta y es_cifra con letra
+            tinta es AMARILLO
+        si no si i es mayor o igual que palabra_hasta
+            tinta es BLANCO
+        fin
+        columna es DESDE_COLUMNA mas (i menos desde menos 1) menos corrido
+        si columna es mayor o igual que DESDE_COLUMNA y columna es menor o igual que COLUMNAS
+            pon con renglon y columna y tinta y letra
+        fin
+        i es i mas 1
+    fin
+fin
+
+funcion pinta_titulo
+    limpia_renglon con 1
+    c es texto_en con 1 y 2 y "fal" y CIAN_CLARO
+    si nombre_mide es mayor que 0
+        c es texto_en con 1 y c y " · " y GRIS_OSCURO
+        i es 1
+        mientras i es menor o igual que nombre_mide
+            pon con 1 y c y BLANCO y (elemento i de nombre_hecho)
+            c es c mas 1
+            i es i mas 1
+        fin
+    fin
+    texto_en con 1 y 36 y "Fin compila · Esc consola" y GRIS_OSCURO
+fin
+
+funcion ajusta_vista
+    comparte arriba_vista y izquierda
+    linea es linea_de_cursor
+    si linea es menor que arriba_vista
+        arriba_vista es linea
+    fin
+    si linea es mayor o igual que arriba_vista mas VISIBLES
+        arriba_vista es linea menos VISIBLES mas 1
+    fin
+    columna es columna_de_cursor
+    si columna es menor que izquierda
+        izquierda es columna
+    fin
+    si columna es mayor o igual que izquierda mas CABEN_EN_LINEA
+        izquierda es columna menos CABEN_EN_LINEA mas 1
+    fin
+fin
+
+funcion pinta_todo
+    ajusta_vista
+    pinta_titulo
+    desde es empieza_de_linea con arriba_vista
+    linea es linea_de_cursor
+    total es cuantas_lineas
+    n es arriba_vista
+    r es 2
+    repite VISIBLES veces
+        si n es menor o igual que total
+            corrido es 0
+            si n es linea
+                corrido es izquierda
+            fin
+            pinta_linea_de_codigo con r y n y desde y corrido
+            desde es (fin_de_linea_en con desde) mas 1
+        si no
+            limpia_renglon con r
+        fin
+        n es n mas 1
+        r es r mas 1
+    fin
+    columna es DESDE_COLUMNA mas columna_de_cursor menos izquierda
+    renglon es 2 mas linea menos arriba_vista
+    letra es 95
+    si cursor es menor que mide y (elemento cursor mas 1 de fuente) no es igual a 10 y (elemento cursor mas 1 de fuente) no es igual a 32
+        letra es elemento cursor mas 1 de fuente
+    fin
+    si columna es menor o igual que COLUMNAS
+        pon con renglon y columna y ROSA y letra
+    fin
+    pinta_aviso
+fin
+
+funcion inserta con c
+    comparte mide y cursor
+    si mide es mayor o igual que CABE_FUENTE
+        avisa con "No cabe más: como mucho 32.000 letras." y ROJO_CLARO
+        devuelve nada
+    fin
+    si cursor es menor que mide
+        copia_region con fuente y cursor mas 2 y fuente y cursor mas 1 y mide menos cursor
+    fin
+    elemento cursor mas 1 de fuente es c
+    mide es mide mas 1
+    cursor es cursor mas 1
+fin
+
+funcion quita_en con sitio
+    comparte mide
+    si sitio es menor que 1 o sitio es mayor que mide
+        devuelve nada
+    fin
+    si sitio es menor que mide
+        copia_region con fuente y sitio y fuente y sitio mas 1 y mide menos sitio
+    fin
+    mide es mide menos 1
+fin
+
+funcion sangria_de_linea
+    i es cursor
+    mientras i es mayor que 0 y (elemento i de fuente) no es igual a 10
+        i es i menos 1
+    fin
+    empieza es i mas 1
+    n es 0
+    mientras empieza mas n es menor o igual que mide y (elemento empieza mas n de fuente) es 32
+        n es n mas 1
+    fin
+    j es empieza mas n
+    lar es 0
+    mientras j mas lar es menor o igual que mide y (es_letra con (elemento j mas lar de fuente))
+        lar es lar mas 1
+    fin
+    si trozo_es con j y lar y "si" o trozo_es con j y lar y "mientras" o trozo_es con j y lar y "repite" o trozo_es con j y lar y "para" o trozo_es con j y lar y "funcion"
+        n es n mas 4
+    fin
+    devuelve n
+fin
+
+funcion pulsa_intro
+    n es sangria_de_linea
+    inserta con 10
+    repite n veces
+        inserta con 32
+    fin
+fin
+
+funcion pulsa_borra
+    comparte cursor
+    si cursor es 0
+        devuelve nada
+    fin
+    columna es columna_de_cursor
+    cuantos es 1
+    si columna es mayor o igual que 4 y (columna resto 4) es 0
+        solo_blancos es verdadero
+        i es cursor menos columna mas 1
+        mientras i es menor o igual que cursor
+            si (elemento i de fuente) no es igual a 32
+                solo_blancos es falso
+            fin
+            i es i mas 1
+        fin
+        si solo_blancos
+            cuantos es 4
+        fin
+    fin
+    repite cuantos veces
+        quita_en con cursor
+        cursor es cursor menos 1
+    fin
+fin
+
+funcion cuantas_lineas
+    n es 1
+    i es 1
+    mientras i es menor o igual que mide
+        si (elemento i de fuente) es 10
+            n es n mas 1
+        fin
+        i es i mas 1
+    fin
+    devuelve n
+fin
+
+funcion mueve_vertical con paso
+    comparte cursor
+    linea es (linea_de_cursor) mas paso
+    columna es columna_de_cursor
+    si linea es menor que 1 o linea es mayor que cuantas_lineas
+        devuelve nada
+    fin
+    desde es empieza_de_linea con linea
+    hasta es fin_de_linea_en con desde
+    cursor es desde mas columna
+    si cursor es mayor que hasta
+        cursor es hasta
+    fin
+fin
+
+funcion aviso_vacio con tinta
+    comparte aviso_mide y aviso_tinta
+    aviso_mide es 0
+    aviso_tinta es tinta
+fin
+
+funcion aviso_letra con c
+    comparte aviso_mide
+    si aviso_mide es menor que CABE_AVISO
+        aviso_mide es aviso_mide mas 1
+        elemento aviso_mide de aviso_letras es c
+    fin
+fin
+
+funcion aviso_mas con texto
+    primero es 0
+    para cada letra en texto
+        si letra es 194 o letra es 195
+            primero es letra
+        si no si primero es mayor que 0
+            aviso_letra con (en_437 con primero y letra)
+            primero es 0
+        si no
+            aviso_letra con letra
+        fin
+    fin
+fin
+
+funcion aviso_numero con n
+    si n es mayor o igual que 10
+        aviso_numero con (cociente con n y 10)
+    fin
+    aviso_letra con 48 mas n resto 10
+fin
+
+funcion aviso_trozo con origen y desde y cuantos
+    i es 0
+    mientras i es menor que cuantos
+        aviso_letra con (elemento desde mas i de origen)
+        i es i mas 1
+    fin
+fin
+
+funcion avisa con texto y tinta
+    aviso_vacio con tinta
+    aviso_mas con texto
+fin
+
+funcion pinta_aviso
+    limpia_renglon con PRIMER_AVISO
+    limpia_renglon con RENGLONES
+    renglon es PRIMER_AVISO
+    c es 2
+    i es 1
+    mientras i es menor o igual que aviso_mide
+        j es i
+        mientras j es menor o igual que aviso_mide y (elemento j de aviso_letras) no es igual a 32
+            j es j mas 1
+        fin
+        si c mas (j menos i) es mayor que COLUMNAS y c es mayor que 2 y renglon es menor que RENGLONES
+            renglon es renglon mas 1
+            c es 2
+        fin
+        mientras i es menor que j
+            si c es menor o igual que COLUMNAS
+                pon con renglon y c y aviso_tinta y (elemento i de aviso_letras)
+            fin
+            c es c mas 1
+            i es i mas 1
+        fin
+        c es c mas 1
+        i es i mas 1
+    fin
+fin
+
+funcion intenta_compilar
+    comparte cursor
+    avisa con "Compilando..." y GRIS
+    pinta_aviso
+    si no compila
+        cursor es empieza_de_linea con fallo_linea
+        aviso_vacio con ROJO_CLARO
+        aviso_mas con "Línea "
+        aviso_numero con fallo_linea
+        aviso_mas con ": "
+        aviso_mas con fallo_antes
+        aviso_trozo con fuente y fallo_ini y fallo_lar
+        aviso_mas con fallo_despues
+        devuelve nada
+    fin
+    respuesta es entrega
+    si respuesta es 0
+        avisa con "Hecho, " y VERDE_CLARO
+        aviso_numero con archivo_mide
+        aviso_mas con " bytes. En la consola: lanza "
+        aviso_trozo con nombre_hecho y 1 y nombre_mide
+    si no si respuesta es 0 menos 31
+        avisa con "Ese nombre no vale." y ROJO_CLARO
+    si no si respuesta es 0 menos 32
+        avisa con "Ya hay un programa con ese nombre en el disco. Pulsa Fin con otro." y ROJO_CLARO
+    si no si respuesta es 0 menos 33
+        avisa con "Ese nombre ya es de un programa que no has hecho tú." y ROJO_CLARO
+    si no si respuesta es 0 menos 35
+        avisa con "No caben más programas hechos aquí." y ROJO_CLARO
+    si no
+        avisa con "FalOS no lo ha aceptado." y ROJO_CLARO
+    fin
+    si respuesta es 0 menos 31 o respuesta es 0 menos 32 o respuesta es 0 menos 33
+        olvida_nombre
+    fin
+fin
+
+funcion olvida_nombre
+    comparte nombre_mide
+    nombre_mide es 0
+fin
+
+funcion pide_nombre
+    avisa con "¿Cómo se llama? Letras sin tilde, cifras, - y _. Intro para compilar: " y BLANCO
+    aviso_trozo con nombre_hecho y 1 y nombre_mide
+    aviso_letra con 95
+fin
+
+funcion vale_en_nombre con c
+    devuelve (c es mayor o igual que 97 y c es menor o igual que 122) o (es_cifra con c) o c es 45 o c es 95
+fin
+
+funcion lee_nombre con tecla
+    comparte leyendo_nombre y nombre_mide
+    si tecla es TECLA_INTRO
+        si nombre_mide es mayor que 0
+            leyendo_nombre es falso
+            pinta_titulo
+            intenta_compilar
+        fin
+    si no si tecla es TECLA_FIN
+        leyendo_nombre es falso
+        nombre_mide es 0
+        avisa con "Sin nombre no lo compilo. Fin, cuando quieras." y GRIS
+    si no si tecla es TECLA_BORRA
+        si nombre_mide es mayor que 0
+            nombre_mide es nombre_mide menos 1
+        fin
+        pide_nombre
+    si no
+        c es minuscula con tecla
+        si nombre_mide es menor que CABE_NOMBRE y vale_en_nombre con c
+            nombre_mide es nombre_mide mas 1
+            elemento nombre_mide de nombre_hecho es c
+        fin
+        pide_nombre
+    fin
+fin
+
+funcion atiende con tecla
+    comparte cursor y leyendo_nombre
+    si leyendo_nombre
+        lee_nombre con tecla
+    si no si tecla es TECLA_FIN
+        si nombre_mide es 0
+            leyendo_nombre es verdadero
+            pide_nombre
+        si no
+            intenta_compilar
+        fin
+    si no si tecla es TECLA_INTRO
+        pulsa_intro
+    si no si tecla es TECLA_BORRA
+        pulsa_borra
+    si no si tecla es TECLA_SUPRIME
+        quita_en con cursor mas 1
+    si no si tecla es TECLA_IZQUIERDA
+        si cursor es mayor que 0
+            cursor es cursor menos 1
+        fin
+    si no si tecla es TECLA_DERECHA
+        si cursor es menor que mide
+            cursor es cursor mas 1
+        fin
+    si no si tecla es TECLA_ARRIBA
+        mueve_vertical con 0 menos 1
+    si no si tecla es TECLA_ABAJO
+        mueve_vertical con 1
+    si no si tecla es TECLA_INICIO
+        cursor es cursor menos columna_de_cursor
+    si no si tecla es mayor o igual que 32 y tecla es menor que 256
+        inserta con tecla
+    fin
+fin
+
+llama_al_sistema con PIDE_VENTANA y COLUMNAS y RENGLONES
+si no hay_memoria
+    texto_en con 2 y 2 y "No hay memoria para compilar." y ROJO_CLARO
+    mientras verdadero
+        llama_al_sistema con DUERME y 100
+    fin
+fin
+avisa con "Escribe en Fal y pulsa Fin para compilarlo." y GRIS
+pinta_todo
+mientras verdadero
+    tecla es llama_al_sistema con LEE_TECLA
+    si tecla es 0
+        llama_al_sistema con DUERME y 2
+    si no
+        atiende con tecla
+        pinta_todo
+    fin
+fin
