@@ -2364,7 +2364,7 @@ jobs:
           o.espera("fal pide permiso para guardar nada")
           o.orden("niega 1")
           o.orden("teclado 1", 0.5)
-          o.en_pantalla("No lo dejaste guardar:")
+          o.en_pantalla("No le diste permiso:")
           o.pide("sendkey esc", 0.5)
           o.orden("para 1")
           o.orden("lanza falsario", 3)

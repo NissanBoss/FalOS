@@ -2628,7 +2628,7 @@ funcion intenta_compilar
         si respuesta es GUARDADO_TAMBIEN
             aviso_mas con " bytes, guardado y cifrado. En la consola: lanza "
         si no si respuesta es NO_LE_DEJASTE
-            aviso_mas con " bytes. No lo dejaste guardar: vive en memoria. En la consola: lanza "
+            aviso_mas con " bytes. No le diste permiso: vive en memoria. En la consola: lanza "
         si no
             aviso_mas con " bytes, solo en memoria. En la consola: lanza "
         fin
