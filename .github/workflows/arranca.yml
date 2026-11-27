@@ -2209,14 +2209,258 @@ jobs:
           o.orden("para 2")
           o.espera("guarda cerrado con 0 preguntas y 2 rechazadas")
           o.orden("programas", 2)
-          o.en_pantalla("Hechos aquí, solo en memoria:", "bytes, de fal", "74 bytes, de falsario")
+          o.en_pantalla("Hechos aquí:", "bytes, de fal, solo en memoria", "74 bytes, de falsario, solo en memoria")
           o.orden("registro", 2)
-          o.en_pantalla("se compiló aquí: 74 bytes, solo en memoria")
+          o.en_pantalla("se compiló aquí: 74 bytes")
           o.fuera()
           print("todo bien")
           FIN
           fal haz_disco.fal > /dev/null
           timeout 1200 python3 dentro.py
+
+      - name: Guardar lo que programas, cifrado, y que vuelva al reiniciar
+        run: |
+          cat > quedan.py <<'FIN'
+          import os, re, shutil, subprocess, sys, time
+
+          TECLA = {" ": "spc", '"': "shift-2", "(": "shift-8", ")": "shift-9", "-": "slash", "_": "shift-slash",
+                   ".": "dot", ",": "comma", ":": "shift-dot", "ñ": "semicolon",
+                   "á": "apostrophe a", "é": "apostrophe e", "í": "apostrophe i", "ó": "apostrophe o", "ú": "apostrophe u"}
+          TECLA.update({letra: "shift-" + letra.lower() for letra in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"})
+          ABREN = ("si", "mientras", "repite", "para", "funcion")
+          ZONA = 8193 - 1600
+
+          CUENTAS = '''
+          funcion doble con n
+              devuelve n por 2
+          fin
+          para cada i desde 1 hasta 3
+              escribe doble con i
+          fin
+          escribe "año y canción"
+          '''
+
+
+          class Ordenador:
+              def __init__(self, nombre):
+                  self.nombre = nombre
+                  self.serie = nombre + ".txt"
+                  if os.path.exists(self.serie):
+                      os.remove(self.serie)
+                  self.qemu = subprocess.Popen(
+                      ["qemu-system-x86_64", "-m", "256", "-cpu", "max", "-kernel", "sistema.bin",
+                       "-drive", "file=quedan.img,format=raw,if=ide",
+                       "-display", "none", "-serial", "file:" + self.serie, "-monitor", "stdio", "-no-reboot"],
+                      stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+                  self.espera("pantalla lista", 1, 60)
+                  time.sleep(2)
+
+              def pide(self, orden, pausa=0.12):
+                  self.qemu.stdin.write((orden + "\n").encode())
+                  self.qemu.stdin.flush()
+                  time.sleep(pausa)
+
+              def pulsa(self, *teclas):
+                  for tecla in teclas:
+                      self.pide("sendkey " + tecla)
+
+              def escribe(self, texto):
+                  for letra in texto:
+                      self.pulsa(*TECLA.get(letra, letra).split())
+
+              def orden(self, texto, pausa=1.5):
+                  self.escribe(texto)
+                  self.pide("sendkey ret", pausa)
+
+              def programa(self, codigo):
+                  previa = None
+                  for linea in codigo.strip("\n").split("\n"):
+                      quiere = len(linea) - len(linea.lstrip(" "))
+                      sangria = 0
+                      if previa is not None:
+                          sangria = len(previa) - len(previa.lstrip(" "))
+                          if previa.strip().split(" ")[0] in ABREN:
+                              sangria += 4
+                          self.pulsa("ret")
+                      while sangria > quiere:
+                          self.pulsa("backspace")
+                          sangria -= 4
+                      self.escribe(" " * (quiere - sangria) + linea.strip())
+                      previa = linea
+
+              def compila(self, codigo, nombre):
+                  self.orden("lanza fal")
+                  self.orden("teclado 1", 0.5)
+                  self.programa(codigo)
+                  self.pide("sendkey end", 0.5)
+                  self.escribe(nombre)
+                  self.pide("sendkey ret", 2)
+
+              def dicho(self):
+                  if not os.path.exists(self.serie):
+                      return ""
+                  with open(self.serie, encoding="utf-8", errors="replace") as serie:
+                      return serie.read()
+
+              def espera(self, frase, veces=1, segundos=60):
+                  hasta = time.time() + segundos
+                  while time.time() < hasta:
+                      if self.dicho().count(frase) >= veces:
+                          return
+                      time.sleep(0.3)
+                  self.falla("no dice " + frase)
+
+              def en_pantalla(self, *frases):
+                  time.sleep(1.5)
+                  self.pide("pmemsave 0 134217728 %s.mem" % self.nombre, 3)
+                  memoria = open(self.nombre + ".mem", "rb").read()
+                  for frase in frases:
+                      patron = b"".join(re.escape(bytes([letra])) + b"." for letra in frase.encode("cp437"))
+                      if not re.search(patron, memoria, re.S):
+                          self.falla("no está en la pantalla: " + frase)
+
+              def no_dice(self, *frases):
+                  for frase in frases:
+                      if frase in self.dicho():
+                          self.falla("no debía decir " + frase)
+
+              def falla(self, por_que):
+                  print(self.dicho())
+                  self.qemu.kill()
+                  sys.exit(por_que)
+
+              def fuera(self):
+                  self.pide("quit")
+                  self.qemu.wait(20)
+                  print(self.dicho())
+                  if re.search(r"X  [A-Z]", self.dicho()):
+                      sys.exit("Guardar lo programado ha tumbado a FalOS")
+
+
+          def zona():
+              imagen = open("quedan.img", "rb").read()
+              return imagen, imagen[ZONA * 512:]
+
+
+          def hueco_lleno():
+              imagen, z = zona()
+              llenos = [h for h in range(8) if z[h * 200 * 512:h * 200 * 512 + 4] == b"HEC1"]
+              return llenos
+
+
+          shutil.copy("disco.img", "quedan.img")
+
+          o = Ordenador("quedan1")
+          o.compila(CUENTAS, "cuentas")
+          o.espera("fal pide permiso para guardar cuentas")
+          o.en_pantalla("fal quiere guardar cuentas en el disco, cifrado:", "Si le dejas: deja 1. Si no: niega 1.")
+          o.orden("deja 1")
+          o.espera("cuentas guardado en el disco: ")
+          o.orden("teclado 1", 0.5)
+          o.en_pantalla("bytes, guardado y cifrado.")
+          o.pide("sendkey esc", 0.5)
+          o.orden("para 1")
+          o.compila('escribe "no me guardes"', "nada")
+          o.espera("fal pide permiso para guardar nada")
+          o.orden("niega 1")
+          o.orden("teclado 1", 0.5)
+          o.en_pantalla("No lo dejaste guardar:")
+          o.pide("sendkey esc", 0.5)
+          o.orden("para 1")
+          o.orden("lanza falsario", 3)
+          o.espera("falsario pide permiso para guardar guarda")
+          o.orden("niega 1", 3)
+          o.orden("teclado 1", 0.5)
+          o.en_pantalla("cuentas, que hizo fal: -33", "guarda, hecho a mano: 2")
+          o.pide("sendkey esc", 0.5)
+          o.orden("para 1")
+          o.orden("programas", 2)
+          o.en_pantalla("Hechos aquí:", "bytes, de fal, guardado y cifrado", "bytes, de fal, solo en memoria",
+                        "74 bytes, de falsario, solo en memoria")
+          o.orden("registro", 2)
+          o.en_pantalla("se guardó en el disco, cifrado y con su código:")
+          o.fuera()
+
+          imagen, z = zona()
+          for claro in (b"funcion doble con n", b"devuelve n por 2", b"no me guardes", b"cuentas"):
+              assert claro not in z, claro
+          assert b"funcion doble" not in imagen and b"no me guardes" not in imagen
+          assert hueco_lleno() == [0], hueco_lleno()
+
+          o = Ordenador("quedan2")
+          o.espera("hecho vuelve: cuentas")
+          o.no_dice("hecho vuelve: nada", "hecho vuelve: guarda", "hecho tocado")
+          o.en_pantalla("Han vuelto del disco 1 programa que hiciste aquí.")
+          o.orden("lanza cuentas", 3)
+          o.espera("hecho aqui: cuentas")
+          o.en_pantalla("2", "4", "6", "año y canción")
+          o.orden("para 1")
+          o.orden("lanza fal")
+          o.orden("teclado 1", 0.5)
+          o.en_pantalla("Fin abre uno tuyo: cuentas")
+          o.pide("sendkey end", 0.5)
+          o.en_pantalla("¿Cuál abro? cuentas.")
+          o.escribe("cuentas")
+          o.pide("sendkey ret", 1)
+          o.en_pantalla("funcion doble con n", "devuelve n por 2", "Abierto.")
+          o.pide("sendkey esc", 0.5)
+          o.orden("para 1")
+          o.orden("lanza falsario", 3)
+          o.orden("teclado 1", 0.5)
+          o.en_pantalla("cuentas, que hizo fal: -33")
+          o.fuera()
+
+          imagen = bytearray(open("quedan.img", "rb").read())
+          sitio = (ZONA + 1) * 512 + 300
+          imagen[sitio] ^= 1
+          open("quedan.img", "wb").write(imagen)
+          o = Ordenador("quedan3")
+          o.espera("hecho tocado: hueco 1")
+          o.no_dice("hecho vuelve")
+          o.en_pantalla("Un programa guardado no cuadra: alguien ha tocado el disco. No lo cargo.")
+          o.orden("lanza cuentas", 2)
+          o.no_dice("hecho aqui: cuentas")
+          o.fuera()
+          imagen[sitio] ^= 1
+          open("quedan.img", "wb").write(imagen)
+
+          o = Ordenador("quedan4")
+          o.espera("hecho vuelve: cuentas")
+          o.orden("invitado", 3)
+          o.orden("programas", 2)
+          o.orden("lanza cuentas", 2)
+          o.no_dice("hecho aqui: cuentas")
+          o.fuera()
+          assert hueco_lleno() == [0], "el invitado ha tocado lo guardado"
+
+          o = Ordenador("quedan5")
+          o.orden("cerrojo")
+          o.orden("gato")
+          o.orden("gato", 20)
+          o.espera("cerrojo.sis guardado")
+          o.fuera()
+
+          o = Ordenador("quedan6")
+          time.sleep(3)
+          o.no_dice("hecho vuelve")
+          o.orden("gato", 20)
+          o.espera("hecho vuelve: cuentas")
+          o.orden("olvida cuentas", 3)
+          o.espera("cuentas olvidado con su codigo")
+          o.en_pantalla("He borrado cuentas y su código:", "En el disco solo quedan ceros.")
+          o.fuera()
+          imagen, z = zona()
+          assert z[:197 * 512] == bytes(197 * 512), "olvida no ha dejado ceros"
+
+          o = Ordenador("quedan7")
+          o.orden("gato", 20)
+          time.sleep(3)
+          o.no_dice("hecho vuelve")
+          o.fuera()
+          print("todo bien")
+          FIN
+          fal haz_disco.fal > /dev/null
+          timeout 1500 python3 quedan.py
 
       - name: Arrancar desde un pendrive, por BIOS y por UEFI, sin tocar ningun disco
         run: |

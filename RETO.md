@@ -29,6 +29,9 @@ Un programa que corra en FalOS y consiga una de estas cosas:
    contraseña, o cambiarlo sin que se entere. Este no necesita un programa: vale
    con los bytes del pendrive, en tu ordenador. Qué hay en cada byte lo cuenta
    [PENDRIVE.md](PENDRIVE.md).
+9. **Quedarse sin permiso.** Que un programa que hizo otro programa siga ahí
+   después de reiniciar sin que escribieras `deja`, o que vuelva uno que borraste
+   con `olvida`.
 
 Y una más, que vale igual: **que FalOS te mienta.** Que la pregunta de permiso
 diga otro programa, otro sitio u otra cantidad de bytes de lo que de verdad pasa,

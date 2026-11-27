@@ -2,6 +2,38 @@
 
 Un día, un paso. Lo más nuevo, arriba.
 
+## Día 26: lo que programas se queda
+
+![FalOS pregunta si fal puede guardar lo que acabas de programar, cifrado en el disco](capturas/dia-26.png)
+
+**Lo que hay.** Ayer, lo que programabas dentro de FalOS se borraba al apagar, y
+el código también. Hoy se queda. Al compilar, FalOS te pregunta si `fal` puede
+guardarlo, y con `deja 1` el programa y su código van al disco, cifrados y
+firmados. Al reiniciar vuelven solos, con el nombre de quien los hizo. Y en
+`fal`, con nada escrito, Fin te dice cuáles tienes y abre el código del que
+elijas, listo para cambiarlo y volver a compilar.
+
+**Por qué pregunta.** Un programa que sigue ahí después de reiniciar es
+justo lo que quiere un virus: ese es el primer sitio que se mira cuando algo raro
+pasa en un ordenador. En FalOS ningún programa se queda por su cuenta.
+`falsario` fabrica uno a mano y pide que se guarde, y si dices `niega`, se borra
+al apagar. Si alguien cambia un solo byte de lo guardado, FalOS lo nota al
+arrancar, lo dice en rojo y no lo carga. En modo invitado tus programas no están.
+Y `olvida adivina` lo borra de la memoria y del disco, y donde estaba deja ceros.
+
+**Lo que se aprende.** ChaCha20 empieza a contar desde 1 cada vez que lo
+llamas. Un programa no cabe en una sola escritura del disco, así que va en
+trozos, y si todos llevaran el mismo número, el primero y el segundo se cifrarían
+con los mismos bytes: juntándolos se va el cifrado. Cada trozo lleva su propio
+número, y una firma que lo ata a su sitio y a ese guardado, para que no se
+puedan mezclar trozos de dos guardados distintos.
+
+**Lo que queda.** Desde un pendrive, lo que programas se sigue borrando al
+apagar: lo del pendrive mide 16 KB, y un programa ya ocupa más de uno. Si
+alguien guarda una copia del disco y la pone otro día, vuelve lo de ese día,
+entero y bien firmado. Y si se apaga a mitad de guardar, ese programa se pierde:
+FalOS lo dice, pero no lo recupera.
+
 ## Día 25: programar dentro de FalOS
 
 ![fal compila un programa dentro de FalOS, y corre en su propia ventana](capturas/dia-25.png)

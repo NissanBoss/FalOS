@@ -6,6 +6,12 @@ PON_CASILLA es 13
 PIDE_MEMORIA es 16
 TROZO_DE_PROGRAMA es 21
 ESTRENA es 22
+TROZO_DE_CODIGO es 23
+LEE_CODIGO es 24
+GUARDADO_TAMBIEN es 1
+NO_LE_DEJASTE es 2
+NO_ESTA es 0 menos 3
+DE_OTRO es 0 menos 33
 SIN_MEMORIA es 0 menos 11
 
 TECLA_INTRO es 256
@@ -149,6 +155,9 @@ arriba_vista es 1
 izquierda es 0
 nombre_hecho es region con grande mas 32000 y CABE_NOMBRE
 aviso_letras es region con grande mas 32100 y CABE_AVISO
+tuyos_letras es region con grande mas 32300 y 200
+tuyos_mide es 0
+leyendo_cual es falso
 aviso_mide es 0
 aviso_tinta es GRIS
 nombre_mide es 0
@@ -2119,22 +2128,122 @@ funcion pon_palabra_en con sitio y n
     fin
 fin
 
-funcion entrega
+funcion manda_a_trozos con origen y cuantos_hay y llamada
     hecho es 0
-    mientras hecho es menor que archivo_mide
-        cuantos es archivo_mide menos hecho
+    mientras hecho es menor que cuantos_hay
+        cuantos es cuantos_hay menos hecho
         si cuantos es mayor que TROZO
             cuantos es TROZO
         fin
-        copia_region con mesa_bytes y 1 y codigo y hecho mas 1 y cuantos
-        visto es llama_al_sistema con TROZO_DE_PROGRAMA y 0 y cuantos
+        copia_region con mesa_bytes y 1 y origen y hecho mas 1 y cuantos
+        visto es llama_al_sistema con llamada y 0 y cuantos
         si visto es menor que 0
             devuelve visto
         fin
         hecho es hecho mas cuantos
     fin
+    devuelve 0
+fin
+
+funcion entrega
+    visto es manda_a_trozos con codigo y archivo_mide y TROZO_DE_PROGRAMA
+    si visto es mayor o igual que 0
+        visto es manda_a_trozos con fuente y mide y TROZO_DE_CODIGO
+    fin
+    si visto es menor que 0
+        devuelve visto
+    fin
     copia_region con mesa_bytes y 1 y nombre_hecho y 1 y nombre_mide
     devuelve llama_al_sistema con ESTRENA y 0 y nombre_mide
+fin
+
+funcion mira_los_tuyos
+    comparte tuyos_mide
+    elemento 1 de mesa_bytes es 42
+    visto es llama_al_sistema con LEE_CODIGO y 0 y 1
+    tuyos_mide es 0
+    si visto es mayor que 0 y visto es menor o igual que 200
+        copia_region con tuyos_letras y 1 y mesa_bytes y 1 y visto
+        tuyos_mide es visto
+    fin
+fin
+
+funcion empieza_a_abrir
+    comparte leyendo_cual y nombre_mide
+    mira_los_tuyos
+    si tuyos_mide es 0
+        avisa con "Aún no has guardado nada. Escribe en Fal y pulsa Fin para compilarlo." y GRIS
+        devuelve nada
+    fin
+    leyendo_cual es verdadero
+    nombre_mide es 0
+    pide_cual
+fin
+
+funcion pide_cual
+    avisa con "¿Cuál abro? " y BLANCO
+    aviso_trozo con tuyos_letras y 1 y tuyos_mide
+    aviso_mas con ". Su nombre e Intro: "
+    aviso_trozo con nombre_hecho y 1 y nombre_mide
+    aviso_letra con 95
+fin
+
+funcion abre_guardado
+    comparte mide y cursor y arriba_vista y izquierda
+    total es 0
+    vez es 0
+    visto es TROZO
+    mientras visto es TROZO
+        copia_region con mesa_bytes y 1 y nombre_hecho y 1 y nombre_mide
+        visto es llama_al_sistema con LEE_CODIGO y vez y nombre_mide
+        si visto es mayor que 0 y total mas visto es menor o igual que CABE_FUENTE
+            copia_region con fuente y total mas 1 y mesa_bytes y 1 y visto
+            total es total mas visto
+        fin
+        vez es vez mas 1
+    fin
+    si visto es NO_ESTA
+        olvida_nombre
+        avisa con "No hay ninguno tuyo con ese nombre." y ROJO_CLARO
+    si no si visto es DE_OTRO
+        olvida_nombre
+        avisa con "Ese no lo has hecho tú, así que su código no te lo enseño." y ROJO_CLARO
+    si no si visto es menor que 0
+        olvida_nombre
+        avisa con "FalOS no me lo ha dado." y ROJO_CLARO
+    si no
+        mide es total
+        cursor es 0
+        arriba_vista es 1
+        izquierda es 0
+        avisa con "Abierto. Fin lo vuelve a compilar con el mismo nombre." y GRIS
+    fin
+fin
+
+funcion lee_cual con tecla
+    comparte leyendo_cual y nombre_mide
+    si tecla es TECLA_INTRO
+        si nombre_mide es mayor que 0
+            leyendo_cual es falso
+            abre_guardado
+        fin
+    si no si tecla es TECLA_FIN
+        leyendo_cual es falso
+        nombre_mide es 0
+        avisa con "Escribe en Fal y pulsa Fin para compilarlo." y GRIS
+    si no si tecla es TECLA_BORRA
+        si nombre_mide es mayor que 0
+            nombre_mide es nombre_mide menos 1
+        fin
+        pide_cual
+    si no
+        c es minuscula con tecla
+        si nombre_mide es menor que CABE_NOMBRE y vale_en_nombre con c
+            nombre_mide es nombre_mide mas 1
+            elemento nombre_mide de nombre_hecho es c
+        fin
+        pide_cual
+    fin
 fin
 
 funcion empieza_de_linea con n
@@ -2513,10 +2622,16 @@ funcion intenta_compilar
         devuelve nada
     fin
     respuesta es entrega
-    si respuesta es 0
+    si respuesta es mayor o igual que 0 y respuesta es menor o igual que NO_LE_DEJASTE
         avisa con "Hecho, " y VERDE_CLARO
         aviso_numero con archivo_mide
-        aviso_mas con " bytes. En la consola: lanza "
+        si respuesta es GUARDADO_TAMBIEN
+            aviso_mas con " bytes, guardado y cifrado. En la consola: lanza "
+        si no si respuesta es NO_LE_DEJASTE
+            aviso_mas con " bytes. No lo dejaste guardar: vive en memoria. En la consola: lanza "
+        si no
+            aviso_mas con " bytes, solo en memoria. En la consola: lanza "
+        fin
         aviso_trozo con nombre_hecho y 1 y nombre_mide
     si no si respuesta es 0 menos 31
         avisa con "Ese nombre no vale." y ROJO_CLARO
@@ -2580,6 +2695,10 @@ funcion atiende con tecla
     comparte cursor y leyendo_nombre
     si leyendo_nombre
         lee_nombre con tecla
+    si no si leyendo_cual
+        lee_cual con tecla
+    si no si tecla es TECLA_FIN y mide es 0
+        empieza_a_abrir
     si no si tecla es TECLA_FIN
         si nombre_mide es 0
             leyendo_nombre es verdadero
@@ -2619,7 +2738,13 @@ si no hay_memoria
         llama_al_sistema con DUERME y 100
     fin
 fin
-avisa con "Escribe en Fal y pulsa Fin para compilarlo." y GRIS
+mira_los_tuyos
+si tuyos_mide es mayor que 0
+    avisa con "Escribe en Fal y pulsa Fin para compilarlo. Con nada escrito, Fin abre uno tuyo: " y GRIS
+    aviso_trozo con tuyos_letras y 1 y tuyos_mide
+si no
+    avisa con "Escribe en Fal y pulsa Fin para compilarlo." y GRIS
+fin
 pinta_todo
 mientras verdadero
     tecla es llama_al_sistema con LEE_TECLA

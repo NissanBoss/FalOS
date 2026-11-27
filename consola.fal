@@ -401,7 +401,7 @@ funcion ayuda
     renglon con "  deja N         deja que el programa N guarde en su archivo, o se conecte" y GRIS
     renglon con "  deja siempre N y no vuelve a preguntarte, aunque reinicies" y GRIS
     renglon con "  niega N        no le deja guardar nada, y le quita el siempre" y GRIS
-    renglon con "  olvida X       borra de verdad lo que guardó X" y GRIS
+    renglon con "  olvida X       borra de verdad lo que guardó X, o lo que hiciste aquí" y GRIS
     renglon con "" y GRIS
     renglon con "  cerrojo        pon o cambia la contraseña de la pantalla" y GRIS
     renglon con "  bloquea        bloquea ya. Solo, a los 5 minutos sin tocarme" y GRIS

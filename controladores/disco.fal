@@ -8,6 +8,8 @@ SIN_RESPUESTA es 0 menos 100
 ORDEN_LISTA es 1
 ORDEN_GUARDA es 2
 ORDEN_OLVIDA es 3
+ORDEN_ZONA_ESCRIBE es 4
+ORDEN_ZONA_LEE es 5
 ORDEN_TROZO es 16
 
 NO_HAY_DISCO es 0 menos 1
@@ -41,6 +43,8 @@ TICS_PARA_VACIAR es 500
 INDICE_NUEVO es 2560
 TOPE_INDICE es 1024
 MODELO es 3700
+SECTORES_ZONA es 1600
+TOPE_PEDAZO es 3584
 
 buzon es region con 807399424 y 4096
 mesa es region con 807395328 y 4096
@@ -547,7 +551,7 @@ funcion guarda
     si sitio es 0
         sitio es libre
     fin
-    si sitio es mayor o igual que total_sectores
+    si sitio es mayor o igual que hasta_donde_archivos
         devuelve LLENO
     fin
     indice_sin con largo_pedido
@@ -670,6 +674,64 @@ funcion olvida
     devuelve bytes
 fin
 
+funcion hasta_donde_archivos
+    si total_sectores es mayor que SECTORES_ZONA por 2
+        devuelve total_sectores menos SECTORES_ZONA
+    fin
+    devuelve total_sectores
+fin
+
+funcion fin_de_los_archivos
+    comparte leido
+    leido es 10
+    libre es 2
+    mientras queda_entrada
+        si lee_linea y campo_sector mas (ocupa con campo_bytes) es mayor que libre
+            libre es campo_sector mas (ocupa con campo_bytes)
+        fin
+        salta_hasta_fin_de_linea
+    fin
+    devuelve libre
+fin
+
+funcion pedazo_de_zona con para_escribir
+    bytes es (elemento 41 de buzon) por 256 mas (elemento 42 de buzon)
+    sitio es (elemento 43 de buzon) por 256 mas (elemento 44 de buzon)
+    si bytes es menor que 1 o bytes es mayor que TOPE_PEDAZO o sitio mas (ocupa con bytes) es mayor que SECTORES_ZONA
+        devuelve PROHIBIDO
+    fin
+    total es abre_disco
+    si total es menor que 0
+        devuelve total
+    fin
+    zona es hasta_donde_archivos
+    si zona es total_sectores o fin_de_los_archivos es mayor que zona
+        devuelve LLENO
+    fin
+    sectores es ocupa con bytes
+    si para_escribir
+        i es bytes mas 1
+        mientras i es menor o igual que sectores por 512
+            elemento 512 mas i de buzon es 0
+            i es i mas 1
+        fin
+    fin
+    s es 0
+    mientras s es menor que sectores
+        si para_escribir
+            si no (escribe_sector con zona mas sitio mas s y buzon y 512 mas s por 512)
+                devuelve NO_SE_ESCRIBE
+            fin
+        si no
+            si no (lee_sector con zona mas sitio mas s y buzon y 512 mas s por 512)
+                devuelve NO_SE_LEE
+            fin
+        fin
+        s es s mas 1
+    fin
+    devuelve bytes
+fin
+
 respuesta es SIN_RESPUESTA
 mientras verdadero
     aviso es llama_al_sistema con ESPERA y respuesta
@@ -685,6 +747,10 @@ mientras verdadero
         respuesta es guarda
     si no si aviso es ORDEN_OLVIDA
         respuesta es olvida
+    si no si aviso es ORDEN_ZONA_ESCRIBE
+        respuesta es pedazo_de_zona con verdadero
+    si no si aviso es ORDEN_ZONA_LEE
+        respuesta es pedazo_de_zona con falso
     si no si aviso es mayor o igual que ORDEN_TROZO
         respuesta es abre_archivo con aviso menos ORDEN_TROZO
     fin

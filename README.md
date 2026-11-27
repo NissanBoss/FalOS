@@ -352,6 +352,23 @@ un programa que intenta guardar en el disco, y nace igual de encerrado: lo hecho
 aquí no puede guardar ni leer archivos, y no puede llamarse como uno del disco ni
 como uno que hizo otro.
 
+Y lo que programas se queda. Al compilar, FalOS pregunta si `fal` puede
+guardarlo: con `deja 1`, el programa y su código van al disco, cifrados con
+ChaCha20 y firmados con BLAKE2b, con la misma llave que lo demás. Al reiniciar
+vuelven solos, con el nombre de quien los hizo, y `fal`, con nada escrito, abre
+con Fin el código de uno tuyo. Que un programa siga ahí después de reiniciar es
+lo que busca un virus, así que ninguno lo consigue sin tu permiso: lo que
+`falsario` fabrica también pide quedarse, y con `niega` se borra al apagar. Si
+cambia un byte de lo guardado, FalOS no lo carga y lo dice. En modo invitado no
+están. Y `olvida` con su nombre lo borra de la memoria y del disco, con ceros.
+
+```
+lanza fal
+teclado 1
+deja 1
+olvida adivina
+```
+
 `registro` dice qué programa ha leído o guardado qué, y cuándo, y también lo que
 decidiste tú: a quién dejaste guardar, a quién le diste el teclado y con cuántas
 teclas tuyas se cerró. Ese registro solo vive en memoria: no se escribe en el
@@ -562,7 +579,11 @@ entra de invitado y prueba con un pendrive de solo lectura. Teclea programas en
 de fuera, que un fallo al correr dice su línea, que uno al compilar no estrena
 nada y que no se puede usar el nombre de uno del disco. Y lanza `falsario`: sus
 ocho trampas se rechazan, y el programa que fabrica a mano intenta guardar y
-leer y se le niega las dos veces.
+leer y se le niega las dos veces. Luego guarda un programa hecho dentro, niega
+otro y lo que fabrica `falsario`, y reinicia: vuelve el primero, corre, su código
+se abre en `fal`, y en el disco no se lee ni una palabra suya. Le cambia un bit
+y FalOS no lo carga; entra de invitado y no está; pone contraseña y solo vuelve
+al acertarla; lo olvida y en su sitio quedan ceros.
 
 La idea a la que se quiere llegar es un **micronúcleo con capacidades**, como
 [seL4](https://sel4.systems): un núcleo pequeño que casi no hace nada, y cada
@@ -575,8 +596,7 @@ vive en él.
 
 - **Casi todo, de momento.** De la red solo sabe hacer `ping`, y que un programa
   mande un mensaje y espere su respuesta. Un programa solo escribe su propio
-  archivo, de 464 bytes como mucho: no se puede escribir un programa dentro de
-  FalOS. Es el día 19.
+  archivo, de 464 bytes como mucho.
 - **Aún no es un micronúcleo.** El teclado, el disco, la pantalla, la red y la
   consola ya salieron, pero el cargador y el vigilante que los reinicia siguen
   dentro del núcleo, y un fallo ahí para todo. La consola entiende lo que
@@ -588,9 +608,10 @@ vive en él.
   escribes `deja`, es ella quien se lo pide al núcleo. La separa de los demás que
   es la única con esa llamada, que FalOS la lanza desde su propia imagen y no del
   disco, y que lo único que le llega es lo que tecleas tú.
-- **Nadie comprueba quién escribió un programa.** No hay firmas. Quien pueda
-  cambiar el disco puede cambiar un programa, y FalOS lo lanzará. Lo que le
-  protege es la caja, no saber de dónde viene.
+- **Nadie comprueba quién escribió un programa del disco.** No llevan firma. Quien
+  pueda cambiar el disco puede cambiar uno, y FalOS lo lanzará. Lo que le protege
+  es la caja, no saber de dónde viene. Los que haces dentro sí van firmados, con
+  tu llave.
 - **La cabecera se mira, el código no.** Un programa que no miente sobre su forma
   se carga aunque sea malo. Hace lo que quiera dentro de su caja.
 - **El programa de la pantalla ve todo lo que se pinta, y puede pintar mentiras.**
@@ -840,9 +861,19 @@ vive en él.
 - **Las interrupciones, solo si el IOMMU sabe.** Si no trae remapeo de
   interrupciones, o al encenderlo FalOS deja de oír su propio reloj, lo apaga, y
   entonces un aparato puede fingir una. `dma` lo dice.
-- **Lo que haces con `fal` se borra al apagar.** Vive en la memoria, hasta 8
-  programas de 64 KB. Tampoco se guarda lo que escribes: si cierras `fal`, se
-  pierde.
+- **Desde un pendrive, lo que haces con `fal` se borra al apagar.** Lo guardado
+  en el pendrive mide 16 KB, y un programa compilado ya ocupa más de uno. Desde un
+  disco, se queda.
+- **Hasta 8 programas hechos dentro**, de 64 KB cada uno y 32.000 letras de
+  código. Y lo que escribes en `fal` solo se guarda al compilarlo bien: si lo
+  cierras antes, se pierde.
+- **Una copia vieja entera del disco no se nota.** Cada trozo va firmado y atado
+  a su guardado, así que un byte cambiado o trozos de dos guardados mezclados no
+  pasan. Pero si alguien copia el disco hoy y lo pone mañana, vuelve el programa
+  de hoy, entero y bien firmado.
+- **Si se apaga a mitad de guardar, ese programa se pierde.** La cabecera se
+  escribe la última: lo viejo deja de cuadrar, FalOS lo dice y no lo carga, pero
+  no lo recupera.
 - **Un trozo de Fal, no Fal entero.** Sin decimales, sin textos en variables, sin
   listas ni objetos. `entre` tiene que dar exacto, o el programa se para y te
   dice que uses `cociente` o `resto`.
@@ -877,6 +908,10 @@ vive en él.
   escribe y se compila a sí mismo, desde dentro. Todos sus módulos comparten la
   misma memoria; en FalOS, el compilador y lo que compila van cada uno en la
   suya.
+- [BlockBlock](https://objective-see.org/products/blockblock.html) vigila en macOS
+  los sitios desde donde un programa puede arrancar solo al encender, y avisa
+  cuando alguien se instala ahí. En FalOS no hay un sitio así que vigilar: lo
+  único que vuelve al reiniciar es lo que dejaste guardar, cifrado con tu llave.
 - [Redox](https://www.redox-os.org) es un micronúcleo en Rust, con la misma
   idea de seguridad de memoria. Está mucho más avanzado; FalOS se construye
   desde cero y a la vista, para que se entienda cada paso.

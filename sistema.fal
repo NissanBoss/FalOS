@@ -1708,6 +1708,9 @@ AVISA_TECLADO es 19
 AVISA_PENDRIVE es 20
 TROZO_DE_PROGRAMA es 21
 ESTRENA es 22
+TROZO_DE_CODIGO es 23
+LEE_CODIGO es 24
+GUARDA_HECHO es 25
 
 MAX_TAREAS es 4
 CONSOLA es 5
@@ -1748,6 +1751,8 @@ PACIENCIA es 100
 ORDEN_LISTA es 1
 ORDEN_GUARDA es 2
 ORDEN_OLVIDA es 3
+ORDEN_ZONA_ESCRIBE es 4
+ORDEN_ZONA_LEE es 5
 ORDEN_TROZO es 16
 NO_HAY_DISCO es 0 menos 1
 NO_ES_MIO es 0 menos 2
@@ -1847,7 +1852,32 @@ EN_EL_DISCO es 0 menos 32
 DE_OTRO es 0 menos 33
 NO_CABEN es 0 menos 35
 NO_ES_PROGRAMA es 0 menos 36
+TOPE_FUENTE es 32768
+HOJAS_FUENTE es 8
+TROZO_CODIGO es 4000
+SOLO_EN_MEMORIA es 0
+GUARDADO_TAMBIEN es 1
+NO_LE_DEJASTE es 2
+SECTORES_DE_HECHO es 200
+MIDE_PEDAZO es 3584
+CABE_EN_PEDAZO es 3552
+LARGO_META es 64
+MARCA_HECHO es "HEC1"
+PARA_LOS_HECHOS es "hechos:"
 hecho_de es region con pide_pagina y 512 y 8
+hecho_que_guarda es region con pide_pagina y 512 y 8
+prepf_mide es region con pide_pagina y 512 y 8
+prepf_hojas es region con pide_pagina y 512 y 8
+hechos_fuente_mide es region con pide_pagina y 512 y 8
+hechos_fuente_hojas es region con pide_pagina y 512 y 8
+hechos_en_disco es region con pide_pagina y 512 y 8
+cabecera_hecho_en es pide_pagina
+cabecera_hecho es region con cabecera_hecho_en y 64
+nonce_hecho es region con cabecera_hecho_en mas 64 y 12
+firma_leida es region con cabecera_hecho_en mas 96 y 32
+nombre_pedido es region con cabecera_hecho_en mas 128 y NOMBRE_HECHO
+meta_hecho es region con cabecera_hecho_en mas 192 y LARGO_META
+hechos_restaurados es falso
 prep_mide es region con pide_pagina y 512 y 8
 prep_hojas es region con pide_pagina y 512 y 8
 hechos_mide es region con pide_pagina y 512 y 8
@@ -1909,6 +1939,10 @@ R_PEN_BORRADO es 43
 R_DIRECCION es 44
 R_SIN_DIRECCION es 45
 R_ESTRENO es 46
+R_GUARDO_HECHO es 47
+R_HECHO_TOCADO es 48
+R_VOLVIO es 49
+R_OLVIDASTE_HECHO es 50
 
 TOPE_LLAVE es 36
 MARCA_LLAVE es "LLA1"
@@ -3778,6 +3812,10 @@ funcion al_llamar
         elemento EN_RAX de marco es prepara_trozo con a y (elemento EN_RSI de marco)
     si no si numero es ESTRENA
         elemento EN_RAX de marco es pide_estreno con a y (elemento EN_RSI de marco)
+    si no si numero es TROZO_DE_CODIGO
+        elemento EN_RAX de marco es prepara_codigo con a y (elemento EN_RSI de marco)
+    si no si numero es LEE_CODIGO
+        elemento EN_RAX de marco es da_codigo con a y (elemento EN_RSI de marco)
     si no
         elemento EN_RAX de marco es rechaza_a_actual
     fin
@@ -4905,15 +4943,65 @@ funcion carga_hecho con t y nombre y h
     escribe ""
 fin
 
-funcion suelta_preparado con t
-    para cada p desde 1 hasta HOJAS_HECHO
-        casilla es (t menos 1) por HOJAS_HECHO mas p
-        si (elemento casilla de prep_hojas) no es igual a 0
-            suelta_pagina con (elemento casilla de prep_hojas)
-            elemento casilla de prep_hojas es 0
+funcion suelta_hojas con hojas y antes y cuantas
+    para cada p desde 1 hasta cuantas
+        casilla es antes mas p
+        si (elemento casilla de hojas) no es igual a 0
+            suelta_pagina con (elemento casilla de hojas)
+            elemento casilla de hojas es 0
         fin
     fin
+fin
+
+funcion suelta_preparado con t
+    suelta_hojas con prep_hojas y (t menos 1) por HOJAS_HECHO y HOJAS_HECHO
+    suelta_hojas con prepf_hojas y (t menos 1) por HOJAS_FUENTE y HOJAS_FUENTE
     elemento t de prep_mide es 0
+    elemento t de prepf_mide es 0
+fin
+
+funcion pon_en_hojas con hojas y antes y desde y origen y donde y cuantos
+    hecho es 0
+    mientras hecho es menor que cuantos
+        sitio es desde mas hecho
+        casilla es antes mas (cociente con sitio y PAGINA) mas 1
+        dentro es sitio resto PAGINA
+        si (elemento casilla de hojas) es 0
+            elemento casilla de hojas es pide_pagina
+        fin
+        cabe es PAGINA menos dentro
+        si cabe es mayor que cuantos menos hecho
+            cabe es cuantos menos hecho
+        fin
+        copia_region con (region con (elemento casilla de hojas) y PAGINA) y dentro mas 1 y origen y donde mas hecho y cabe
+        hecho es hecho mas cabe
+    fin
+fin
+
+funcion saca_de_hojas con hojas y antes y desde y destino y donde y cuantos
+    hecho es 0
+    mientras hecho es menor que cuantos
+        sitio es desde mas hecho
+        dentro es sitio resto PAGINA
+        cabe es PAGINA menos dentro
+        si cabe es mayor que cuantos menos hecho
+            cabe es cuantos menos hecho
+        fin
+        hoja es region con (elemento antes mas (cociente con sitio y PAGINA) mas 1 de hojas) y PAGINA
+        copia_region con destino y donde mas hecho y hoja y dentro mas 1 y cabe
+        hecho es hecho mas cabe
+    fin
+fin
+
+funcion apila con t y hojas y medidas y cuantas y tope y desde y cuantos
+    ya es elemento t de medidas
+    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que PAGINA o desde es mayor que PAGINA menos cuantos o ya mas cuantos es mayor que tope
+        suelta_preparado con t
+        devuelve rechaza_a_actual
+    fin
+    pon_en_hojas con hojas y (t menos 1) por cuantas y ya y (region con (elemento t de mesas) mas desde y cuantos) y 1 y cuantos
+    elemento t de medidas es ya mas cuantos
+    devuelve cuantos
 fin
 
 funcion prepara_trozo con desde y cuantos
@@ -4921,30 +5009,15 @@ funcion prepara_trozo con desde y cuantos
     si es_controlador con t
         devuelve rechaza_a_actual
     fin
-    ya es elemento t de prep_mide
-    si desde es menor que 0 o cuantos es menor que 1 o cuantos es mayor que PAGINA o desde es mayor que PAGINA menos cuantos o ya mas cuantos es mayor que TOPE_HECHO
-        suelta_preparado con t
+    devuelve apila con t y prep_hojas y prep_mide y HOJAS_HECHO y TOPE_HECHO y desde y cuantos
+fin
+
+funcion prepara_codigo con desde y cuantos
+    t es actual
+    si es_controlador con t
         devuelve rechaza_a_actual
     fin
-    suya es region con (elemento t de mesas) mas desde y cuantos
-    copiados es 0
-    mientras copiados es menor que cuantos
-        sitio es ya mas copiados
-        casilla es (t menos 1) por HOJAS_HECHO mas (cociente con sitio y PAGINA) mas 1
-        dentro es sitio resto PAGINA
-        si (elemento casilla de prep_hojas) es 0
-            elemento casilla de prep_hojas es pide_pagina
-        fin
-        cabe es PAGINA menos dentro
-        si cabe es mayor que cuantos menos copiados
-            cabe es cuantos menos copiados
-        fin
-        hoja es region con (elemento casilla de prep_hojas) y PAGINA
-        copia_region con hoja y dentro mas 1 y suya y copiados mas 1 y cabe
-        copiados es copiados mas cabe
-    fin
-    elemento t de prep_mide es ya mas cuantos
-    devuelve cuantos
+    devuelve apila con t y prepf_hojas y prepf_mide y HOJAS_FUENTE y TOPE_FUENTE y desde y cuantos
 fin
 
 funcion nombre_hecho_vale con nombre
@@ -5062,15 +5135,20 @@ funcion estrena_hecho con t
         suelta_preparado con t
         devuelve NO_CABEN
     fin
+    suelta_hojas con hechos_hojas y (h menos 1) por HOJAS_HECHO y HOJAS_HECHO
+    suelta_hojas con hechos_fuente_hojas y (h menos 1) por HOJAS_FUENTE y HOJAS_FUENTE
     para cada p desde 1 hasta HOJAS_HECHO
-        suyo es (h menos 1) por HOJAS_HECHO mas p
-        casilla es (t menos 1) por HOJAS_HECHO mas p
-        si (elemento suyo de hechos_hojas) no es igual a 0
-            suelta_pagina con (elemento suyo de hechos_hojas)
-        fin
-        elemento suyo de hechos_hojas es elemento casilla de prep_hojas
-        elemento casilla de prep_hojas es 0
+        elemento (h menos 1) por HOJAS_HECHO mas p de hechos_hojas es elemento (t menos 1) por HOJAS_HECHO mas p de prep_hojas
+        elemento (t menos 1) por HOJAS_HECHO mas p de prep_hojas es 0
     fin
+    para cada p desde 1 hasta HOJAS_FUENTE
+        elemento (h menos 1) por HOJAS_FUENTE mas p de hechos_fuente_hojas es elemento (t menos 1) por HOJAS_FUENTE mas p de prepf_hojas
+        elemento (t menos 1) por HOJAS_FUENTE mas p de prepf_hojas es 0
+    fin
+    elemento h de hechos_fuente_mide es elemento t de prepf_mide
+    elemento t de prepf_mide es 0
+    elemento h de hechos_en_disco es 0
+    elemento t de hecho_que_guarda es h
     i es 1
     para cada b en nombre
         elemento (h menos 1) por 32 mas i de hechos_nombres es b
@@ -5101,7 +5179,7 @@ funcion lista_hechos
     para cada h desde 1 hasta CUPO_HECHOS
         si (elemento h de hechos_mide) es mayor que 0
             si no hay
-                pinta_linea con "  Hechos aquí, solo en memoria:"
+                pinta_linea con "  Hechos aquí:"
                 hay es verdadero
             fin
             pinta con "  "
@@ -5111,12 +5189,549 @@ funcion lista_hechos
             hasta_columna con 22
             pinta_numero con (elemento h de hechos_mide)
             pinta con " bytes, de "
-            pinta_linea con (region con hechos_letras_en mas 2048 mas (h menos 1) por 32 y (elemento CUPO_HECHOS mas h de hechos_largo))
+            pinta con (region con hechos_letras_en mas 2048 mas (h menos 1) por 32 y (elemento CUPO_HECHOS mas h de hechos_largo))
+            si (elemento h de hechos_en_disco) es 1
+                pinta_linea con ", guardado y cifrado"
+            si no
+                pinta_linea con ", solo en memoria"
+            fin
         fin
     fin
     si hay
         pinta_linea con ""
     fin
+fin
+
+funcion da_codigo con trozo y cuantos
+    t es actual
+    si es_controlador con t o trozo es menor que 0 o trozo por TROZO_CODIGO es mayor o igual que TOPE_FUENTE o cuantos es menor que 1 o cuantos es mayor que NOMBRE_HECHO
+        devuelve rechaza_a_actual
+    fin
+    hoja es region con (elemento t de mesas) y PAGINA
+    si cuantos es 1 y (elemento 1 de hoja) es 42
+        devuelve nombres_de_los_suyos con t y hoja
+    fin
+    copia_region con nombre_pedido y 1 y hoja y 1 y cuantos
+    nombre es region con cabecera_hecho_en mas 128 y cuantos
+    si no (nombre_hecho_vale con nombre)
+        devuelve NOMBRE_MALO
+    fin
+    h es busca_hecho con nombre
+    si h es 0
+        devuelve NO_ESTA
+    fin
+    si no (es_su_autor con h y t)
+        devuelve DE_OTRO
+    fin
+    desde es trozo por TROZO_CODIGO
+    dados es (elemento h de hechos_fuente_mide) menos desde
+    si dados es menor que 1
+        devuelve 0
+    fin
+    si dados es mayor que TROZO_CODIGO
+        dados es TROZO_CODIGO
+    fin
+    saca_de_hojas con hechos_fuente_hojas y (h menos 1) por HOJAS_FUENTE y desde y hoja y 1 y dados
+    devuelve dados
+fin
+
+funcion nombres_de_los_suyos con t y hoja
+    escritos es 0
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es mayor que 0 y es_su_autor con h y t
+            si escritos es mayor que 0
+                escritos es escritos mas 1
+                elemento escritos de hoja es 32
+            fin
+            copia_region con hoja y escritos mas 1 y hechos_nombres y (h menos 1) por 32 mas 1 y (elemento h de hechos_largo)
+            escritos es escritos mas (elemento h de hechos_largo)
+        fin
+    fin
+    devuelve escritos
+fin
+
+funcion suelta_hecho con h
+    suelta_hojas con hechos_hojas y (h menos 1) por HOJAS_HECHO y HOJAS_HECHO
+    suelta_hojas con hechos_fuente_hojas y (h menos 1) por HOJAS_FUENTE y HOJAS_FUENTE
+    para cada i desde 1 hasta 32
+        elemento (h menos 1) por 32 mas i de hechos_nombres es 0
+        elemento 2048 mas (h menos 1) por 32 mas i de hechos_nombres es 0
+    fin
+    elemento h de hechos_largo es 0
+    elemento CUPO_HECHOS mas h de hechos_largo es 0
+    elemento h de hechos_mide es 0
+    elemento h de hechos_fuente_mide es 0
+    elemento h de hechos_en_disco es 0
+fin
+
+funcion olvida_los_hechos
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es mayor que 0
+            suelta_hecho con h
+        fin
+    fin
+fin
+
+funcion pide_a_la_zona con orden y sitio y bytes
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    elemento 41 de buzon es cociente con bytes y 256
+    elemento 42 de buzon es bytes resto 256
+    elemento 43 de buzon es cociente con sitio y 256
+    elemento 44 de buzon es sitio resto 256
+    devuelve pide_al_disco con orden
+fin
+
+funcion sitio_de_pedazo con h y c
+    devuelve (h menos 1) por SECTORES_DE_HECHO mas 1 mas (c menos 1) por 7
+fin
+
+funcion nonce_del_pedazo con c
+    nonce es region con cabecera_hecho_en mas 80 y 12
+    copia_region con nonce y 1 y nonce_hecho y 1 y 12
+    elemento 1 de nonce es o_exclusivo con (elemento 1 de nonce) y c
+    devuelve nonce
+fin
+
+funcion firma_de_pedazo con buzon_en y c y total y n
+    prefijo es region con buzon_en mas 527 y 17 mas n
+    copia_region con prefijo y 1 y nonce_hecho y 1 y 12
+    elemento 13 de prefijo es c
+    pon_le32 con prefijo y 14 y total
+    blake2b con taller_llave y prefijo y 17 mas n y (region con llave_en mas 96 y 32) y firma_vista y 32
+fin
+
+funcion firma_de_cabecera
+    para cada i desde 21 hasta 52
+        elemento i de cabecera_hecho es 0
+    fin
+    blake2b con taller_llave y cabecera_hecho y LARGO_META y (region con llave_en mas 96 y 32) y firma_vista y 32
+fin
+
+funcion firmas_iguales
+    distinto es 0
+    para cada i desde 1 hasta 32
+        distinto es distinto mas o_exclusivo con (elemento i de firma_vista) y (elemento i de firma_leida)
+    fin
+    devuelve distinto es 0
+fin
+
+funcion acaba_con_los_hechos
+    olvida_claves_programa
+    hoja es region con cabecera_hecho_en y 256
+    para cada i desde 1 hasta 256
+        elemento i de hoja es 0
+    fin
+fin
+
+funcion llena_meta con h
+    para cada i desde 1 hasta LARGO_META
+        elemento i de meta_hecho es 0
+    fin
+    elemento 1 de meta_hecho es elemento h de hechos_largo
+    copia_region con meta_hecho y 2 y hechos_nombres y (h menos 1) por 32 mas 1 y (elemento h de hechos_largo)
+    elemento 18 de meta_hecho es elemento CUPO_HECHOS mas h de hechos_largo
+    copia_region con meta_hecho y 19 y hechos_nombres y 2048 mas (h menos 1) por 32 mas 1 y (elemento CUPO_HECHOS mas h de hechos_largo)
+    pon_le32 con meta_hecho y 51 y (elemento h de hechos_mide)
+    pon_le32 con meta_hecho y 55 y (elemento h de hechos_fuente_mide)
+fin
+
+funcion meta_vale con total
+    largo_nombre es elemento 1 de meta_hecho
+    largo_autor es elemento 18 de meta_hecho
+    bin es le32_de con meta_hecho y 51
+    src es le32_de con meta_hecho y 55
+    si largo_nombre es menor que 1 o largo_nombre es mayor que NOMBRE_HECHO o largo_autor es menor que 1 o largo_autor es mayor que 32
+        devuelve 0 menos 1
+    fin
+    si bin es menor que LARGO_CABECERA o bin es mayor que TOPE_HECHO o src es mayor que TOPE_FUENTE o LARGO_META mas bin mas src no es igual a total
+        devuelve 0 menos 1
+    fin
+    si no (nombre_hecho_vale con (region con cabecera_hecho_en mas 193 y largo_nombre))
+        devuelve 0 menos 1
+    fin
+    devuelve bin
+fin
+
+funcion saca_del_hecho con h y bin y desde y destino y donde y cuantos
+    hecho es 0
+    mientras hecho es menor que cuantos
+        sitio es desde mas hecho
+        n es cuantos menos hecho
+        si sitio es menor que LARGO_META
+            si n es mayor que LARGO_META menos sitio
+                n es LARGO_META menos sitio
+            fin
+            copia_region con destino y donde mas hecho y meta_hecho y sitio mas 1 y n
+        si no si sitio es menor que LARGO_META mas bin
+            si n es mayor que LARGO_META mas bin menos sitio
+                n es LARGO_META mas bin menos sitio
+            fin
+            saca_de_hojas con hechos_hojas y (h menos 1) por HOJAS_HECHO y sitio menos LARGO_META y destino y donde mas hecho y n
+        si no
+            saca_de_hojas con hechos_fuente_hojas y (h menos 1) por HOJAS_FUENTE y sitio menos LARGO_META menos bin y destino y donde mas hecho y n
+        fin
+        hecho es hecho mas n
+    fin
+fin
+
+funcion pon_en_hecho con h y bin y desde y origen y donde y cuantos
+    hecho es 0
+    mientras hecho es menor que cuantos
+        sitio es desde mas hecho
+        n es cuantos menos hecho
+        si sitio es menor que LARGO_META
+            si n es mayor que LARGO_META menos sitio
+                n es LARGO_META menos sitio
+            fin
+        si no si sitio es menor que LARGO_META mas bin
+            si n es mayor que LARGO_META mas bin menos sitio
+                n es LARGO_META mas bin menos sitio
+            fin
+            pon_en_hojas con hechos_hojas y (h menos 1) por HOJAS_HECHO y sitio menos LARGO_META y origen y donde mas hecho y n
+        si no
+            pon_en_hojas con hechos_fuente_hojas y (h menos 1) por HOJAS_FUENTE y sitio menos LARGO_META menos bin y origen y donde mas hecho y n
+        fin
+        hecho es hecho mas n
+    fin
+fin
+
+funcion pedazos_de con total
+    devuelve cociente con total mas CABE_EN_PEDAZO menos 1 y CABE_EN_PEDAZO
+fin
+
+funcion guarda_en_la_zona con h
+    si no hay_llave
+        si hay_cerrojo
+            devuelve SIN_LLAVE
+        fin
+        si no nueva_llave
+            devuelve SIN_LLAVE
+        fin
+        hecho es guarda_llave
+        si hecho es menor que 0
+            olvida_llave
+            devuelve hecho
+        fin
+    fin
+    bin es elemento h de hechos_mide
+    total es LARGO_META mas bin mas (elemento h de hechos_fuente_mide)
+    llena_meta con h
+    saca_sal con cabecera_hecho y 1
+    copia_region con nonce_hecho y 1 y cabecera_hecho y 1 y 12
+    claves_para con PARA_LOS_HECHOS
+    para cada c desde 1 hasta pedazos_de con total
+        desde es (c menos 1) por CABE_EN_PEDAZO
+        n es total menos desde
+        si n es mayor que CABE_EN_PEDAZO
+            n es CABE_EN_PEDAZO
+        fin
+        recoge_tareas con falso
+        buzon_en es elemento TAREA_DISCO de buzones
+        buzon es region con buzon_en y TOPE_BUZON
+        saca_del_hecho con h y bin y desde y buzon y 545 y n
+        chacha20 con taller_chacha y claves_programa y (nonce_del_pedazo con c) y buzon y 545 y n
+        firma_de_pedazo con buzon_en y c y total y n
+        copia_region con buzon y 513 y firma_vista y 1 y 32
+        hecho es pide_a_la_zona con ORDEN_ZONA_ESCRIBE y (sitio_de_pedazo con h y c) y 32 mas n
+        si hecho es menor que 0
+            acaba_con_los_hechos
+            devuelve hecho
+        fin
+    fin
+    para cada i desde 1 hasta LARGO_META
+        elemento i de cabecera_hecho es 0
+    fin
+    i es 1
+    para cada letra en MARCA_HECHO
+        elemento i de cabecera_hecho es letra
+        i es i mas 1
+    fin
+    pon_le32 con cabecera_hecho y 5 y total
+    copia_region con cabecera_hecho y 9 y nonce_hecho y 1 y 12
+    firma_de_cabecera
+    copia_region con cabecera_hecho y 21 y firma_vista y 1 y 32
+    recoge_tareas con falso
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    para cada i desde 513 hasta 1024
+        elemento i de buzon es 0
+    fin
+    copia_region con buzon y 513 y cabecera_hecho y 1 y LARGO_META
+    hecho es pide_a_la_zona con ORDEN_ZONA_ESCRIBE y (h menos 1) por SECTORES_DE_HECHO y 512
+    acaba_con_los_hechos
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    elemento h de hechos_en_disco es 1
+    devuelve total
+fin
+
+funcion borra_de_la_zona con h
+    recoge_tareas con falso
+    buzon es region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON
+    para cada i desde 513 hasta 512 mas MIDE_PEDAZO
+        elemento i de buzon es 0
+    fin
+    hecho es pide_a_la_zona con ORDEN_ZONA_ESCRIBE y (h menos 1) por SECTORES_DE_HECHO y 512
+    c es 1
+    mientras hecho es mayor o igual que 0 y c es menor o igual que pedazos_de con LARGO_META mas TOPE_HECHO mas TOPE_FUENTE
+        hecho es pide_a_la_zona con ORDEN_ZONA_ESCRIBE y (sitio_de_pedazo con h y c) y MIDE_PEDAZO
+        c es c mas 1
+    fin
+    devuelve hecho
+fin
+
+funcion trae_hecho con h
+    hecho es pide_a_la_zona con ORDEN_ZONA_LEE y (h menos 1) por SECTORES_DE_HECHO y 512
+    si hecho es menor que 0
+        devuelve hecho
+    fin
+    copia_region con cabecera_hecho y 1 y (region con (elemento TAREA_DISCO de buzones) y TOPE_BUZON) y 513 y LARGO_META
+    i es 1
+    para cada letra en MARCA_HECHO
+        si (elemento i de cabecera_hecho) no es igual a letra
+            devuelve 0
+        fin
+        i es i mas 1
+    fin
+    total es le32_de con cabecera_hecho y 5
+    copia_region con nonce_hecho y 1 y cabecera_hecho y 9 y 12
+    copia_region con firma_leida y 1 y cabecera_hecho y 21 y 32
+    firma_de_cabecera
+    si (no firmas_iguales) o total es menor que LARGO_META mas LARGO_CABECERA o total es mayor que LARGO_META mas TOPE_HECHO mas TOPE_FUENTE
+        devuelve TOCADO
+    fin
+    bin es 0
+    para cada c desde 1 hasta pedazos_de con total
+        desde es (c menos 1) por CABE_EN_PEDAZO
+        n es total menos desde
+        si n es mayor que CABE_EN_PEDAZO
+            n es CABE_EN_PEDAZO
+        fin
+        hecho es pide_a_la_zona con ORDEN_ZONA_LEE y (sitio_de_pedazo con h y c) y 32 mas n
+        si hecho es menor que 0
+            suelta_hecho con h
+            devuelve hecho
+        fin
+        buzon_en es elemento TAREA_DISCO de buzones
+        buzon es region con buzon_en y TOPE_BUZON
+        copia_region con firma_leida y 1 y buzon y 513 y 32
+        firma_de_pedazo con buzon_en y c y total y n
+        si no firmas_iguales
+            suelta_hecho con h
+            devuelve TOCADO
+        fin
+        chacha20 con taller_chacha y claves_programa y (nonce_del_pedazo con c) y buzon y 545 y n
+        si c es 1
+            copia_region con meta_hecho y 1 y buzon y 545 y LARGO_META
+            bin es meta_vale con total
+        fin
+        si bin es menor que 0
+            para cada i desde 545 hasta 544 mas n
+                elemento i de buzon es 0
+            fin
+            suelta_hecho con h
+            devuelve TOCADO
+        fin
+        pon_en_hecho con h y bin y desde y buzon y 545 y n
+        para cada i desde 545 hasta 544 mas n
+            elemento i de buzon es 0
+        fin
+    fin
+    cabecera es region con (elemento (h menos 1) por HOJAS_HECHO mas 1 de hechos_hojas) y 4 y 8
+    motivo es mentira_de con (elemento 1 de cabecera) y (elemento 2 de cabecera) y (elemento 3 de cabecera) y (elemento 4 de cabecera)
+    si motivo no es igual a nada o (elemento 3 de cabecera) no es igual a bin
+        suelta_hecho con h
+        devuelve TOCADO
+    fin
+    largo_nombre es elemento 1 de meta_hecho
+    nombre es region con cabecera_hecho_en mas 193 y largo_nombre
+    si (busca_hecho con nombre) es mayor que 0 o (pide_archivo con nombre y ".prg" y 0) no es igual a NO_ESTA
+        suelta_hecho con h
+        devuelve REPETIDO
+    fin
+    copia_region con hechos_nombres y (h menos 1) por 32 mas 1 y meta_hecho y 2 y largo_nombre
+    elemento h de hechos_largo es largo_nombre
+    copia_region con hechos_nombres y 2048 mas (h menos 1) por 32 mas 1 y meta_hecho y 19 y (elemento 18 de meta_hecho)
+    elemento CUPO_HECHOS mas h de hechos_largo es elemento 18 de meta_hecho
+    elemento h de hechos_fuente_mide es total menos LARGO_META menos bin
+    elemento h de hechos_en_disco es 1
+    elemento h de hechos_mide es bin
+    devuelve 1
+fin
+
+funcion restaura_hechos
+    comparte hechos_restaurados
+    si hechos_restaurados o invitado o disco_en_memoria o no hay_llave
+        devuelve nada
+    fin
+    hechos_restaurados es verdadero
+    claves_para con PARA_LOS_HECHOS
+    vueltos es 0
+    tocados es 0
+    para cada h desde 1 hasta CUPO_HECHOS
+        si (elemento h de hechos_mide) es 0
+            traido es trae_hecho con h
+            si traido es 1
+                vueltos es vueltos mas 1
+                desactiva_interrupciones
+                apunta con R_VOLVIO y (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo)) y GRIS y (elemento h de hechos_mide)
+                activa_interrupciones
+                al_serie con "hecho vuelve: "
+                al_serie con (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo))
+                escribe " " sin salto
+                escribe (elemento h de hechos_mide)
+            si no si traido es TOCADO
+                tocados es tocados mas 1
+                desactiva_interrupciones
+                apunta con R_HECHO_TOCADO y "FalOS" y BLANCO y 0
+                activa_interrupciones
+                al_serie con "hecho tocado: hueco "
+                escribe h
+            fin
+        fin
+    fin
+    acaba_con_los_hechos
+    si vueltos es mayor que 0
+        pinta con "  Han vuelto del disco "
+        pon_color con BLANCO y NEGRO
+        pinta_numero con vueltos
+        pon_color con GRIS y NEGRO
+        si vueltos es 1
+            pinta_linea con " programa que hiciste aquí. Míralo en: programas"
+        si no
+            pinta_linea con " programas que hiciste aquí. Míralos en: programas"
+        fin
+        pinta_linea con ""
+    fin
+    si tocados es mayor que 0
+        pon_color con ROJO_CLARO y NEGRO
+        si tocados es 1
+            pinta_linea con "  Un programa guardado no cuadra: alguien ha tocado el disco. No lo cargo."
+        si no
+            pinta con "  "
+            pinta_numero con tocados
+            pinta_linea con " programas guardados no cuadran: alguien ha tocado el disco. No los cargo."
+        fin
+        pon_color con GRIS y NEGRO
+        pinta_linea con ""
+    fin
+fin
+
+funcion pide_permiso_hecho con t y h
+    comparte columna y foco
+    foco es CONSOLA
+    olvida_seleccion
+    base es (fila menos 1) por ANCHO
+    para cada c desde 1 hasta ANCHO
+        elemento base mas c de pantalla es color por 256 mas 32
+    fin
+    columna es 1
+    pon_color con (color_de con t) y NEGRO
+    pinta con "  "
+    pinta con (nombre_de con t)
+    pon_color con BLANCO y NEGRO
+    pinta con " quiere guardar "
+    pinta con (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo))
+    pinta con " en el disco, cifrado: "
+    pinta_numero con (elemento h de hechos_mide)
+    pinta_linea con " bytes y su código."
+    pon_color con GRIS y NEGRO
+    pinta con "  Así seguirá ahí cuando reinicies. Si le dejas: deja "
+    pinta_numero con t
+    pinta con ". Si no: niega "
+    pinta_numero con t
+    pinta_linea con "."
+    pinta_linea con "  Y escondo las ventanas, para que ninguna tape esto ni pinte una falsa."
+    pinta_linea con ""
+    al_serie con (nombre_de con t)
+    al_serie con " pide permiso para guardar "
+    al_serie con (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo))
+    escribe ""
+    desactiva_interrupciones
+    apunta_de con R_PIDE y t y (elemento h de hechos_mide)
+    activa_interrupciones
+    vuelve_la_consola
+fin
+
+funcion atiende_guarda_hecho con t
+    comparte aviso_disco_hasta y disco_lo_usa y disco_guardaba
+    h es elemento t de hecho_que_guarda
+    permiso es elemento t de permiso_disco
+    si permiso es DISCO_SIN_PEDIR y (esta_siempre con (nombre_de con t)) es mayor que 0
+        elemento t de permiso_disco es DISCO_SI
+        permiso es DISCO_SI
+    fin
+    si permiso es DISCO_SIN_PEDIR
+        elemento t de permiso_disco es DISCO_PEDIDO
+        pide_permiso_hecho con t y h
+        devuelve nada
+    fin
+    si permiso es DISCO_PEDIDO
+        devuelve nada
+    fin
+    respuesta es NO_LE_DEJASTE
+    si permiso es DISCO_SI y (elemento h de hechos_mide) es 0
+        respuesta es SOLO_EN_MEMORIA
+    si no si permiso es DISCO_SI
+        guardado es guarda_en_la_zona con h
+        al_serie con (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo))
+        escribe " guardado en el disco: " sin salto
+        escribe guardado
+        si guardado es mayor o igual que 0
+            respuesta es GUARDADO_TAMBIEN
+            disco_lo_usa es t
+            disco_guardaba es verdadero
+            aviso_disco_hasta es tics mas 3 por TICS_POR_SEGUNDO
+            ensucia
+            desactiva_interrupciones
+            apunta con R_GUARDO_HECHO y (region con hechos_letras_en mas (h menos 1) por 32 y (elemento h de hechos_largo)) y (color_de con t) y guardado
+            activa_interrupciones
+        si no
+            respuesta es SOLO_EN_MEMORIA
+            fallo_de_disco con guardado
+        fin
+    si no
+        desactiva_interrupciones
+        apunta_de con R_NEGADO y t y 0
+        activa_interrupciones
+    fin
+    desactiva_interrupciones
+    despierta_con con t y respuesta
+    activa_interrupciones
+fin
+
+funcion olvida_hecho con h
+    largo_nombre es elemento h de hechos_largo
+    copia_region con nombre_pedido y 1 y hechos_nombres y (h menos 1) por 32 mas 1 y largo_nombre
+    nombre es region con cabecera_hecho_en mas 128 y largo_nombre
+    habia es (elemento h de hechos_mide) mas (elemento h de hechos_fuente_mide)
+    en_disco es no invitado y no disco_en_memoria
+    si en_disco
+        borrado es borra_de_la_zona con h
+        si borrado es menor que 0
+            fallo_de_disco con borrado
+            devuelve nada
+        fin
+    fin
+    suelta_hecho con h
+    pon_color con VERDE_CLARO y NEGRO
+    pinta con "  He borrado "
+    pinta con nombre
+    pinta con " y su código: "
+    pinta_numero con habia
+    si en_disco
+        pinta_linea con " bytes. En el disco solo quedan ceros."
+    si no
+        pinta_linea con " bytes, de la memoria."
+    fin
+    pon_color con GRIS y NEGRO
+    pinta_linea con ""
+    desactiva_interrupciones
+    apunta con R_OLVIDASTE_HECHO y nombre y GRIS y habia
+    activa_interrupciones
+    al_serie con nombre
+    escribe " olvidado con su codigo: " sin salto
+    escribe habia
 fin
 
 funcion numero_entre con primera y ultima
@@ -7609,10 +8224,10 @@ funcion lee_ranura con r
     devuelve 0
 fin
 
-funcion claves_del_pendrive
+funcion claves_para con texto
     mensaje es region con llave_en mas 192 y 64
     i es 0
-    para cada b en PARA_EL_PENDRIVE
+    para cada b en texto
         i es i mas 1
         elemento i de mensaje es b
     fin
@@ -7634,7 +8249,7 @@ funcion ranura_buena
     para cada i desde 109 hasta 140
         elemento i de pen_lectura es 0
     fin
-    claves_del_pendrive
+    claves_para con PARA_EL_PENDRIVE
     firma_de con pen_lectura
     distinto es 0
     para cada i desde 1 hasta 32
@@ -7701,7 +8316,7 @@ funcion escribe_ranura con r
         elemento i de pen_sobre es 0
     fin
     copia_region con pen_sobre y MIDE_SOBRE mas 1 y pen_copia y 1 y MIDE_CARGA
-    claves_del_pendrive
+    claves_para con PARA_EL_PENDRIVE
     chacha20 con taller_chacha y claves_programa y (region con pen_zona mas MIDE_RANURA mas 96 y 12) y pen_sobre y MIDE_SOBRE mas 1 y MIDE_CARGA
     firma_de con pen_sobre
     copia_region con pen_sobre y 109 y firma_vista y 1 y 32
@@ -7902,7 +8517,7 @@ funcion abre_pendrive
         escribe ""
         devuelve nada
     fin
-    claves_del_pendrive
+    claves_para con PARA_EL_PENDRIVE
     chacha20 con taller_chacha y claves_programa y (region con pen_zona mas 2 por MIDE_RANURA mas 96 y 12) y pen_lectura y MIDE_SOBRE mas 1 y MIDE_CARGA
     olvida_claves_programa
     copia_region con pen_copia y 1 y pen_lectura y MIDE_SOBRE mas 1 y MIDE_CARGA
@@ -8108,7 +8723,7 @@ fin
 
 funcion pide_al_disco con peticion
     comparte peticion_abierta y disco_listo y esperando
-    si invitado y (peticion es ORDEN_GUARDA o peticion es ORDEN_OLVIDA)
+    si invitado y (peticion es ORDEN_GUARDA o peticion es ORDEN_OLVIDA o peticion es ORDEN_ZONA_ESCRIBE)
         devuelve EN_INVITADO
     fin
     recoge_tareas con falso
@@ -8541,6 +9156,7 @@ funcion entra_invitado
     olvida_llave
     olvida_seleccion
     vacia_portapapeles con AL_BLOQUEAR
+    olvida_los_hechos
     invitado es verdadero
     bloqueado es falso
     modo_clave es SIN_CLAVE
@@ -8593,11 +9209,17 @@ funcion atiende_encargos
     para cada t desde 1 hasta MAX_TAREAS
         si (elemento t de estados_tarea) es CON_EL_DISCO y (elemento t de pedido_de) es ESTRENA
             estrenado es estrena_hecho con t
-            desactiva_interrupciones
-            despierta_con con t y estrenado
-            activa_interrupciones
+            si estrenado es 0 y no invitado y no disco_en_memoria
+                elemento t de pedido_de es GUARDA_HECHO
+            si no
+                desactiva_interrupciones
+                despierta_con con t y estrenado
+                activa_interrupciones
+            fin
         fin
-        si (elemento t de estados_tarea) es CON_EL_DISCO
+        si (elemento t de estados_tarea) es CON_EL_DISCO y (elemento t de pedido_de) es GUARDA_HECHO
+            atiende_guarda_hecho con t
+        si no si (elemento t de estados_tarea) es CON_EL_DISCO
             pedido es elemento t de pedido_de
             permiso es elemento t de permiso_disco
             si pedido es GUARDA y permiso es DISCO_SIN_PEDIR y no invitado y (esta_siempre con (nombre_de con t)) es mayor que 0
@@ -8802,6 +9424,11 @@ fin
 
 funcion olvida
     nombre es trozo_de_orden con 1
+    h es busca_hecho con nombre
+    si h es mayor que 0
+        olvida_hecho con h
+        devuelve nada
+    fin
     nombre_al_buzon con nombre y ".dat"
     si invitado
         respuesta es olvida_de_memoria con nombre
@@ -8941,7 +9568,7 @@ funcion es_tuya con clase
     si clase es R_COPIASTE o clase es R_PEGASTE o clase es R_VACIASTE o clase es R_INVITADO o clase es R_PING o clase es R_DEJASTE_RED o clase es R_NEGASTE_RED
         devuelve verdadero
     fin
-    devuelve clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO
+    devuelve clase es R_OLVIDASTE_HECHO o (clase es mayor o igual que R_DEJASTE y clase es menor o igual que R_TECLADO)
 fin
 
 funcion pinta_de con nombre y tinta
@@ -9152,8 +9779,24 @@ funcion pinta_apunte con k
         pinta con "pidió dirección a la red, y nadie se la dio"
     si no si clase es R_ESTRENO
         pinta con "se compiló aquí: "
-        pinta_numero con n
-        pinta con " bytes, solo en memoria"
+        pinta_cuantos con n
+        pinta con " bytes"
+    si no si clase es R_GUARDO_HECHO
+        pinta con "se guardó en el disco, cifrado y con su código: "
+        pinta_cuantos con n
+        pinta con " bytes"
+    si no si clase es R_VOLVIO
+        pinta con "volvió del disco al arrancar: "
+        pinta_cuantos con n
+        pinta con " bytes"
+    si no si clase es R_HECHO_TOCADO
+        pinta_de con "un programa guardado no cuadra, y no lo cargó" y ROJO_CLARO
+    si no si clase es R_OLVIDASTE_HECHO
+        pinta con "borraste "
+        pinta con nombre
+        pinta con " y su código, "
+        pinta_cuantos con n
+        pinta con " bytes"
     fin
     si veces es mayor que 1
         pon_color con GRIS_OSCURO y NEGRO
@@ -9647,6 +10290,7 @@ funcion abre_cerrojo
     si pen_estado es PEN_CERRADO
         abre_pendrive
     fin
+    restaura_hechos
     si cortado
         pinta_linea con ""
         pinta_linea con "  Me bloqueé antes de que acabaras la contraseña. Nada cambia."
@@ -9796,7 +10440,7 @@ funcion barra
     ve_a con 1 y 3
     pinta con "FalOS"
     ve_a con 1 y 74
-    pinta con "día 25"
+    pinta con "día 26"
     pon_color con GRIS y NEGRO
 fin
 
@@ -9848,7 +10492,7 @@ funcion portada
     pinta_linea con "  guardan va cifrado, cada uno con su clave. Con ping pruebo la red, y"
     pinta_linea con "  un programa solo se conecta a donde tú le dejes. Y mi memoria ni"
     pinta_linea con "  siquiera está en sus tablas: Meltdown no encuentra nada que leer."
-    pinta_linea con "  Y con lanza fal escribes tus programas en Fal y los compilas aquí."
+    pinta_linea con "  Con lanza fal escribes programas en Fal, los compilas aquí y se quedan."
     si no hay_azar
         pinta_linea con "  Este procesador no trae generador de azar, así que las llaves las"
         pinta_linea con "  saco del instante exacto en que pulsas cada tecla."
@@ -9929,6 +10573,7 @@ lee_siempre
 lee_cerrojo
 mira_el_pendrive
 lee_llave
+restaura_hechos
 vuelve_la_consola
 escribe "pantalla lista"
 
